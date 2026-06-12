@@ -15,6 +15,7 @@ class Vendor extends Model
         'tenant_id',
         'event_id',
         'vendor_category_id',
+        'vendor_profile_id',
         'name',
         'contact_name',
         'phone',
@@ -34,6 +35,11 @@ class Vendor extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(VendorProfile::class, 'vendor_profile_id');
     }
 
     public function category(): BelongsTo

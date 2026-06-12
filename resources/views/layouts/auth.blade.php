@@ -32,7 +32,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="krd-auth-body h-full">
+<body class="h-full w-full" style="margin: 0; padding: 0; min-height: 100vh;">
 
     {{-- Toast Notifications --}}
     <div id="krd-toast-container"

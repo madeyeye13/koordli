@@ -16,9 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'auth.platform' => AuthenticatePlatformUser::class,
-            'auth.tenant'   => AuthenticateTenantUser::class,
-            'tenant.resolve' => ResolveTenantFromUser::class,
+            'auth.platform'      => AuthenticatePlatformUser::class,
+            'auth.tenant'        => AuthenticateTenantUser::class,
+            'tenant.resolve'     => ResolveTenantFromUser::class,
+            'onboarding.check'   => \App\Http\Middleware\EnsureOnboardingComplete::class, // ← add
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

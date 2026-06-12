@@ -1,0 +1,39 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Add team_id as alias — Spatie internally uses team_id
+        // even when team_foreign_key is renamed to tenant_id
+        if (!Schema::hasColumn('model_has_roles', 'team_id')) {
+            Schema::table('model_has_roles', function (Blueprint $table) {
+                $table->unsignedBigInteger('team_id')
+                      ->nullable()
+                      ->after('role_id');
+            });
+        }
+
+        if (!Schema::hasColumn('model_has_permissions', 'team_id')) {
+            Schema::table('model_has_permissions', function (Blueprint $table) {
+                $table->unsignedBigInteger('team_id')
+                      ->nullable()
+                      ->after('permission_id');
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::table('model_has_roles', function (Blueprint $table) {
+            $table->dropColumn('team_id');
+        });
+        Schema::table('model_has_permissions', function (Blueprint $table) {
+            $table->dropColumn('team_id');
+        });
+    }
+};

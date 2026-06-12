@@ -117,6 +117,25 @@ class PermissionSeeder extends Seeder
 
             // Reports
             'reports.view',
+
+            // Forms
+            'forms.view',
+            'forms.create',
+            'forms.edit',
+            'forms.delete',
+            'forms.submissions.view',
+            'forms.submissions.manage',
+
+            // Vendor management
+            'vendors.applications.view',
+            'vendors.applications.manage',
+            'vendors.profiles.view',
+
+            // Vendor self (for vendor role)
+            'vendor.profile.manage',
+            'vendor.events.view',
+            'vendor.runsheet.view',
+            'vendor.payments.view',
         ];
 
         foreach ($tenantPermissions as $permission) {
@@ -142,6 +161,13 @@ class PermissionSeeder extends Seeder
                 'runsheet.view', 'runsheet.manage',
                 'documents.view', 'documents.upload',
                 'reports.view',
+                'forms.view',
+                'forms.create',
+                'forms.edit',
+                'forms.submissions.view',
+                'forms.submissions.manage',
+                'vendors.applications.view',
+                'vendors.applications.manage',
             ],
             'finance'       => [
                 'events.view',
@@ -167,6 +193,13 @@ class PermissionSeeder extends Seeder
                 'budget.view',
                 'documents.view',
                 'rsvp.view',
+            ],
+
+            'vendor' => [
+                'vendor.profile.manage',
+                'vendor.events.view',
+                'vendor.runsheet.view',
+                'vendor.payments.view',
             ],
         ];
 

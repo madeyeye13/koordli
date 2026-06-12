@@ -2,37 +2,52 @@
 
 namespace App\Livewire\Tenant\Auth;
 
+use App\Models\Tenant\User;
 use App\Services\AuthService;
-use App\Services\TenantContext;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 #[Layout('layouts.auth')]
 class Login extends Component
 {
-    public string $email = '';
-    public string $password = '';
-    public string $error = '';
+    public string $email       = '';
+    public string $password    = '';
+    public bool   $remember    = false;
+    public bool   $showPassword = false;
+    public string $error       = '';
 
     protected array $rules = [
         'email'    => 'required|email',
         'password' => 'required|min:6',
     ];
 
-    public function login(
-        AuthService $authService,
-        TenantContext $tenantContext
-    ): void {
+    public function togglePassword(): void
+    {
+        $this->showPassword = !$this->showPassword;
+    }
+
+    public function login(AuthService $authService): void
+    {
         $this->validate();
 
-        $tenant = $tenantContext->get();
+        // Find user by email across all tenants
+        $user = User::withoutGlobalScope('tenant')
+            ->where('email', $this->email)
+            ->where('is_active', true)
+            ->first();
 
-        if (!$tenant) {
-            $this->error = 'Tenant not found.';
+        if (!$user) {
+            $this->error = 'Invalid credentials.';
             return;
         }
 
-        if (!$authService->tenantLogin($this->email, $this->password, $tenant->id)) {
+        // Login using tenant_id from the user record
+        if (!$authService->tenantLogin(
+            $this->email,
+            $this->password,
+            $user->tenant_id,
+            $this->remember
+        )) {
             $this->error = 'Invalid credentials.';
             return;
         }

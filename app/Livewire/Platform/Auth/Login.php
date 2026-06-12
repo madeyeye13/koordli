@@ -11,6 +11,7 @@ class Login extends Component
 {
     public string $email = '';
     public string $password = '';
+    public bool $showPassword = false;
     public bool $remember = false;
     public string $error = '';
 
@@ -18,6 +19,11 @@ class Login extends Component
         'email'    => 'required|email',
         'password' => 'required|min:6',
     ];
+
+    public function togglePassword(): void
+    {
+        $this->showPassword = !$this->showPassword;
+    }
 
     public function login(AuthService $authService): void
     {

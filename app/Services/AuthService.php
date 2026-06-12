@@ -26,7 +26,8 @@ class AuthService
     public function tenantLogin(
         string $email,
         string $password,
-        int $tenantId
+        int $tenantId,
+        bool $remember = false  // ← add this
     ): bool {
         $user = User::withoutGlobalScope('tenant')
             ->where('email', $email)
@@ -38,9 +39,8 @@ class AuthService
             return false;
         }
 
-        Auth::guard('web')->login($user);
+        Auth::guard('web')->login($user, $remember); // ← pass remember flag
 
-        // Update last login
         $user->update(['last_login_at' => now()]);
 
         return true;

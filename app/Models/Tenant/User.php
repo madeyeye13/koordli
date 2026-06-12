@@ -20,6 +20,9 @@ class User extends Authenticatable
         'password',
         'type',
         'is_active',
+        'is_self_registered',        // ← add
+        'onboarding_completed',      // ← add
+        'onboarding_completed_at',   // ← add
         'last_login_at',
     ];
 
@@ -33,6 +36,15 @@ class User extends Authenticatable
         'password'          => 'hashed',
         'type'              => UserType::class,
         'is_active'         => 'boolean',
+        'is_self_registered'      => 'boolean',   // ← add
+        'onboarding_completed'    => 'boolean',   // ← add
+        'onboarding_completed_at' => 'datetime',  // ← add
         'last_login_at'     => 'datetime',
     ];
+
+    public function tenant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+{
+    return $this->belongsTo(\App\Models\Central\Tenant::class, 'tenant_id')
+                ->withoutGlobalScopes();
+}
 }

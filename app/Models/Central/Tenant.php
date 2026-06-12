@@ -50,4 +50,9 @@ class Tenant extends Model
 
         return $this->plan?->hasFeature($key) ?? false;
     }
+
+    public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\App\Models\Central\Subscription::class);
+    }
 }

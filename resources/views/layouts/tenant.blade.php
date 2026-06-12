@@ -8,6 +8,16 @@
       x-bind:class="{ 'dark': darkMode }"
       x-init="$watch('darkMode', val => localStorage.setItem('krd-dark', val))">
 <head>
+
+    {{-- Prevent dark mode flash — must be first in head --}}
+    <script>
+        (function() {
+            if (localStorage.getItem('krd-dark') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -58,6 +68,15 @@
          class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
     </div>
 
+    {{-- Mobile Sidebar Overlay --}}
+    <div id="krd-overlay"
+        class="krd-sidebar-overlay"
+        onclick="
+            document.getElementById('krd-sidebar').classList.remove('open');
+            document.getElementById('krd-overlay').classList.remove('active');
+        ">
+    </div>
+
     {{-- App Shell --}}
     <div class="krd-shell">
 
@@ -77,9 +96,13 @@
                 @include('components.layout.tenant-topbar')
             </header>
 
+            {{-- Trial Banner --}}
+            <x-ui.trial-banner />
+
             {{-- Page Content --}}
             <main class="krd-content">
-                {{ $slot }}
+                {{ $slot ?? '' }}
+                @yield('content')
             </main>
 
         </div>
