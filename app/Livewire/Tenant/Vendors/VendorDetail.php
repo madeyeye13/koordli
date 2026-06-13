@@ -2,10 +2,15 @@
 
 namespace App\Livewire\Tenant\Vendors;
 
+use App\Jobs\SendVendorAssignedJob;
+use App\Jobs\SendVendorInviteJob;
+use App\Models\Central\VendorAccount;
+use App\Models\Tenant\Event;
 use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorEventAssignment;
-use App\Models\Tenant\Event;
 use App\Traits\WithToast;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -16,33 +21,30 @@ class VendorDetail extends Component
 
     public Vendor $vendor;
 
-    // Assign to event form
-    public bool   $showAssignForm  = false;
-    public ?int   $assign_event_id = null;
-    public string $assign_amount   = '';
-    public string $assign_notes    = '';
+    public bool   $showAssignForm     = false;
+    public ?int   $assign_event_id    = null;
+    public string $assign_amount      = '';
+    public string $assign_notes       = '';
     public string $assign_amount_paid = '';
-    public string $assign_status   = 'pending';
+    public string $assign_status      = 'pending';
 
-    // Edit assignment
     public ?int   $editAssignId     = null;
     public string $editAmountAgreed = '';
     public string $editAmountPaid   = '';
     public string $editStatus       = '';
     public string $editNotes        = '';
 
-    // Delete assignment
     public bool $showDeleteAssign = false;
     public ?int $deleteAssignId   = null;
 
-    public function mount(string $slug): void
+    public function mount(int $id): void
     {
-        $this->event = Event::with([
-            'eventType', 'status', 'tasks', 'rsvpResponses', 'team',
-            'vendorAssignments.vendor.category',
-        ])->where('slug', $slug)->firstOrFail();
+        $this->vendor = Vendor::with([
+            'category',
+            'eventAssignments.event',
+        ])->findOrFail($id);
     }
-    
+
     public function assignToEvent(): void
     {
         $this->validate([
@@ -52,7 +54,6 @@ class VendorDetail extends Component
             'assign_notes'    => 'nullable|string|max:500',
         ], [], ['assign_event_id' => 'event']);
 
-        // Check not already assigned
         $exists = VendorEventAssignment::where('vendor_id', $this->vendor->id)
             ->where('event_id', $this->assign_event_id)
             ->exists();
@@ -71,10 +72,105 @@ class VendorDetail extends Component
             'status'        => $this->assign_status,
             'notes'         => $this->assign_notes ?: null,
         ]);
+
+        // Send notification email if vendor has email
+        if ($this->vendor->email) {
+            $tenant    = auth()->user()->tenant;
+            $event     = Event::find($this->assign_event_id);
+            $eventName = $event?->name ?? 'Upcoming Event';
+            $eventDate = $event?->date?->format('D, d M Y') ?? 'TBC';
+
+            $existing = VendorAccount::where('tenant_id', $tenant->id)
+                ->where('email', $this->vendor->email)
+                ->first();
+
+            if ($existing) {
+                // Already has account — send assignment notification only
+                SendVendorAssignedJob::dispatch(
+                    $this->vendor->email,
+                    $existing->name,
+                    $this->vendor->name,
+                    $eventName,
+                    $eventDate,
+                    $tenant->name,
+                    false,
+                );
+            } else {
+                // No account — create one and send combined email
+                $password = Str::random(10);
+
+                $account = VendorAccount::create([
+                    'tenant_id'      => $tenant->id,
+                    'vendor_id'      => $this->vendor->id,
+                    'name'           => $this->vendor->contact_name ?? $this->vendor->name,
+                    'email'          => $this->vendor->email,
+                    'password'       => Hash::make($password),
+                    'phone'          => $this->vendor->phone,
+                    'business_name'  => $this->vendor->name,
+                    'is_active'      => true,
+                    'password_changed' => false,
+                ]);
+
+                SendVendorAssignedJob::dispatch(
+                    $this->vendor->email,
+                    $account->name,
+                    $this->vendor->name,
+                    $eventName,
+                    $eventDate,
+                    $tenant->name,
+                    true,
+                    $password,
+                );
+            }
+        }
+
         $this->vendor->load('eventAssignments.event');
         $this->reset(['showAssignForm', 'assign_event_id', 'assign_amount', 'assign_amount_paid', 'assign_notes']);
         $this->assign_status = 'pending';
-        $this->toastSuccess('Vendor assigned to event.');
+        $this->toastSuccess('Vendor assigned to event successfully.');
+    }
+
+    public function inviteVendor(): void
+    {
+        if (empty($this->vendor->email)) {
+            $this->toastError('This vendor has no email address. Edit the vendor first.');
+            return;
+        }
+
+        $tenant = auth()->user()->tenant;
+
+        $existing = VendorAccount::where('tenant_id', $tenant->id)
+            ->where('email', $this->vendor->email)
+            ->first();
+
+        if ($existing) {
+            $this->toastWarning('This vendor has already been invited. A portal account exists for ' . $this->vendor->email);
+            return;
+        }
+
+        $password = Str::random(10);
+
+        VendorAccount::create([
+            'tenant_id'        => $tenant->id,
+            'vendor_id'        => $this->vendor->id,
+            'name'             => $this->vendor->contact_name ?? $this->vendor->name,
+            'email'            => $this->vendor->email,
+            'password'         => Hash::make($password),
+            'phone'            => $this->vendor->phone,
+            'business_name'    => $this->vendor->name,
+            'is_active'        => true,
+            'password_changed' => false,
+        ]);
+
+        SendVendorInviteJob::dispatch(
+            $this->vendor->email,
+            $this->vendor->contact_name ?? $this->vendor->name,
+            $this->vendor->name,
+            $password,
+            $tenant->name,
+        );
+
+        $this->toastSuccess('Portal invite sent to ' . $this->vendor->email);
     }
 
     public function startEditAssignment(int $assignId): void

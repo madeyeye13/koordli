@@ -33,6 +33,15 @@
                 <button wire:click="$toggle('showAssignForm')" class="krd-btn krd-btn-primary krd-btn-sm">
                     {{ $showAssignForm ? '✕ Cancel' : '+ Assign to Event' }}
                 </button>
+                @if($vendor->email)
+                <button wire:click="inviteVendor"
+                    wire:loading.attr="disabled"
+                    wire:target="inviteVendor"
+                    class="krd-btn krd-btn-secondary krd-btn-sm">
+                    <span wire:loading.remove wire:target="inviteVendor">✉️ Invite to Portal</span>
+                    <span wire:loading wire:target="inviteVendor">Sending...</span>
+                </button>
+                @endif
                 <a href="{{ route('tenant.vendors.edit', $vendor->id) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                     Edit Vendor
                 </a>

@@ -7,9 +7,33 @@
             <h2 class="krd-heading-3" style="color:#1C1917;">Vendor Directory</h2>
             <div style="font-size:12px;color:#A8A29E;margin-top:3px;">{{ $totalCount }} {{ Str::plural('vendor', $totalCount) }} in your directory</div>
         </div>
-        <a href="{{ route('tenant.vendors.create') }}" wire:navigate class="krd-btn krd-btn-primary">
-            + Add Vendor
-        </a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            {{-- Copy vendor registration URL --}}
+            <div
+                x-data="{
+                    copied: false,
+                    url: '{{ route('vendor.public.register', auth()->user()->tenant->slug) }}',
+                    copy() {
+                        navigator.clipboard.writeText(this.url).then(() => {
+                            this.copied = true;
+                            setTimeout(() => this.copied = false, 2000);
+                        });
+                    }
+                }">
+                <button type="button"
+                    x-on:click="copy()"
+                    class="krd-btn krd-btn-secondary"
+                    :title="url">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                    </svg>
+                    <span x-text="copied ? '✓ Copied!' : 'Copy Vendor Link'"></span>
+                </button>
+            </div>
+            <a href="{{ route('tenant.vendors.create') }}" wire:navigate class="krd-btn krd-btn-primary">
+                + Add Vendor
+            </a>
+        </div>
     </div>
 
     {{-- Filters + View Toggle --}}

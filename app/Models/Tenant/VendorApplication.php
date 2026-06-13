@@ -5,37 +5,33 @@ namespace App\Models\Tenant;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class VendorApplication extends Model
 {
     use BelongsToTenant;
 
     protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'vendor_category_id',
-        'business_name',
-        'contact_name',
-        'email',
-        'phone',
-        'social_links',
-        'service_description',
-        'portfolio_urls',
-        'rate_card_path',
-        'pricing_info',
-        'status',
-        'rejection_reason',
-        'reviewed_by',
-        'reviewed_at',
+        'uuid', 'tenant_id', 'vendor_category_id',
+        'business_name', 'contact_name', 'email', 'phone',
+        'service_description', 'instagram', 'website',
+        'available_to_travel',
+        'status', 'rejection_reason', 'reviewed_by', 'reviewed_at',
     ];
 
     protected $casts = [
-        'social_links'   => 'array',
-        'portfolio_urls' => 'array',
-        'pricing_info'   => 'array',
-        'reviewed_at'    => 'datetime',
+        'reviewed_at'        => 'datetime',
+        'available_to_travel' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (VendorApplication $app) {
+            if (empty($app->uuid)) {
+                $app->uuid = Str::uuid();
+            }
+        });
+    }
 
     public function category(): BelongsTo
     {
@@ -47,8 +43,7 @@ class VendorApplication extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
-    public function vendorProfile(): HasOne
-    {
-        return $this->hasOne(VendorProfile::class, 'vendor_application_id');
-    }
+    public function isPending(): bool  { return $this->status === 'pending'; }
+    public function isApproved(): bool { return $this->status === 'approved'; }
+    public function isRejected(): bool { return $this->status === 'rejected'; }
 }

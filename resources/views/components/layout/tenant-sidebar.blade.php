@@ -51,12 +51,25 @@
                 Tasks
             </a>
             <a href="{{ route('tenant.vendors') }}"
-                class="krd-nav-item {{ request()->routeIs('tenant.vendors*') ? 'active' : '' }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.vendors*') && !request()->routeIs('tenant.vendor.applications') ? 'active' : '' }}"
                 wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
                 </svg>
                 Vendors
+            </a>
+            <a href="{{ route('tenant.vendor.applications') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.vendor.applications') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Applications
+                @php $pendingCount = \App\Models\Tenant\VendorApplication::where('status','pending')->count(); @endphp
+                @if($pendingCount > 0)
+                <span style="margin-left:auto;font-size:10px;background:#EF4444;color:#fff;padding:1px 6px;border-radius:10px;font-weight:600;">{{ $pendingCount }}</span>
+                @endif
             </a>
             <a href="{{ route('tenant.budget') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.budget*') ? 'active' : '' }}"

@@ -1,7 +1,12 @@
 <?php
 
+use App\Http\Middleware\AuthenticateClient;
 use App\Http\Middleware\AuthenticatePlatformUser;
 use App\Http\Middleware\AuthenticateTenantUser;
+use App\Http\Middleware\AuthenticateVendor;
+use App\Http\Middleware\EnsureClientPasswordChanged;
+use App\Http\Middleware\EnsureOnboardingComplete;
+use App\Http\Middleware\EnsureVendorPasswordChanged;
 use App\Http\Middleware\ResolveTenantFromUser;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,10 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'auth.platform'      => AuthenticatePlatformUser::class,
-            'auth.tenant'        => AuthenticateTenantUser::class,
-            'tenant.resolve'     => ResolveTenantFromUser::class,
-            'onboarding.check'   => \App\Http\Middleware\EnsureOnboardingComplete::class, // ← add
+            'auth.platform'          => AuthenticatePlatformUser::class,
+            'auth.tenant'            => AuthenticateTenantUser::class,
+            'auth.client'            => AuthenticateClient::class,
+            'auth.vendor'            => AuthenticateVendor::class,
+            'tenant.resolve'         => ResolveTenantFromUser::class,
+            'onboarding.check'       => EnsureOnboardingComplete::class,
+            'vendor.password.check'  => EnsureVendorPasswordChanged::class,
+            'client.password.check'  => EnsureClientPasswordChanged::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

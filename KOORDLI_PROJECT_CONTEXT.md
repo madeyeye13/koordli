@@ -87,8 +87,8 @@ Replaces: WhatsApp chaos, spreadsheets, scattered notes, disorganized workflows.
 
 ### Fonts
 - **Satoshi** — self-hosted in `public/fonts/` (primary UI font)
-- **Spline Sans** — available for RSVP form customization (Phase 5)
-- Serif options for RSVP pairing: Playfair Display, Cormorant Garamond (Phase 5)
+- **Spline Sans** — available for RSVP form customization (Phase 5) font is not yet added
+- Serif options for RSVP pairing: Playfair Display, Cormorant Garamond (Phase 5) 
 
 ### Brand Colors
 Violet:      #7C3AED  (primary)

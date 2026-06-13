@@ -31,6 +31,12 @@
             <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                 💰 Budget
             </a>
+            @if($event->client_email)
+            <button wire:click="inviteClient" wire:loading.attr="disabled" wire:target="inviteClient" class="krd-btn krd-btn-secondary krd-btn-sm">
+                <span wire:loading.remove wire:target="inviteClient">✉️ Invite Client</span>
+                <span wire:loading wire:target="inviteClient">Sending...</span>
+            </button>
+            @endif
             <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                 Edit Event
             </a>
