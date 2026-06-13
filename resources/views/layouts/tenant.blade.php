@@ -1,12 +1,8 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
       class="h-full"
-      x-data="{
-          darkMode: localStorage.getItem('krd-dark') === 'true',
-          sidebarOpen: true
-      }"
-      x-bind:class="{ 'dark': darkMode }"
-      x-init="$watch('darkMode', val => localStorage.setItem('krd-dark', val))">
+      x-data="{ sidebarOpen: window.innerWidth >= 768 }"
+      x-init="window.addEventListener('resize', () => { sidebarOpen = window.innerWidth >= 768; })">
 <head>
 
     {{-- Prevent dark mode flash — must be first in head --}}

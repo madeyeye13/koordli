@@ -45,19 +45,25 @@
                 </svg>
                 Events
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.tasks') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.tasks*') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
                 </svg>
                 Tasks
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.vendors') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.vendors*') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
                 </svg>
                 Vendors
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.budget') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.budget*') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
                 </svg>
@@ -94,6 +100,16 @@
                     <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                 </svg>
                 Forms & Bookings
+            </a>
+
+            <a href="{{ route('tenant.staff') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.staff*') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Staff
             </a>
             <a href="#" class="krd-nav-item">
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

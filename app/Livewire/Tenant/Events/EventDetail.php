@@ -6,6 +6,7 @@ use App\Models\Tenant\Event;
 use App\Models\Tenant\TenantEventStatus;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 #[Layout('layouts.tenant')]
@@ -16,22 +17,17 @@ class EventDetail extends Component
     public Event $event;
     public string $uuid = '';
 
-    public function mount(string $uuid): void
+    public function mount(string $slug): void
     {
-        $this->uuid  = $uuid;
         $this->event = Event::with([
-            'eventType',
-            'status',
-            'tasks',
-            'guests',
-            'team',
-        ])->where('uuid', $uuid)->firstOrFail();
+            'eventType', 'status', 'tasks', 'rsvpResponses', 'team',
+        ])->where('slug', $slug)->firstOrFail();
     }
 
+    #[Renderless]
     public function updateStatus(int $statusId): void
     {
         $this->event->update(['status_id' => $statusId]);
-        $this->event->refresh();
         $this->toastSuccess('Status updated.');
     }
 

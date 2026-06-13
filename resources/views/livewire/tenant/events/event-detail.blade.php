@@ -1,4 +1,8 @@
-<div>
+<div x-data="{
+    activeStatusId: {{ $event->status_id ?? 'null' }},
+    activeStatusName: '{{ $event->status?->name ?? '' }}',
+    activeStatusColor: '{{ $event->status?->color ?? '#A8A29E' }}'
+}">
     {{-- Header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
         <div>
@@ -10,9 +14,11 @@
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <h2 class="krd-heading-3" style="color:#1C1917;">{{ $event->name }}</h2>
                 @if($event->status)
-                <span class="krd-badge" style="background:{{ $event->status->color }}22;color:{{ $event->status->color }};">
-                    {{ $event->status->name }}
-                </span>
+                <span
+                    class="krd-badge krd-badge-dynamic"
+                    x-bind:style="`background: ${activeStatusColor}22; color: ${activeStatusColor};`"
+                    x-text="activeStatusName"
+                ></span>
                 @endif
             </div>
             @if($event->eventType)
@@ -23,8 +29,11 @@
             @endif
         </div>
 
-        <div style="display:flex;gap:8px;">
-            <a href="{{ route('tenant.events.edit', $event->uuid) }}" wire:navigate class="krd-btn krd-btn-secondary">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary">
+                💰 Budget
+            </a>
+            <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary">
                 Edit Event
             </a>
         </div>
@@ -46,10 +55,10 @@
             <div style="font-size:28px;font-weight:700;color:#3B82F6;line-height:1;">{{ $event->tasks->count() }}</div>
         </div>
         <div class="krd-card" style="text-align:center;padding:16px;">
-            <div class="krd-label" style="margin-bottom:6px;">Guests</div>
-            <div style="font-size:28px;font-weight:700;color:#10B981;line-height:1;">{{ $event->guests->count() }}</div>
+            <div class="krd-label" style="margin-bottom:6px;">RSVPs</div>
+            <div style="font-size:28px;font-weight:700;color:#10B981;line-height:1;">{{ $event->rsvpResponses->count() }}</div>
             @if($event->max_guests)
-            <div style="font-size:11px;color:#A8A29E;margin-top:2px;">of {{ number_format($event->max_guests) }} max</div>
+            <div style="font-size:11px;color:#A8A29E;margin-top:2px;">of {{ number_format($event->max_guests) }} expected</div>
             @endif
         </div>
         <div class="krd-card" style="text-align:center;padding:16px;">
@@ -65,67 +74,143 @@
             <div class="krd-label" style="margin-bottom:16px;">Event Info</div>
 
             @foreach([
-                ['label' => 'Event Name', 'value' => $event->name],
-                ['label' => 'Type',       'value' => $event->eventType?->name ?? '—'],
-                ['label' => 'Date',       'value' => $event->date?->format('l, F j, Y') ?? '—'],
-                ['label' => 'Venue',      'value' => $event->venue ?? '—'],
-                ['label' => 'Max Guests', 'value' => $event->max_guests ? number_format($event->max_guests) : '—'],
+                ['label' => 'Event Name',      'value' => $event->name],
+                ['label' => 'Type',            'value' => $event->eventType?->name ?? '—'],
+                ['label' => 'Start Date',      'value' => $event->date?->format('l, F j, Y') ?? '—'],
+                ['label' => 'Start Time',      'value' => $event->start_time ? date('g:i A', strtotime($event->start_time)) : '—'],
+                ['label' => 'End Date',        'value' => $event->end_date?->format('l, F j, Y') ?? '—'],
+                ['label' => 'End Time',        'value' => $event->end_time ? date('g:i A', strtotime($event->end_time)) : '—'],
+                ['label' => 'Venue',           'value' => $event->venue ?? '—'],
+                ['label' => 'City / State',    'value' => $event->location ?? '—'],
+                ['label' => 'Expected Guests', 'value' => $event->max_guests ? number_format($event->max_guests) : '—'],
+                ['label' => 'Agreed Budget',   'value' => $event->agreed_budget ? '₦' . number_format($event->agreed_budget, 2) : '—'],
             ] as $info)
             <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E7E5E4;">
                 <span style="font-size:12px;color:#78716C;">{{ $info['label'] }}</span>
                 <span style="font-size:12px;font-weight:500;color:#1C1917;text-align:right;max-width:60%;">{{ $info['value'] }}</span>
             </div>
             @endforeach
+
+            {{-- Client --}}
+            @if($event->client_name)
+            <div style="margin-top:16px;">
+                <div class="krd-label" style="margin-bottom:12px;">Client</div>
+                @foreach([
+                    ['label' => 'Name',  'value' => $event->client_name],
+                    ['label' => 'Phone', 'value' => $event->client_phone ?? '—'],
+                    ['label' => 'Email', 'value' => $event->client_email ?? '—'],
+                ] as $info)
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E7E5E4;">
+                    <span style="font-size:12px;color:#78716C;">{{ $info['label'] }}</span>
+                    <span style="font-size:12px;font-weight:500;color:#1C1917;">{{ $info['value'] }}</span>
+                </div>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- Notes --}}
+            @if($event->notes)
+            <div style="margin-top:16px;">
+                <div class="krd-label" style="margin-bottom:8px;">Internal Notes</div>
+                <p style="font-size:12px;color:#78716C;line-height:1.7;">{{ $event->notes }}</p>
+            </div>
+            @endif
         </div>
 
+        
         {{-- Quick Status Change --}}
         <div class="krd-card">
             <div class="krd-label" style="margin-bottom:16px;">Update Status</div>
             <div style="display:flex;flex-direction:column;gap:8px;">
                 @foreach($statuses as $status)
                 <button
-                    wire:click="updateStatus({{ $status->id }})"
-                    style="
-                        display:flex;align-items:center;gap:10px;
-                        padding:10px 14px;border-radius:6px;cursor:pointer;
-                        border:2px solid {{ $event->status_id === $status->id ? $status->color : '#E7E5E4' }};
-                        background:{{ $event->status_id === $status->id ? $status->color . '15' : '#fff' }};
-                        text-align:left;width:100%;
-                        transition:all 150ms ease;
+                    type="button"
+                    x-on:click="
+                        activeStatusId = {{ $status->id }};
+                        activeStatusName = '{{ $status->name }}';
+                        activeStatusColor = '{{ $status->color }}';
+                        $wire.updateStatus({{ $status->id }});
                     "
+                    :style="activeStatusId === {{ $status->id }}
+                        ? 'display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:6px;cursor:pointer;border:2px solid {{ $status->color }};background:{{ $status->color }}15;text-align:left;width:100%;transition:all 150ms ease;'
+                        : 'display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:6px;cursor:pointer;border:2px solid #E7E5E4;background:#fff;text-align:left;width:100%;transition:all 150ms ease;'"
                 >
                     <span style="width:10px;height:10px;border-radius:50%;background:{{ $status->color }};flex-shrink:0;"></span>
-                    <span style="font-size:13px;font-weight:{{ $event->status_id === $status->id ? '600' : '400' }};color:{{ $event->status_id === $status->id ? $status->color : '#57534E' }};">
+                    <span
+                        :style="activeStatusId === {{ $status->id }}
+                            ? 'font-size:13px;font-weight:600;color:{{ $status->color }};'
+                            : 'font-size:13px;font-weight:400;color:#57534E;'"
+                    >
                         {{ $status->name }}
                     </span>
-                    @if($event->status_id === $status->id)
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="{{ $status->color }}" stroke-width="2.5" style="margin-left:auto;">
+                    <svg
+                        x-show="activeStatusId === {{ $status->id }}"
+                        xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+                        viewBox="0 0 24 24" stroke="{{ $status->color }}" stroke-width="2.5"
+                        style="margin-left:auto;">
                         <path d="M20 6L9 17l-5-5"/>
                     </svg>
-                    @endif
                 </button>
                 @endforeach
             </div>
+
+            @if($event->agreed_budget)
+            <div style="margin-top:20px;padding:14px;background:#F5F3FF;border-radius:6px;border:1px solid #DDD6FE;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#7C3AED;margin-bottom:4px;">Agreed Budget</div>
+                <div style="font-size:22px;font-weight:700;color:#7C3AED;letter-spacing:-0.02em;">
+                    ₦{{ number_format($event->agreed_budget, 2) }}
+                </div>
+            </div>
+            @endif
         </div>
 
     </div>
 
-    {{-- Coming Soon Panels --}}
+    {{-- Bottom Panels --}}
     <div class="krd-grid-2" style="margin-top:16px;">
         <div class="krd-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div class="krd-label">Tasks</div>
-                <a href="#" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add Task</a>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="krd-label">Tasks</div>
+        <a href="{{ route('tenant.tasks.create', ['eventId' => $event->id]) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+            + Add Task
+        </a>
+    </div>
+    @if($event->tasks->isEmpty())
+    <div class="krd-empty-state" style="padding:24px;">
+        <div class="krd-empty-state-icon" style="font-size:24px;">✅</div>
+        <div class="krd-empty-state-title">No tasks yet</div>
+        <div class="krd-empty-state-desc">Add tasks to track what needs to be done for this event.</div>
+    </div>
+    @else
+    <div style="display:flex;flex-direction:column;gap:2px;">
+        @foreach($event->tasks->take(5) as $task)
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #E7E5E4;">
+            <div style="width:14px;height:14px;border-radius:3px;border:1.5px solid {{ $task->isCompleted() ? '#10B981' : '#D6D3D1' }};background:{{ $task->isCompleted() ? '#10B981' : 'transparent' }};flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                @if($task->isCompleted())
+                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                @endif
             </div>
-            <div class="krd-empty-state" style="padding:24px;">
-                <div class="krd-empty-state-icon" style="font-size:24px;">✅</div>
-                <div class="krd-empty-state-title">No tasks yet</div>
-                <div class="krd-empty-state-desc">Task management coming in the next build.</div>
-            </div>
+            <span style="font-size:13px;color:#1C1917;flex:1;{{ $task->isCompleted() ? 'text-decoration:line-through;color:#A8A29E;' : '' }}">
+                {{ $task->title }}
+            </span>
+            <span class="krd-badge {{ $task->priority->badgeClass() }}" style="font-size:10px;">
+                {{ $task->priority->label() }}
+            </span>
         </div>
+        @endforeach
+        @if($event->tasks->count() > 5)
+        <div style="padding:10px 0;text-align:center;">
+            <a href="{{ route('tenant.tasks', ['eventFilter' => $event->id]) }}" wire:navigate style="font-size:12px;color:#7C3AED;text-decoration:none;">
+                View all {{ $event->tasks->count() }} tasks →
+            </a>
+        </div>
+        @endif
+    </div>
+    @endif
+</div>
         <div class="krd-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div class="krd-label">Guests</div>
+                <div class="krd-label">Guests & RSVP</div>
                 <a href="#" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add Guest</a>
             </div>
             <div class="krd-empty-state" style="padding:24px;">

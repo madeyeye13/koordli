@@ -2,10 +2,10 @@
 
 namespace App\Models\Tenant;
 
-use App\Enums\VendorStatus;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Vendor extends Model
 {
@@ -13,37 +13,46 @@ class Vendor extends Model
 
     protected $fillable = [
         'tenant_id',
-        'event_id',
         'vendor_category_id',
-        'vendor_profile_id',
         'name',
         'contact_name',
         'phone',
         'email',
-        'amount_agreed',
-        'amount_paid',
-        'status',
+        'website',
+        'instagram',
+        'description',
         'notes',
+        'rating',
+        'is_preferred',
+        'is_active',
     ];
 
     protected $casts = [
-        'status'        => VendorStatus::class,
-        'amount_agreed' => 'decimal:2',
-        'amount_paid'   => 'decimal:2',
+        'is_preferred' => 'boolean',
+        'is_active'    => 'boolean',
+        'rating'       => 'integer',
     ];
-
-    public function event(): BelongsTo
-    {
-        return $this->belongsTo(Event::class);
-    }
-
-    public function profile(): BelongsTo
-    {
-        return $this->belongsTo(VendorProfile::class, 'vendor_profile_id');
-    }
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(VendorCategory::class, 'vendor_category_id');
+    }
+
+    public function eventAssignments(): HasMany
+    {
+        return $this->hasMany(VendorEventAssignment::class);
+    }
+
+    public function events(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Event::class, 'vendor_event_assignments')
+                    ->withPivot(['amount_agreed', 'amount_paid', 'status', 'notes'])
+                    ->withTimestamps();
+    }
+
+    public function ratingStars(): string
+    {
+        if (!$this->rating) return '—';
+        return str_repeat('★', $this->rating) . str_repeat('☆', 5 - $this->rating);
     }
 }

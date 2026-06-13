@@ -944,6 +944,35 @@ body {
 }
 
 
+.dark .krd-dropdown-option.selected {
+    background-color: #2D1B69;
+    color: #A78BFA;
+}
+
+.dark .krd-dropdown-trigger {
+    background-color: #1C1917;
+    border-color: #292524;
+    color: #FAFAF9;
+}
+
+/* Dropdown text always visible */
+.dark .krd-dropdown-trigger span {
+    color: #FAFAF9 !important;
+}
+
+.dark .krd-dropdown-option {
+    color: #FAFAF9 !important;
+}
+
+.dark .krd-dropdown-option.selected {
+    background-color: #2D1B69 !important;
+    color: #A78BFA !important;
+}
+
+.dark .krd-dropdown-option:hover {
+    background-color: #292524 !important;
+}
+
 /* ============================================================
    SCROLLBAR
    ============================================================ */
@@ -1190,5 +1219,175 @@ body {
 
     .krd-grid-2 {
         grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.krd-badge-dynamic {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.dark .krd-badge-dynamic {
+    filter: brightness(1.4) saturate(0.8);
+}
+
+/* Dynamic color badges in dark mode — boost visibility */
+.dark .krd-badge[style*="color:"] {
+    filter: brightness(1.5);
+}
+
+/* Dropdown selected option dark mode */
+.dark .krd-dropdown-option.selected {
+    background-color: #2D1B69 !important;
+    color: #A78BFA !important;
+}
+
+/* Dropdown placeholder text dark mode */
+.dark .krd-dropdown-trigger span {
+    color: #FAFAF9;
+}
+
+/* Loading dim for task list */
+.krd-loading-dim {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+}
+
+/* Spin animation */
+@keyframes krd-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   TASK ROW — add this to your app.css
+   ============================================================ */
+
+/* .krd-task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #FFFFFF;
+    border: 1px solid #E7E5E4;
+    border-radius: 8px;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.krd-task-row:hover {
+    border-color: #D6D3D1;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.dark .krd-task-row {
+    background: #1C1917;
+    border-color: #292524;
+}
+
+.dark .krd-task-row:hover {
+    border-color: #44403C;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+} */
+
+/* ── Task List Row ── */
+.krd-task-list-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #E7E5E4;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.krd-task-list-row:last-child {
+    border-bottom: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.krd-task-list-row:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.krd-task-faded {
+    opacity: 0.5;
+}
+
+/* ── Status Picker Dropdown Buttons ── */
+.krd-status-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    width: 100%;
+    border: none;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #1C1917;
+    text-align: left;
+    transition: background 100ms ease;
+}
+
+.krd-status-picker-btn:hover {
+    background: #F5F5F4;
+}
+
+.krd-status-picker-btn--active {
+    background: #F5F3FF !important;
+    color: #7C3AED;
+}
+
+/* ── Actions: desktop right, mobile below ── */
+.krd-task-actions-desktop {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.krd-task-actions-mobile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .krd-task-list-row {
+        padding: 14px 16px;
+        align-items: flex-start;
+    }
+
+    .krd-task-actions-desktop {
+        display: none;
+    }
+
+    .krd-task-actions-mobile {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .krd-task-actions {
+        display: flex;
+    }
+
+    /* Hide the desktop-only actions column on mobile */
+    .krd-task-list-row > div:last-child.krd-task-desktop-actions {
+        display: none;
+    }
+
+    .krd-task-list-row {
+        padding: 14px 16px;
+        gap: 10px;
     }
 }

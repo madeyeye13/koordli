@@ -68,7 +68,7 @@
                 <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #E7E5E4;">
                     <div style="width: 8px; height: 8px; border-radius: 50%; background: #7C3AED; flex-shrink: 0;"></div>
                     <div style="flex: 1; min-width: 0;">
-                        <a href="{{ route('tenant.events.show', $event->uuid) }}" wire:navigate style="text-decoration:none;">
+                        <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate style="text-decoration:none;">
                             <div style="font-size: 13px; font-weight: 500; color: #1C1917; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 {{ $event->name }}
                             </div>

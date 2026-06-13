@@ -10,6 +10,8 @@ class EventTeam extends Model
 {
     use BelongsToTenant;
 
+    protected $table = 'event_team';
+
     protected $fillable = [
         'tenant_id',
         'event_id',

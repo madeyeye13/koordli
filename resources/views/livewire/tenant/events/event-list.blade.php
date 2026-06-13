@@ -23,42 +23,40 @@
             />
 
             {{-- Status Filter --}}
-            <div class="krd-dropdown" x-data="{ open: false, selected: 'All statuses' }" style="max-width:180px;">
-                <button type="button" class="krd-dropdown-trigger" x-bind:class="{ open: open }" x-on:click="open = !open" x-on:click.outside="open = false">
-                    <span x-text="selected"></span>
-                    <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="krd-dropdown-menu" x-show="open" x-transition x-cloak>
-                    <div class="krd-dropdown-option" wire:click="$set('statusFilter', '')" x-on:click="selected = 'All statuses'; open = false">All statuses</div>
-                    @foreach($statuses as $status)
-                    <div class="krd-dropdown-option {{ $statusFilter == $status->id ? 'selected' : '' }}"
-                        wire:click="$set('statusFilter', '{{ $status->id }}')"
-                        x-on:click="selected = '{{ $status->name }}'; open = false">
-                        <span style="width:8px;height:8px;border-radius:50%;background:{{ $status->color }};flex-shrink:0;display:inline-block;"></span>
-                        {{ $status->name }}
-                    </div>
-                    @endforeach
+            <x-ui.dropdown
+                wire="statusFilter"
+                placeholder="All statuses"
+                selected="{{ $statusFilter ? ($statuses->firstWhere('id', (int)$statusFilter)?->name ?? 'All statuses') : 'All statuses' }}"
+                max-width="180px"
+            >
+                @foreach($statuses as $status)
+                <div
+                    class="krd-dropdown-option {{ $statusFilter == $status->id ? 'selected' : '' }}"
+                    x-on:click="select('{{ $status->name }}', '{{ $status->id }}')"
+                >
+                    <span style="width:8px;height:8px;border-radius:50%;background:{{ $status->color }};flex-shrink:0;display:inline-block;"></span>
+                    {{ $status->name }}
                 </div>
-            </div>
+                @endforeach
+            </x-ui.dropdown>
 
             {{-- Type Filter --}}
-            <div class="krd-dropdown" x-data="{ open: false, selected: 'All types' }" style="max-width:180px;">
-                <button type="button" class="krd-dropdown-trigger" x-bind:class="{ open: open }" x-on:click="open = !open" x-on:click.outside="open = false">
-                    <span x-text="selected"></span>
-                    <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                </button>
-                <div class="krd-dropdown-menu" x-show="open" x-transition x-cloak>
-                    <div class="krd-dropdown-option" wire:click="$set('typeFilter', '')" x-on:click="selected = 'All types'; open = false">All types</div>
-                    @foreach($types as $type)
-                    <div class="krd-dropdown-option {{ $typeFilter == $type->id ? 'selected' : '' }}"
-                        wire:click="$set('typeFilter', '{{ $type->id }}')"
-                        x-on:click="selected = '{{ $type->name }}'; open = false">
-                        <span style="width:8px;height:8px;border-radius:50%;background:{{ $type->color }};flex-shrink:0;display:inline-block;"></span>
-                        {{ $type->name }}
-                    </div>
-                    @endforeach
+            <x-ui.dropdown
+                wire="typeFilter"
+                placeholder="All types"
+                selected="{{ $typeFilter ? ($types->firstWhere('id', (int)$typeFilter)?->name ?? 'All types') : 'All types' }}"
+                max-width="180px"
+            >
+                @foreach($types as $type)
+                <div
+                    class="krd-dropdown-option {{ $typeFilter == $type->id ? 'selected' : '' }}"
+                    x-on:click="select('{{ $type->name }}', '{{ $type->id }}')"
+                >
+                    <span style="width:8px;height:8px;border-radius:50%;background:{{ $type->color }};flex-shrink:0;display:inline-block;"></span>
+                    {{ $type->name }}
                 </div>
-            </div>
+                @endforeach
+            </x-ui.dropdown>
         </div>
 
         {{-- View Toggle --}}
@@ -111,10 +109,10 @@
                         @forelse($events as $event)
                         <tr>
                             <td>
-                                <a href="{{ route('tenant.events.show', $event->uuid) }}" wire:navigate style="text-decoration:none;">
+                                <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate style="text-decoration:none;">
                                     <div style="font-weight:500;color:#1C1917;">{{ $event->name }}</div>
                                 </a>
-                                <div style="font-size:11px;color:#A8A29E;font-family:monospace;">{{ substr($event->uuid, 0, 8) }}...</div>
+                                <div style="font-size:11px;color:#A8A29E;font-family:monospace;">{{ $event->slug }}</div>
                             </td>
                             <td>
                                 @if($event->eventType)
@@ -143,10 +141,10 @@
                             </td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:6px;">
-                                    <a href="{{ route('tenant.events.show', $event->uuid) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                                    <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                                         View
                                     </a>
-                                    <a href="{{ route('tenant.events.edit', $event->uuid) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                                    <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                                         Edit
                                     </a>
                                     <button
@@ -217,7 +215,7 @@
                     </div>
 
                     {{-- Name --}}
-                    <a href="{{ route('tenant.events.show', $event->uuid) }}" wire:navigate style="text-decoration:none;">
+                    <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate style="text-decoration:none;">
                         <div style="font-size:15px;font-weight:600;color:#1C1917;margin-bottom:8px;line-height:1.3;">
                             {{ $event->name }}
                         </div>
@@ -244,10 +242,10 @@
 
                 {{-- Actions --}}
                 <div style="padding:12px 16px;border-top:1px solid #E7E5E4;display:flex;gap:8px;">
-                    <a href="{{ route('tenant.events.show', $event->uuid) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="flex:1;justify-content:center;">
+                    <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="flex:1;justify-content:center;">
                         View
                     </a>
-                    <a href="{{ route('tenant.events.edit', $event->uuid) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                    <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                         Edit
                     </a>
                     <button
