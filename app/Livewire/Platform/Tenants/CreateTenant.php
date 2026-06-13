@@ -18,9 +18,11 @@ class CreateTenant extends Component
     public string $owner_email      = '';
     public string $owner_password   = '';
     public string $billing_currency = 'NGN';
+    public string $country = 'NG';
     public ?int   $plan_id          = null;
     public bool   $success          = false;
     public string $error            = '';
+    
 
     protected array $rules = [
         'name'             => 'required|string|min:2|max:100',
@@ -29,6 +31,7 @@ class CreateTenant extends Component
         'owner_password'   => 'required|min:8',
         'billing_currency' => 'required|string',
         'plan_id'          => 'nullable|exists:plans,id',
+        'country' => 'required|string|size:2',
     ];
 
     public function create(TenantService $tenantService): void
@@ -42,6 +45,7 @@ class CreateTenant extends Component
                 'owner_email'      => $this->owner_email,
                 'owner_password'   => $this->owner_password,
                 'billing_currency' => $this->billing_currency,
+                'country'          => $this->country,
                 'plan_id'          => $this->plan_id,
                 'is_self_registered' => false,
             ]);

@@ -11,35 +11,30 @@
     <div class="krd-budget-summary-grid" style="margin-bottom:24px;">
         <div class="krd-card" style="padding:16px;border-left:3px solid #7C3AED;">
             <div class="krd-label" style="margin-bottom:6px;">Total Agreed</div>
-            <div style="font-size:20px;font-weight:700;color:#7C3AED;">₦{{ number_format($totalAgreed, 2) }}</div>
+            <div style="font-size:20px;font-weight:700;color:#7C3AED;">{{ $symbol }}{{ number_format($totalAgreed, 2) }}</div>
             <div style="font-size:11px;color:#A8A29E;margin-top:2px;">Across all events</div>
         </div>
         <div class="krd-card" style="padding:16px;border-left:3px solid #10B981;">
             <div class="krd-label" style="margin-bottom:6px;">Total Collected</div>
-            <div style="font-size:20px;font-weight:700;color:#10B981;">₦{{ number_format($totalCollected, 2) }}</div>
+            <div style="font-size:20px;font-weight:700;color:#10B981;">{{ $symbol }}{{ number_format($totalCollected, 2) }}</div>
             <div style="font-size:11px;color:#A8A29E;margin-top:2px;">From clients</div>
         </div>
         <div class="krd-card" style="padding:16px;border-left:3px solid {{ $totalOutstanding > 0 ? '#EF4444' : '#10B981' }};">
             <div class="krd-label" style="margin-bottom:6px;">Total Outstanding</div>
-            <div style="font-size:20px;font-weight:700;color:{{ $totalOutstanding > 0 ? '#EF4444' : '#10B981' }};">₦{{ number_format($totalOutstanding, 2) }}</div>
+            <div style="font-size:20px;font-weight:700;color:{{ $totalOutstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $symbol }}{{ number_format($totalOutstanding, 2) }}</div>
             <div style="font-size:11px;color:#A8A29E;margin-top:2px;">Still owed by clients</div>
         </div>
         <div class="krd-card" style="padding:16px;border-left:3px solid #F59E0B;">
             <div class="krd-label" style="margin-bottom:6px;">Total Actual Spent</div>
-            <div style="font-size:20px;font-weight:700;color:#F59E0B;">₦{{ number_format($totalActual, 2) }}</div>
+            <div style="font-size:20px;font-weight:700;color:#F59E0B;">{{ $symbol }}{{ number_format($totalActual, 2) }}</div>
             <div style="font-size:11px;color:#A8A29E;margin-top:2px;">On vendors & costs</div>
         </div>
     </div>
 
     {{-- Search --}}
     <div style="margin-bottom:16px;">
-        <input
-            wire:model.live.debounce.300ms="search"
-            type="text"
-            class="krd-input"
-            placeholder="Search events..."
-            style="max-width:280px;"
-        />
+        <input wire:model.live.debounce.300ms="search" type="text" class="krd-input"
+            placeholder="Search events..." style="max-width:280px;" />
     </div>
 
     {{-- Events with budgets --}}
@@ -72,11 +67,7 @@
                             $outstanding = $b->clientOutstanding();
                             $actual      = $b->totalActual();
                             $profit      = $b->grossProfit();
-                            $symbol      = match($b->currency ?? 'NGN') {
-                                'NGN' => '₦', 'GHS' => '₵', 'GBP' => '£',
-                                'USD' => '$', 'EUR' => '€', 'KES' => 'KSh', 'ZAR' => 'R',
-                                default => '₦'
-                            };
+                            $sym         = \App\Helpers\CurrencyHelper::symbol($b->currency ?? 'NGN');
                         @endphp
                         <tr>
                             <td>
@@ -88,12 +79,12 @@
                                     @endif
                                 </div>
                             </td>
-                            <td style="text-align:right;font-size:13px;color:#7C3AED;font-weight:500;">{{ $symbol }}{{ number_format($agreed, 2) }}</td>
-                            <td style="text-align:right;font-size:13px;color:#10B981;font-weight:500;">{{ $symbol }}{{ number_format($collected, 2) }}</td>
-                            <td style="text-align:right;font-size:13px;font-weight:500;color:{{ $outstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $symbol }}{{ number_format($outstanding, 2) }}</td>
-                            <td style="text-align:right;font-size:13px;color:#F59E0B;font-weight:500;">{{ $symbol }}{{ number_format($actual, 2) }}</td>
+                            <td style="text-align:right;font-size:13px;color:#7C3AED;font-weight:500;">{{ $sym }}{{ number_format($agreed, 2) }}</td>
+                            <td style="text-align:right;font-size:13px;color:#10B981;font-weight:500;">{{ $sym }}{{ number_format($collected, 2) }}</td>
+                            <td style="text-align:right;font-size:13px;font-weight:500;color:{{ $outstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $sym }}{{ number_format($outstanding, 2) }}</td>
+                            <td style="text-align:right;font-size:13px;color:#F59E0B;font-weight:500;">{{ $sym }}{{ number_format($actual, 2) }}</td>
                             <td style="text-align:right;font-size:13px;font-weight:600;color:{{ $profit >= 0 ? '#10B981' : '#EF4444' }};">
-                                {{ $profit < 0 ? '-' : '+' }}{{ $symbol }}{{ number_format(abs($profit), 2) }}
+                                {{ $profit < 0 ? '-' : '+' }}{{ $sym }}{{ number_format(abs($profit), 2) }}
                             </td>
                             <td>
                                 @if($outstanding <= 0)
@@ -126,11 +117,7 @@
                 $outstanding = $b->clientOutstanding();
                 $actual      = $b->totalActual();
                 $profit      = $b->grossProfit();
-                $symbol      = match($b->currency ?? 'NGN') {
-                    'NGN' => '₦', 'GHS' => '₵', 'GBP' => '£',
-                    'USD' => '$', 'EUR' => '€', 'KES' => 'KSh', 'ZAR' => 'R',
-                    default => '₦'
-                };
+                $sym         = \App\Helpers\CurrencyHelper::symbol($b->currency ?? 'NGN');
             @endphp
             <div class="krd-card" style="padding:16px;">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;">
@@ -149,19 +136,19 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
                     <div>
                         <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Agreed</div>
-                        <div style="font-size:14px;font-weight:700;color:#7C3AED;">{{ $symbol }}{{ number_format($agreed, 2) }}</div>
+                        <div style="font-size:14px;font-weight:700;color:#7C3AED;">{{ $sym }}{{ number_format($agreed, 2) }}</div>
                     </div>
                     <div>
                         <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Collected</div>
-                        <div style="font-size:14px;font-weight:700;color:#10B981;">{{ $symbol }}{{ number_format($collected, 2) }}</div>
+                        <div style="font-size:14px;font-weight:700;color:#10B981;">{{ $sym }}{{ number_format($collected, 2) }}</div>
                     </div>
                     <div>
                         <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Outstanding</div>
-                        <div style="font-size:14px;font-weight:700;color:{{ $outstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $symbol }}{{ number_format($outstanding, 2) }}</div>
+                        <div style="font-size:14px;font-weight:700;color:{{ $outstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $sym }}{{ number_format($outstanding, 2) }}</div>
                     </div>
                     <div>
                         <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Profit</div>
-                        <div style="font-size:14px;font-weight:700;color:{{ $profit >= 0 ? '#10B981' : '#EF4444' }};">{{ $profit < 0 ? '-' : '+' }}{{ $symbol }}{{ number_format(abs($profit), 2) }}</div>
+                        <div style="font-size:14px;font-weight:700;color:{{ $profit >= 0 ? '#10B981' : '#EF4444' }};">{{ $profit < 0 ? '-' : '+' }}{{ $sym }}{{ number_format(abs($profit), 2) }}</div>
                     </div>
                 </div>
                 <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
@@ -185,7 +172,7 @@
                     <div style="font-size:11px;color:#A8A29E;">
                         {{ $event->date?->format('M d, Y') ?? 'Date TBC' }}
                         @if($event->agreed_budget)
-                        · Agreed: ₦{{ number_format($event->agreed_budget, 2) }}
+                        · Agreed: {{ $symbol }}{{ number_format($event->agreed_budget, 2) }}
                         @endif
                     </div>
                 </div>
@@ -224,6 +211,25 @@
 }
 
 @media (max-width: 767px) {
+    .krd-budget-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-left: 0;
+        margin-right: 0;
+        overflow: hidden;
+    }
+
+    .krd-budget-summary-grid .krd-card {
+        min-width: 0;        /* prevents card from overflowing grid cell */
+        overflow: hidden;
+        padding: 12px;
+    }
+
+    .krd-budget-summary-grid .krd-card div[style*="font-size:20px"] {
+        font-size: 14px !important;  /* shrink the large numbers on mobile */
+        word-break: break-all;
+    }
+
     #budget-overview-desktop { display: none !important; }
     #budget-overview-mobile  { display: flex !important; }
 }

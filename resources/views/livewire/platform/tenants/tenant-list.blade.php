@@ -30,16 +30,17 @@
     </div>
 
     {{-- Table --}}
-    <div class="krd-card" style="padding:0;overflow:hidden;">
+    {{-- Table --}}
+    <div class="krd-card" style="padding:0;overflow:clip;">
         <div class="krd-table-wrap">
             <table class="krd-table">
                 <thead>
                     <tr>
                         <th>Company</th>
                         <th>Status</th>
-                        <th>Plan</th>
-                        <th>Currency</th>
-                        <th>Created</th>
+                        <th class="krd-col-hide-mobile">Plan</th>
+                        <th class="krd-col-hide-mobile">Currency</th>
+                        <th class="krd-col-hide-mobile">Created</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -61,11 +62,13 @@
                                 <span class="krd-badge krd-badge-stone">{{ $tenant->status }}</span>
                             @endif
                         </td>
-                        <td style="font-size:12px;color:#78716C;">
+                        <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
                             {{ $tenant->plan?->name ?? '—' }}
                         </td>
-                        <td style="font-size:12px;color:#78716C;">{{ $tenant->billing_currency }}</td>
-                        <td style="font-size:12px;color:#78716C;white-space:nowrap;">
+                        <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
+                            {{ $tenant->billing_currency }}
+                        </td>
+                        <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
                             {{ $tenant->created_at->format('M d, Y') }}
                         </td>
                         <td>
@@ -123,7 +126,7 @@
 
     {{-- Tenant Detail Panel --}}
     @if($viewing && $viewingTenant)
-    <div style="position:fixed;top:0;right:0;width:420px;height:100vh;background:#fff;border-left:1px solid #E7E5E4;z-index:50;overflow-y:auto;padding:24px;"
+    <div style="position:fixed;top:0;right:0;width:420px;max-width:100vw;height:100vh;background:#fff;border-left:1px solid #E7E5E4;z-index:50;overflow-y:auto;padding:24px;"
          x-data x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-x-4"
          x-transition:enter-end="opacity-100 translate-x-0">

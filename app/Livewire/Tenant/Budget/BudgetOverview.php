@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Tenant\Budget;
 
+use App\Helpers\CurrencyHelper;
 use App\Models\Tenant\Budget;
 use App\Models\Tenant\Event;
 use App\Traits\WithToast;
@@ -35,7 +36,6 @@ class BudgetOverview extends Component
             ->orderBy('date', 'asc')
             ->get();
 
-        // Global totals — calculate from individual budgets
         $allBudgets       = Budget::with(['items', 'clientPayments', 'event'])->get();
         $totalAgreed      = $allBudgets->sum(fn($b) => $b->agreedBudget());
         $totalEstimated   = $allBudgets->sum(fn($b) => $b->totalEstimated());
@@ -51,6 +51,7 @@ class BudgetOverview extends Component
             'totalActual'         => $totalActual,
             'totalCollected'      => $totalCollected,
             'totalOutstanding'    => $totalOutstanding,
+            'symbol'              => CurrencyHelper::forTenant(),
         ]);
     }
 }

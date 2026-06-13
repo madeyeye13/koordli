@@ -13,7 +13,7 @@
 5. **ALWAYS wait for confirmation after each step before continuing**
 6. **NEVER use native browser select** — always custom dropdown
 7. **NEVER use alert/confirm** — always toast notifications
-8. **ALWAYS think about mobile responsiveness** on everything built
+8. **ALWAYS think about mobile responsiveness** — every list/table view MUST have desktop table + mobile cards (non-negotiable)
 9. **ALWAYS think about security** — rate limiting, hashing, CSRF, honeypots, input sanitization
 10. **ALWAYS think about SEO** — meta tags, canonical URLs, structured data where relevant
 11. **ALWAYS follow the existing UI design system** — use `krd-` CSS classes, never inline everything
@@ -25,6 +25,10 @@
 17. **Always use UUIDs for public-facing URLs** — never sequential IDs
 18. **Hard delete only** — no soft deletes, activity log covers audit trail
 19. **Always queue emails** — never synchronous mail in production
+20. **INSTANT UI** — Alpine handles all visual updates immediately, Livewire syncs in background. Zero perceived delay. Use `#[Renderless]` + `$wire.set()` pattern
+21. **RESPONSIVE RULE** — Every list/table view must have: desktop table (hidden on mobile via CSS) + mobile cards (hidden on desktop via CSS). NEVER just a table alone
+22. **CURRENCY** — Never hardcode ₦. Always use `CurrencyHelper::forTenant()` or `CurrencyHelper::symbol($currency)`. Currency auto-detected from IP on registration
+23. **DROPDOWN RULE** — Never use `krdDropdown` Alpine component when the selection needs to trigger instant UI updates (like country→currency). Use plain Alpine dropdown with `pick()` method instead to avoid Livewire re-render lag
 
 ---
 
@@ -87,27 +91,36 @@ Replaces: WhatsApp chaos, spreadsheets, scattered notes, disorganized workflows.
 - Serif options for RSVP pairing: Playfair Display, Cormorant Garamond (Phase 5)
 
 ### Brand Colors
-```
 Violet:      #7C3AED  (primary)
+
 Amber:       #F59E0B  (accent)
+
 Stone Black: #1C1917
+
 Warm White:  #FAFAF9
+
 Success:     #10B981
+
 Danger:      #EF4444
+
 Info:        #3B82F6
+
 Muted:       #78716C
+
 Ghost:       #D6D3D1
+
 Border:      #E7E5E4
-```
 
 ### Dark Mode Colors
-```
 Background:  #0C0A09
+
 Surface:     #1C1917
+
 Border:      #292524
+
 Muted:       #A8A29E
+
 Text:        #FAFAF9
-```
 
 ### Design Rules (absolutely non-negotiable)
 - **No box shadows**
@@ -117,7 +130,7 @@ Text:        #FAFAF9
 - **CSS prefix:** `krd-`
 - **Tenant branding via CSS variables:** `--tenant-primary`, `--tenant-accent`
 - **Dark mode:** intentionally designed, not inverted
-- **Mobile responsive** on everything
+- **Mobile responsive** on everything — desktop table + mobile cards pattern
 
 ### Logo Component
 - `color="light"` — white logo (auth left panels, dark backgrounds)
@@ -159,7 +172,6 @@ Two completely separate guards:
 - Services + Actions + DTOs
 - UI = 100% Livewire
 - API = Controllers only (scaffolded, not yet built)
-- Route files: `web.php`, `tenant.php`, `api.php`, `console.php`
 
 ### Security Architecture
 - Rate limiting on all auth endpoints
@@ -170,12 +182,6 @@ Two completely separate guards:
 - UUIDs on all public-facing entities
 - Activity log for full audit trail
 - Tenant isolation via `BelongsToTenant` trait — zero cross-tenant data leakage
-
-### API Architecture (scaffolded, not yet built)
-- `routes/api.php` exists
-- `app/Http/Controllers/API/V1/` folder exists
-- `app/Http/Resources/` folder exists
-- Will be built in a later phase
 
 ---
 
@@ -188,17 +194,19 @@ Two completely separate guards:
 ---
 
 ## MAIL CONFIG
-
-```
 MAIL_MAILER=smtp
+
 MAIL_HOST=smtp.hostinger.com
+
 MAIL_PORT=465
+
 MAIL_USERNAME=info@cenbabusinessaward.com
-MAIL_PASSWORD=[password in .env]
+
 MAIL_ENCRYPTION=ssl
+
 MAIL_FROM_ADDRESS=info@cenbabusinessaward.com
+
 MAIL_FROM_NAME=Koordli
-```
 
 ---
 
@@ -207,53 +215,89 @@ MAIL_FROM_NAME=Koordli
 - Engine: MySQL
 - Database: `koordli`
 - Charset: `utf8mb4_unicode_ci`
-- **47+ tables fully migrated**
 
-### Central Tables (no tenant scope)
-```
+### Central Tables
 platform_users
-tenants
-plans
-plan_prices
-feature_flags
-plan_features
-tenant_feature_overrides
-subscriptions
-subscription_invoices
-currency_settings
-email_verification_codes
-```
 
-### Tenant-Scoped Tables (all have tenant_id + BelongsToTenant trait)
-```
+tenants                    ← has country (ISO2) + billing_currency columns
+
+plans
+
+plan_prices
+
+feature_flags
+
+plan_features
+
+tenant_feature_overrides
+
+subscriptions
+
+subscription_invoices
+
+currency_settings
+
+email_verification_codes
+
+### Tenant-Scoped Tables
 users
+
 event_types
+
 tenant_event_statuses
+
 tenant_task_categories
+
 tenant_labels
+
 label_assignments
-events
+
+events                     ← slug, client_name, client_phone, client_email, agreed_budget, start_time, end_date, end_time, location
+
 event_team
-tasks
+
+tasks                      ← event_id nullable (NULL=company task), created_by
+
 vendor_categories
-vendors
-vendor_profiles
-vendor_applications
-budgets
-budget_items
+
+vendors                    ← company directory (name, contact, phone, email, website, instagram, rating, is_preferred, is_active)
+
+vendor_event_assignments   ← links vendors to events (amount_agreed, amount_paid, status, notes)
+
+budgets                    ← HasOne per event (total_amount, client_paid, currency)
+
+budget_items               ← (category, estimated, actual, paid, notes)
+
+client_payments            ← payments received from client (amount, paid_on, payment_method, description)
+
 guests
-rsvp_forms
+
 rsvp_responses
+
 runsheets
+
 runsheet_items
+
 documents
+
 notification_preferences
+
 forms
+
 form_fields
+
 form_submissions
+
 form_submission_values
+
 form_redirects
-```
+
+### Key Migrations Added
+- `add_extra_fields_to_events_table` — client info, times, location, agreed_budget
+- `add_created_by_to_tasks_table` — created_by, event_id nullable
+- `restructure_vendors_for_company_directory` — dropped old vendors, new directory + assignments
+- `add_client_payments_to_budgets_table` — client_paid on budgets, client_payments table
+- `add_country_to_tenants_table` — country ISO2 column
 
 ---
 
@@ -264,350 +308,566 @@ form_redirects
 3. **Plans fully dynamic** — platform owner creates/edits from dashboard, zero hardcoding
 4. **Onboarding flow** — after registration: password change + company branding (lightweight)
 5. **Hybrid tenant creation** — both self-serve and manual by platform owner
-6. **Platform owner manual plan override** — for support cases, bank transfers, special deals
-7. **Event statuses are tenant-defined** — `tenant_event_statuses` table, not hardcoded
-8. **Vendor ecosystem** — vendors are first-class users after approval, get their own dashboard
-9. **Form engine** — powers booking + consultation forms; RSVP is a separate module that consumes shared field engine
-10. **No WhatsApp/SMS in MVP** — email only for notifications
-11. **UUIDs on all public-facing entities** — never expose sequential IDs in URLs
-12. **Hard deletes only** — activity log covers audit trail
-13. **Queued emails always** — never synchronous in production
-14. **Nothing hardcoded** — tenants can customize event types, statuses, vendor categories, task categories, labels
-15. **Multi-currency** — NGN, GHS, GBP, USD, EUR, KES, ZAR via Paystack + Flutterwave
-16. **Exchange rates** — Frankfurter API, cached 24hrs, free
-17. **SEO ready from day one** — meta tags, canonical URLs, structured data on public pages
+6. **Event statuses are tenant-defined** — `tenant_event_statuses` table, not hardcoded
+7. **Vendor ecosystem** — company-level directory, assigned to events, Phase 4 gets accounts/portal
+8. **No WhatsApp/SMS in MVP** — email only for notifications
+9. **UUIDs on all public-facing entities** — never expose sequential IDs in URLs
+10. **Hard deletes only** — activity log covers audit trail
+11. **Queued emails always** — never synchronous in production
+12. **Nothing hardcoded** — tenants can customize event types, statuses, vendor categories, task categories, labels
+13. **Multi-currency** — NGN, GHS, GBP, USD, EUR, KES, ZAR via CurrencyHelper
+14. **Currency auto-detected from IP** on registration using `stevebauman/location`
+15. **Country stored on tenant** — `tenants.country` (ISO2 code)
+16. **Budget = manual payment recording only** — no payment gateway (planners deal with high amounts)
+17. **Client payments recorded manually** — company logs what was received
+18. **Vendor accounts Phase 4** — vendor registration page, approval, login portal
+19. **Vendor account created once only** — subsequent assignments just send notification email
+20. **Tasks: single table, event_id nullable** — NULL = company task, NOT NULL = event task
+
+---
+
+## CURRENCY SYSTEM
+
+### CurrencyHelper (`app/Helpers/CurrencyHelper.php`)
+```php
+CurrencyHelper::symbol('NGN')        // → ₦
+CurrencyHelper::format(1000, 'GHS')  // → ₵1,000.00
+CurrencyHelper::forTenant()          // → symbol for current auth user's tenant
+CurrencyHelper::fromCountry('NG')    // → 'NGN'
+CurrencyHelper::countries()          // → ['NG' => 'Nigeria', ...]
+```
+
+### Supported Currencies
+NGN → ₦  (Nigeria)
+
+GHS → ₵  (Ghana)
+
+GBP → £  (United Kingdom)
+
+USD → $  (US, CA, AU, AE, SA, IN, SG)
+
+EUR → €  (DE, FR, IT, ES, NL, BE, PT, AT, FI, IE)
+
+KES → KSh (Kenya)
+
+ZAR → R  (South Africa)
+
+### Country Detection Flow
+1. On registration: IP detected via `stevebauman/location`
+2. Country pre-fills in dropdown (plain Alpine, NOT krdDropdown)
+3. Currency auto-maps from country via Alpine `currencyMap` object (instant, no Livewire lag)
+4. Stored on tenant: `billing_currency` + `country` columns
+5. `CurrencyHelper::forTenant()` used everywhere in tenant UI
+
+### IMPORTANT — Country Dropdown Rule
+- The country dropdown on registration uses **plain Alpine** (not krdDropdown)
+- Reason: krdDropdown calls `$wire.set()` which triggers Livewire re-render, resetting Alpine state
+- Plain Alpine `pick()` method updates `selectedCountry` first, then calls `$wire.set('country', code)`
+- This guarantees instant currency display update with zero lag
+
+---
+
+## REUSABLE UI COMPONENTS
+
+### Custom Dropdown (`resources/views/components/ui/dropdown.blade.php`)
+- Alpine-powered, no native select
+- Uses `krdDropdown` Alpine data component registered in `app.js`
+- Props: `wire`, `placeholder`, `selected`, `max-width`
+- Options rendered as `<div class="krd-dropdown-option">` inside slot
+- `select(label, value)` method calls `$wire.set(wire, value)`
+- Uses `template x-if="open"` to prevent duplication (NOT `x-show`)
+- **DO NOT use for country/currency selection** — use plain Alpine pick() pattern instead
+
+### Toast System (`resources/js/app.js`)
+- `window.showToast(message, type)` — global function
+- Types: `success`, `error`, `warning`, `info`
+- Auto-dismiss: 4 seconds
+- Livewire event listener: `toast-success`, `toast-error`, `toast-warning`, `toast-info`
+- Container: `#krd-toast-container` fixed top-right
+
+### WithToast Trait (`app/Traits/WithToast.php`)
+- `$this->toastSuccess('message')`
+- `$this->toastError('message')`
+- `$this->toastWarning('message')`
+
+### Alpine Stores (`resources/js/app.js`)
+```javascript
+Alpine.store('theme')           // dark mode: dark, toggle(), apply()
+Alpine.data('featureToggle')    // plan feature toggles
+Alpine.data('krdDropdown')      // universal dropdown
+```
+
+### `livewire:navigated` event
+- Re-applies dark mode class after Livewire navigation
+- Re-inits toast container
+- Registered in `app.js`
+
+---
+
+## INSTANT UI PATTERN
+
+All status changes, toggles, and preference updates must be instant:
+
+```php
+// Livewire component
+#[Renderless]
+public function togglePreferred(int $id): void
+{
+    $vendor = Vendor::find($id);
+    $vendor->update(['is_preferred' => !$vendor->is_preferred]);
+}
+```
+
+```html
+<!-- Alpine handles visual instantly, Livewire syncs in background -->
+<button x-data="{ preferred: {{ $vendor->is_preferred ? 'true' : 'false' }} }"
+    x-on:click="preferred = !preferred; $wire.togglePreferred({{ $vendor->id }})">
+    <span x-text="preferred ? '⭐' : '☆'"></span>
+</button>
+```
+
+---
+
+## RESPONSIVENESS PATTERN (NON-NEGOTIABLE)
+
+Every page with a list or table MUST have both:
+
+```html
+{{-- Desktop Table --}}
+<div id="xxx-desktop" class="krd-card" style="padding:0;overflow:hidden;">
+    <div class="krd-table-wrap">
+        <table class="krd-table">...</table>
+    </div>
+</div>
+
+{{-- Mobile Cards --}}
+<div id="xxx-mobile" style="display:flex;flex-direction:column;gap:10px;">
+    @foreach($items as $item)
+    <div class="krd-card" style="padding:16px;">
+        <!-- card content -->
+    </div>
+    @endforeach
+</div>
+
+<style>
+@media (min-width: 768px) {
+    #xxx-desktop { display: block !important; }
+    #xxx-mobile  { display: none !important; }
+}
+@media (max-width: 767px) {
+    #xxx-desktop { display: none !important; }
+    #xxx-mobile  { display: flex !important; }
+}
+</style>
+```
+
+---
+
+## SIDEBAR — MOBILE FIX
+
+Mobile sidebar controlled entirely by Alpine `sidebarOpen` — NOT DOM classList.
+
+```javascript
+// html tag has x-data="{ sidebarOpen: window.innerWidth >= 768 }"
+// sidebar: x-bind:class="{ 'krd-sidebar--collapsed': !sidebarOpen }"
+// hamburger: x-on:click="sidebarOpen = !sidebarOpen"
+// overlay: x-on:click="sidebarOpen = false"
+// close btn: x-on:click="sidebarOpen = false"
+```
+
+CSS hides sidebar on mobile by default (before Alpine loads = no flash):
+```css
+@media (max-width: 768px) {
+    .krd-sidebar {
+        width: var(--krd-sidebar-width) !important;
+        transform: translateX(-100%);
+        transition: transform 200ms ease;
+    }
+    .krd-sidebar:not(.krd-sidebar--collapsed) {
+        transform: translateX(0);
+    }
+}
+```
 
 ---
 
 ## WHAT HAS BEEN BUILT — COMPLETE
 
-### Foundation (Phase 1 — Complete)
-- Laravel 12 project
-- All packages: Livewire v4, stancl/tenancy, Spatie Permission, Activity Log, Media Library, Sitemap, Sluggable, Stevebauman Location, Debugbar
-- Tenancy configured (single DB, session-based resolution)
-- Complete folder structure
-- All enums: `TaskStatus`, `TaskPriority`, `RSVPStatus`, `RunsheetItemStatus`, `VendorStatus`, `UserType` (Staff/Client/Vendor), `NotificationChannel`, `DocumentableType`
-- `BelongsToTenant` trait
-- `TenantContext` service (singleton)
-- `AppServiceProvider` — registers TenantContext, AuthService, TenantService
-- All models created (see database section above)
-- All migrations run
-- Two auth guards configured (`platform` + `web`)
-- Spatie permissions seeded (all roles + permissions)
-- Platform user seeded
-- Currencies seeded (7 currencies)
-- Plans seeded (Free Trial 30d, Starter, Pro, Enterprise)
-- Feature flags seeded (13 flags)
-- `DefaultTenantSeeder` — seeds event types, statuses, task categories, vendor categories, labels per tenant
-- `TenantService` — creates tenant + user + seeds defaults + assigns role in DB transaction
+### Phase 1 — Foundation ✅
+- Laravel 12 + all packages installed
+- Tenancy (single DB, session-based)
+- All enums, models, migrations (47+ tables)
+- Two auth guards (platform + web)
+- Spatie permissions (all roles + permissions)
+- Complete design system (`app.css`)
+- Dark mode (Alpine store + CSS)
+- Toast system
+- Custom dropdown component
+- Responsive CSS (mobile hamburger, sidebar overlay, grid breakpoints)
 
-### Design System (Phase 1 — Complete)
-- Complete `app.css` with all design tokens
-- Dark mode (intentionally designed)
-- Responsive CSS (mobile hamburger, sidebar overlay, grid breakpoints, table scroll)
-- Logo component with light/dark/auto modes
-- `krd-` CSS class system
-- Toast CSS ready
-- Custom dropdown CSS ready
-- Badge system (all variants + dark mode)
-- Card system
-- Button system
-- Table system
-- Empty state component
-- Typography scale
+### Phase 2 — Auth & Platform ✅
+- Tenant login (`/login`)
+- Platform login (`/platform/login`)
+- 4-step registration (`/register`):
+  - Step 1: company name, **country (IP auto-detected)**, **billing currency (instant Alpine update)**, name, email, password, terms
+  - Step 2: 6-digit email verification (queued, rate-limited, hashed)
+  - Step 3: Plan selection
+  - Step 4: Onboarding questions (skippable)
+- Tenant + user created on registration with correct `billing_currency` + `country`
+- Tenant onboarding flow (`/onboarding`)
+- Tenant dashboard scaffold
+- Platform dashboard (KPI cards, companies table)
+- `Platform\Tenants\CreateTenant` + `TenantList`
+- `Platform\Plans` (create/edit plans)
+- Welcome email for manually created tenants (queued)
 
-### Auth Pages (Phase 1 — Complete)
-- Tenant login (`/login`) — email, password toggle, remember me
-- Platform login (`/platform/login`) — email, password toggle
-- Both with split layout (dark left panel, light right panel)
-- Mobile: left panel hidden, logo shown at top of form
-- Dark mode aware
+### Phase 3 — Core Event Operations ✅
 
-### Registration Flow (Phase 2 — Complete)
-- 4-step registration at `/register`
-- Step 1: Account (company name, name, email, password + confirm with toggle, terms, honeypot)
-- Step 2: Email verification (6-digit code, individual input boxes with auto-focus, resend)
-- Step 3: Plan selection (all active plans shown as cards, cannot skip)
-- Step 4: Onboarding questions (heard from, team size, event types — skippable)
-- Security: rate limiting, honeypot, code hashing, 15min expiry, 3 attempt lockout
-- Email: `SendVerificationCodeJob` (queued), `VerificationCodeMail`, branded HTML template
-- Mobile step indicator bar replaces left panel steps
+#### Event Management
+- Routes: `/events`, `/events/create`, `/events/{slug}/edit`, `/events/{slug}`
+- Slug format: `event-name-mon-yyyy` (unique per tenant)
+- Components: `EventList`, `CreateEvent`, `EventDetail`
+- Fields: name, type, status, client info, dates/times, venue, location, max_guests, agreed_budget, notes
+- Event detail: KPI strip, info panel, status quick-change, tasks panel, vendors panel, guests panel, budget quick view
+- List/grid toggle (instant Alpine)
+- Status update (instant Alpine + Renderless)
 
-### Platform Dashboard (Phase 2 — Partial)
-- Platform layout (`layouts/platform.blade.php`) with Alpine store dark mode
-- Platform sidebar with navigation, user info, sign out
-- Platform topbar with hamburger (mobile), dark mode toggle, Platform Admin badge
-- Mobile sidebar with overlay + close button
-- Dashboard view: KPI cards (total companies, active, trial, plans), recent companies table
-- `Platform\Dashboard` Livewire component
-- `Platform\Tenants\CreateTenant` Livewire component + view
-- `Platform\Tenants\TenantList` Livewire component (scaffolded)
-- Dark mode: all components dark-mode aware
+#### Task Management
+- Routes: `/tasks`, `/tasks/create`, `/tasks/{id}/edit`
+- 4 views: All Tasks, Event Tasks, Company Tasks, My Tasks (tab switching = instant Alpine)
+- `event_id` nullable: NULL = company task, NOT NULL = event task
+- Statuses: todo, in_progress, blocked, done, cancelled (`TaskStatus` enum)
+- Priorities: low, normal, high, urgent (`TaskPriority` enum)
+- Status circle picker (instant Alpine popup, no Livewire round-trip)
+- Components: `TaskCenter`, `CreateTask`
+
+#### Staff Management
+- Routes: `/staff`, `/staff/invite`, `/staff/{id}/edit`
+- Components: `StaffList`, `InviteStaff`
+- Invite with temp password, activate/deactivate
+- Email: `StaffInviteMail` → `SendStaffInviteJob` (queued)
+- Template: `resources/views/emails/staff-invite.blade.php`
+- Spatie roles with explicit `team_id` assignment
+
+#### Budget Tracking
+- Routes: `/budget` (overview), `/events/{slug}/budget` (event budget)
+- Components: `EventBudget`, `BudgetOverview`
+- Models: `Budget` (HasOne per event), `BudgetItem`, `ClientPayment`
+- Financial picture:
+  - Agreed Budget (from event.agreed_budget)
+  - Client Paid (sum of ClientPayment records)
+  - Client Outstanding (auto-calculated)
+  - Total Estimated (sum of budget items)
+  - Total Actual Spent (sum of actual costs)
+  - Vendor Paid (sum of paid to vendors)
+  - Vendor Balance (actual - vendor paid)
+  - Gross Profit (client paid - actual spent)
+  - Projected Profit (agreed - estimated)
+- Progress bars: collection % + spend %
+- Two tabs: Cost Breakdown + Client Payments
+- Outstanding reminder email: `OutstandingReminderMail` → `SendOutstandingReminderJob`
+- Email template: `resources/views/emails/outstanding-reminder.blade.php`
+- Send reminder button only shows when outstanding > 0 AND client_email exists
+
+#### Vendor Management
+- Routes: `/vendors`, `/vendors/create`, `/vendors/{id}/edit`, `/vendors/{id}`
+- Components: `VendorDirectory`, `CreateVendor`, `VendorDetail`
+- Models: `Vendor` (company directory), `VendorEventAssignment`
+- Architecture: company-level directory + separate event assignments
+- Features:
+  - Grid/list toggle (instant Alpine, Renderless)
+  - Preferred vendor toggle (⭐, instant Alpine + Renderless)
+  - 1-5 star rating
+  - Assign vendor to events with amount_agreed, amount_paid, status
+  - Amount agreed + paid both entered at assignment time (no separate step)
+  - Edit/delete assignments from vendor detail page
+  - Vendor assignments shown on event detail page
+- `vendor_event_assignments` table: unique(vendor_id, event_id)
+- Phase 4: vendor accounts, registration page, notifications, login portal
+
+#### Dashboard
+- Real KPIs: total events, total tasks (overdue count), active vendors, guests
+- Recent events list
+- Pending tasks list (with overdue highlighting)
+- Budget summary: 4 cards (total agreed, collected, outstanding, actual spent)
+- All amounts use `CurrencyHelper::forTenant()`
+
+#### Currency System
+- `app/Helpers/CurrencyHelper.php` — `symbol()`, `format()`, `forTenant()`, `fromCountry()`, `countries()`
+- Used in: EventDetail, EventBudget, BudgetOverview, Dashboard
+- Budget overview: uses `$sym` per-event from `CurrencyHelper::symbol($b->currency)`
+- Event detail: `$symbol` passed from component via `CurrencyHelper::forTenant()`
+
+#### Country + IP Detection
+- Package: `stevebauman/location` installed
+- `tenants.country` VARCHAR(2) column added
+- Registration Step 1: country dropdown pre-filled from IP detection
+- Plain Alpine dropdown (NOT krdDropdown) to prevent re-render lag
+- `pick(code, name)` method: updates `selectedCountry` first, then `$wire.set('country', code)`
+- Alpine `currencyMap` object maps country codes to currency label strings
+- `get currencyLabel()` computed Alpine property updates instantly
+
+#### Email Jobs (all queued)
+- `SendVerificationCodeJob` → `VerificationCodeMail`
+- `SendWelcomeEmailJob` → `WelcomeMail`
+- `SendStaffInviteJob` → `StaffInviteMail`
+- `SendOutstandingReminderJob` → `OutstandingReminderMail`
 
 ---
 
-## WHAT IS LEFT TO BUILD
+## ROUTES (complete current state)
+/ → redirect tenant.login
+Tenant routes (tenant.resolve middleware):
 
-### Phase 2 — In Progress (continue here)
+/login                    → Tenant\Auth\Login
 
-**Immediate next steps (in order):**
+/register                 → Auth\Register
+Authenticated + onboarding:
 
-1. **Test full registration flow end to end**
-   - Register a new company
-   - Verify email (check queue worker + Hostinger SMTP)
-   - Select plan
-   - Complete onboarding
-   - Confirm tenant + user created in DB
-   - Confirm default data seeded
+/dashboard                → Tenant\Dashboard
 
-2. **Tenant onboarding flow** (after first login)
-   - Lightweight: change password + upload company logo + set brand colors
-   - Cannot skip password change
-   - Can skip branding (do later from settings)
-   - Route: `/onboarding`
+/onboarding               → Tenant\Onboarding
 
-3. **Tenant dashboard scaffold**
-   - `layouts/tenant.blade.php` — sidebar + topbar + content
-   - Tenant sidebar navigation
-   - Tenant topbar (dark mode, user menu, notifications bell)
-   - Tenant dashboard Livewire component (basic KPI cards)
-   - `resources/views/livewire/tenant/dashboard.blade.php`
+/events                   → Tenant\Events\EventList
 
-4. **Toast notification system**
-   - JavaScript toast manager
-   - Livewire event listener
-   - 4 types: success, error, warning, info
-   - Auto-dismiss after 4 seconds
-   - Manual dismiss
+/events/create            → Tenant\Events\CreateEvent
 
-5. **Custom dropdown Livewire component**
-   - No native select anywhere
-   - Searchable option
-   - Single + multi-select variants
-   - `app/Livewire/Shared/Dropdown.php`
+/events/{slug}/edit       → Tenant\Events\CreateEvent
 
-6. **Platform tenant management**
-   - Tenant list page (search, filter by status, pagination)
-   - Tenant detail page (view, edit, suspend, activate)
-   - Manual plan assignment
-   - Trial extension
-   - Send message to tenant
+/events/{slug}            → Tenant\Events\EventDetail
 
-7. **Platform plans management**
-   - List all plans
-   - Create/edit plan
-   - Set features + limits per plan
-   - Set pricing per currency
-   - Toggle plan active/inactive
+/events/{slug}/budget     → Tenant\Budget\EventBudget
 
-8. **Welcome email for manually created tenants**
-   - Queued, branded, professional
-   - Contains: login URL, credentials, what to expect
+/tasks                    → Tenant\Tasks\TaskCenter
 
-### Phase 3 — Core Event Operations
-- Event management (create, list, edit, delete)
-- Task management + workflows
-- Staff management + invitations
-- Budget + payment tracking
-- Vendor management
+/tasks/create             → Tenant\Tasks\CreateTask
 
-### Phase 4 — Client Experience
-- Client portal
-- Shared files
-- Messaging
-- Event visibility + timelines
+/tasks/{id}/edit          → Tenant\Tasks\CreateTask
+
+/staff                    → Tenant\Staff\StaffList
+
+/staff/invite             → Tenant\Staff\InviteStaff
+
+/staff/{id}/edit          → Tenant\Staff\InviteStaff
+
+/budget                   → Tenant\Budget\BudgetOverview
+
+/vendors                  → Tenant\Vendors\VendorDirectory
+
+/vendors/create           → Tenant\Vendors\CreateVendor
+
+/vendors/{id}/edit        → Tenant\Vendors\CreateVendor
+
+/vendors/{id}             → Tenant\Vendors\VendorDetail
+
+/logout (POST)            → tenant.logout
+Platform routes (auth.platform):
+
+/platform/login
+
+/platform/dashboard
+
+/platform/tenants
+
+/platform/tenants/create
+
+/platform/plans
+
+/platform/plans/create
+
+/platform/plans/{plan}/edit
+
+/platform/logout (POST)
+
+---
+
+## SIDEBAR NAVIGATION (tenant)
+Overview:   Dashboard
+
+Operations: Events, Tasks, Vendors, Budget
+
+Business:   Forms & Bookings, Staff, Settings
+
+---
+
+## PENDING (Phase 4+)
+
+### Phase 4 — Client + Vendor Portals
+- Client portal (credentials login, invited from event detail)
+- Client dashboard (their event view only)
+- Vendor registration page (public URL per tenant)
+- Vendor application review (approve/reject)
+- Vendor account creation (once only — checks if email already has account)
+- Vendor login portal
+- Vendor dashboard (assigned events, tasks, runsheet items, payment status)
+- Vendor assignment notification email (sent on assignment, not on account creation)
+- Guest management + RSVP
 
 ### Phase 5 — RSVP & Guest Experience
 - RSVP engine (own module, uses shared Form Field Engine)
 - Guest management
 - QR tickets + check-in
 - Attendance analytics
-- Font pairing system for RSVP pages (Spline Sans + serif options)
 - Public RSVP pages: `koordli.com/rsvp/{slug}`
 
 ### Phase 6 — Runsheet & Live Operations
 - Runsheet engine
 - Minute-by-minute timelines
 - Live event coordination
-- Operational status tracking
-- Different views: planner/admin, staff, client
 
 ### Phase 7 — Form Engine UI
-- Booking forms builder
-- Consultation forms builder
-- External form submission endpoint (Formspree-style)
-- `POST https://api.koordli.com/forms/{uuid}`
+- Booking + consultation forms builder
+- External form submission endpoint
 - WhatsApp redirect after submission
 - Embedded form support
-- Form analytics
 
 ### Phase 8 — Vendor Ecosystem
-- Vendor registration portal: `{company}.koordli.com/vendors/register`
-- Vendor application + approval flow
-- Vendor dashboard (profile, assigned events, runsheet, payments)
-- Vendor marketplace (future)
-- Vendor ratings/reviews (future)
+- Vendor marketplace
+- Vendor ratings/reviews
+- Vendor availability calendars
+- Vendor contracts + invoicing
 
 ### Phase 9 — Billing & Subscriptions
-- Paystack integration (NGN, GHS, KES, USD)
-- Flutterwave integration (all currencies)
+- Paystack + Flutterwave integration
 - Multi-currency display
 - Exchange rates via Frankfurter API (cached 24hrs)
 - Self-serve plan upgrades
-- Subscription invoices
-- Trial expiry notifications + grace period
+- Trial expiry notifications
 
 ### Phase 10 — Public Facing
-- Landing page (`koordli.com`) — SEO optimized, conversion focused
-- Public booking pages: `koordli.com/book/{slug}`
-- Public consultation pages: `koordli.com/consult/{slug}`
-- SEO: meta tags, sitemap, structured data
-- API v1 (public)
+- Landing page (SEO optimized)
+- Public booking/consultation pages
+- API v1
 
----
-
-## FOLDER STRUCTURE (key locations)
-
-```
-app/
-├── Actions/
-├── DTOs/
-├── Enums/              ← all PHP 8.1 enums
-├── Events/
-├── Http/
-│   ├── Controllers/API/V1/    ← API only, never UI
-│   ├── Middleware/
-│   └── Resources/
-├── Jobs/               ← SendVerificationCodeJob etc.
-├── Livewire/
-│   ├── Auth/           ← Register
-│   ├── Platform/       ← Platform owner UI
-│   ├── Tenant/         ← Tenant staff UI
-│   ├── Client/         ← Client portal UI
-│   └── Shared/         ← Reusable components
-├── Mail/               ← Mailables
-├── Models/
-│   ├── Central/        ← Tenant, Plan, PlatformUser etc.
-│   └── Tenant/         ← All tenant-scoped models
-├── Notifications/
-├── Observers/
-├── Policies/
-├── Providers/
-├── Services/           ← All business logic
-└── Traits/             ← BelongsToTenant
-
-resources/
-├── css/
-│   └── app.css         ← Complete design system
-├── js/
-│   └── app.js          ← Alpine store + bootstrap
-└── views/
-    ├── components/
-    │   ├── layout/     ← sidebar, topbar partials
-    │   └── ui/         ← logo, dropdown, toast etc.
-    ├── emails/         ← Email templates
-    ├── layouts/        ← auth, platform, tenant, app
-    └── livewire/       ← all Livewire views
-
-public/
-├── fonts/              ← Satoshi self-hosted
-└── images/             ← logoonblack.png, logoonwhite.png
-```
+### Still Pending from Phase 2
+- Platform tenant management (view, edit, suspend, activate)
+- Platform plans management (full CRUD from dashboard)
+- Welcome email for manually created tenants
 
 ---
 
 ## PACKAGES INSTALLED
-
-```
 livewire/livewire
-stancl/tenancy
-spatie/laravel-permission
-spatie/laravel-activitylog
-spatie/laravel-medialibrary
-spatie/laravel-sitemap
-spatie/laravel-sluggable
-stevebauman/location
-barryvdh/laravel-debugbar (dev)
-```
 
-**NOT installed (to be added when needed):**
-- Paystack — will use Laravel HTTP client directly (no package, Laravel 12 compatibility)
-- Flutterwave — same approach
-- PDF generation
-- QR generation
+stancl/tenancy
+
+spatie/laravel-permission
+
+spatie/laravel-activitylog
+
+spatie/laravel-medialibrary
+
+spatie/laravel-sitemap
+
+spatie/laravel-sluggable
+
+stevebauman/location
+
+barryvdh/laravel-debugbar (dev)
 
 ---
 
-## ROUTES STRUCTURE
+## FOLDER STRUCTURE (key locations)
+app/
 
-```
-web.php:
-  GET  /                     → redirect to /login
-  GET  /login                → Tenant\Auth\Login (Livewire)
-  GET  /register             → Auth\Register (Livewire)
-  GET  /dashboard            → Tenant\Dashboard (auth.tenant)
-  GET  /onboarding           → tenant.onboarding (auth.tenant)
+├── Helpers/
 
-  GET  /platform/login       → Platform\Auth\Login (Livewire)
-  GET  /platform/dashboard   → Platform\Dashboard (auth.platform)
-  GET  /platform/tenants     → Platform\Tenants\TenantList
-  GET  /platform/tenants/create → Platform\Tenants\CreateTenant
-  POST /platform/logout
-  POST /logout (platform)
+│   └── CurrencyHelper.php     ← symbol(), format(), forTenant(), fromCountry(), countries()
 
-api.php:
-  Scaffolded — empty, to be built in Phase 10
-```
+├── Enums/                     ← TaskStatus, TaskPriority, RSVPStatus, VendorStatus etc.
+
+├── Jobs/                      ← SendVerificationCodeJob, SendStaffInviteJob, SendOutstandingReminderJob, SendWelcomeEmailJob
+
+├── Livewire/
+
+│   ├── Auth/Register.php      ← 4-step registration with IP detection
+
+│   ├── Platform/              ← Platform owner UI
+
+│   ├── Tenant/
+
+│   │   ├── Dashboard.php
+
+│   │   ├── Events/            ← EventList, CreateEvent, EventDetail
+
+│   │   ├── Tasks/             ← TaskCenter, CreateTask
+
+│   │   ├── Staff/             ← StaffList, InviteStaff
+
+│   │   ├── Budget/            ← EventBudget, BudgetOverview
+
+│   │   └── Vendors/           ← VendorDirectory, CreateVendor, VendorDetail
+
+│   └── Shared/
+
+├── Mail/                      ← OutstandingReminderMail, StaffInviteMail, WelcomeMail
+
+├── Models/
+
+│   ├── Central/               ← Tenant, Plan, PlatformUser
+
+│   └── Tenant/                ← Event, Task, Vendor, VendorEventAssignment, Budget, BudgetItem, ClientPayment etc.
+
+├── Services/
+
+└── Traits/
+
+└── WithToast.php          ← toastSuccess(), toastError(), toastWarning()
+resources/
+
+├── css/app.css                ← Complete design system + responsive + dark mode
+
+├── js/app.js                  ← Alpine stores, krdDropdown, toast system, livewire:navigated
+
+└── views/
+
+├── components/
+
+│   ├── layout/            ← tenant-sidebar, tenant-topbar
+
+│   └── ui/                ← logo, dropdown, trial-banner
+
+├── emails/                ← staff-invite, outstanding-reminder, verification-code, welcome
+
+├── layouts/               ← auth, platform, tenant
+
+└── livewire/
+
+├── auth/register.blade.php
+
+├── platform/
+
+└── tenant/
+
+├── dashboard.blade.php
+
+├── events/
+
+├── tasks/
+
+├── staff/
+
+├── budget/
+
+└── vendors/
+public/
+
+├── fonts/                     ← Satoshi-Variable.woff2, Satoshi-VariableItalic.woff2
+
+└── images/                    ← logoonblack.png, logoonwhite.png
 
 ---
 
 ## WHEN CONTINUING IN NEW CHAT
 
-Start with:
-1. Ask to see relevant files before editing anything
-2. Continue from: **Testing the full registration flow**
-3. After testing, move to: **Tenant onboarding flow**
-4. Then: **Tenant dashboard scaffold**
-5. Ask permission at every step
+1. Paste this entire context document first
+2. Claude reads it fully before responding
+3. Next phase: **Phase 4 — Client Portal**
+4. Start by asking to see relevant existing files before building anything
+5. Ask permission at every major step
 
-**The registration flow exists at:** `http://127.0.0.1:8000/register`
-**Platform dashboard at:** `http://127.0.0.1:8000/platform/dashboard`
-**Tenant login at:** `http://127.0.0.1:8000/login`
-
----
-
-### Phase 2 — COMPLETE ✅
-
-✅ Platform dashboard (sidebar, topbar, KPI cards, companies table)
-✅ Registration flow (4 steps: Account → Verify → Plan → Setup)
-✅ Email verification (6-digit code, queued, branded email, rate limited)
-✅ Plan selection during registration
-✅ Tenant + user created on registration
-✅ Tenant login (resolves tenant from email, no TenantContext dependency)
-✅ Tenant sidebar + topbar (responsive, mobile hamburger, dark mode)
-✅ Tenant dashboard (real KPI data: events, tasks, vendors, guests)
-✅ Company name showing in sidebar and topbar
-✅ Toast notification system (bottom right, 4 types, auto-dismiss)
-✅ Custom dropdown Livewire component (searchable, multi-select)
-✅ Tenant onboarding flow:
-   - Self-registered: skips password step, goes straight to branding
-   - Manually created: must change password first, then branding
-   - Cannot revisit once completed (middleware enforces this)
-   - Branding: logo upload, primary color, accent color, live preview
-✅ is_self_registered + onboarding_completed columns on users table
-✅ EnsureOnboardingComplete middleware
-✅ Dark mode fully working (Alpine store, CSS switching, logo auto-switch)
-✅ Responsive (mobile sidebar, hamburger, overlay, grid breakpoints)
-✅ Wide screen support (krd-content fills full width)
-
-### Phase 3 — Next (Core Event Operations)
-⬜ Event management (create, list, edit, delete)
-⬜ Task management + workflows  
-⬜ Staff management + invitations
-⬜ Budget + payment tracking
-⬜ Vendor management
-
-### Still pending from Phase 2
-⬜ Platform tenant management (list, view, edit, suspend)
-⬜ Platform plans management (create/edit plans from dashboard)
-⬜ Welcome email for manually created tenants
+**Key URLs:**
+- Registration: `http://127.0.0.1:8000/register`
+- Tenant login: `http://127.0.0.1:8000/login`
+- Platform login: `http://127.0.0.1:8000/platform/login`
+- Dashboard: `http://127.0.0.1:8000/dashboard`

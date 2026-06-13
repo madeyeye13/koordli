@@ -7,12 +7,8 @@
         {{-- Close button — mobile only --}}
         <button
             class="krd-mobile-only"
-            onclick="
-                document.getElementById('krd-sidebar').classList.remove('open');
-                document.getElementById('krd-overlay').classList.remove('active');
-            "
-            style="background: none; border: none; cursor: pointer; color: #78716C; padding: 4px; display: flex; align-items: center;"
-        >
+            x-on:click="sidebarOpen = false"
+            style="background:none;border:none;cursor:pointer;color:#78716C;padding:4px;display:flex;align-items:center;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"/>
                 <line x1="6" y1="6" x2="18" y2="18"/>
@@ -21,7 +17,8 @@
     </div>
 
     {{-- Navigation --}}
-    <nav style="flex: 1; padding: 8px 0; overflow-y: auto;">
+    <nav style="flex: 1; padding: 8px 0; overflow-y: auto;"
+     x-on:click="if (window.innerWidth < 768) sidebarOpen = false">
 
         <div class="krd-nav-section">
             <div class="krd-nav-label">Overview</div>

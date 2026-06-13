@@ -2,18 +2,17 @@
 
 namespace App\Livewire\Auth;
 
+use App\Helpers\CurrencyHelper;
 use App\Models\Central\Plan;
 use App\Models\Central\Tenant;
 use App\Models\Tenant\User;
 use App\Services\TenantService;
-use App\Enums\UserType;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Rule;
 use Livewire\Component;
+use Stevebauman\Location\Facades\Location;
 
 #[Layout('layouts.auth')]
 class Register extends Component
@@ -22,20 +21,21 @@ class Register extends Component
     public int $step = 1;
 
     // ── Step 1 ────────────────────────────────────────────────
-    public string $company_name = '';
-    public string $name         = '';
-    public string $email        = '';
-    public string $password     = '';
+    public string $company_name          = '';
+    public string $country               = '';
+    public string $name                  = '';
+    public string $email                 = '';
+    public string $password              = '';
     public string $password_confirmation = '';
-    public bool   $showPassword        = false;
-    public bool   $showPasswordConfirm = false;
-    public bool   $agreed_to_terms     = false;
-    public string $honeypot            = ''; // bot trap
+    public bool   $showPassword          = false;
+    public bool   $showPasswordConfirm   = false;
+    public bool   $agreed_to_terms       = false;
+    public string $honeypot              = '';
 
     // ── Step 2 ────────────────────────────────────────────────
-    public array  $code_digits  = ['', '', '', '', '', ''];
-    public bool   $codeVerified = false;
-    public int    $resendCooldown = 0;
+    public array $code_digits    = ['', '', '', '', '', ''];
+    public bool  $codeVerified   = false;
+    public int   $resendCooldown = 0;
 
     // ── Step 3 ────────────────────────────────────────────────
     public ?int $selected_plan_id = null;
@@ -46,19 +46,44 @@ class Register extends Component
     public array  $event_types = [];
 
     // ── Internal ──────────────────────────────────────────────
-    public ?int $tenant_id = null;
-    public string $error   = '';
-    public string $success = '';
+    public ?int   $tenant_id = null;
+    public string $error     = '';
+    public string $success   = '';
+
+    public function mount(): void
+    {
+        // Auto-detect country from IP
+        try {
+            $location = Location::get(request()->ip());
+            if ($location && $location->countryCode) {
+                $this->country = strtoupper($location->countryCode);
+            }
+        } catch (\Exception $e) {
+            // Fail silently — user can pick manually
+        }
+
+        // Default to Nigeria if not detected
+        if (empty($this->country)) {
+            $this->country = 'NG';
+        }
+    }
+
+    public function updatedCountry(): void
+    {
+        // Currency updates automatically when country changes
+        // Nothing needed here — computed in getCurrencyProperty()
+    }
+
+    public function getCurrency(): string
+    {
+        return CurrencyHelper::fromCountry($this->country);
+    }
 
     // ── Step 1 Submit ─────────────────────────────────────────
     public function submitStep1(): void
     {
-        // Honeypot check — bots fill hidden fields
-        if (!empty($this->honeypot)) {
-            return; // silently reject, don't tell bot it failed
-        }
+        if (!empty($this->honeypot)) return;
 
-        // Rate limit by IP
         $key = 'register:' . request()->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $this->error = 'Too many attempts. Please try again in a few minutes.';
@@ -66,27 +91,24 @@ class Register extends Component
         }
         RateLimiter::hit($key, 3600);
 
-        // Validate
         $this->validate([
-            'company_name' => 'required|string|min:2|max:100',
-            'name'         => 'required|string|min:2|max:100',
-            'email'        => 'required|email|unique:users,email',
-            'password'     => [
-                'required',
-                'min:8',
-                'confirmed',
+            'company_name'    => 'required|string|min:2|max:100',
+            'country'         => 'required|string|size:2',
+            'name'            => 'required|string|min:2|max:100',
+            'email'           => 'required|email|unique:users,email',
+            'password'        => [
+                'required', 'min:8', 'confirmed',
                 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
             ],
             'agreed_to_terms' => 'accepted',
         ], [
-            'password.regex'          => 'Password must contain uppercase, lowercase and a number.',
+            'password.regex'           => 'Password must contain uppercase, lowercase and a number.',
             'agreed_to_terms.accepted' => 'You must agree to the Terms & Conditions.',
-            'email.unique'            => 'An account with this email already exists.',
+            'email.unique'             => 'An account with this email already exists.',
+            'country.required'         => 'Please select your country.',
         ]);
 
-        // Send verification code
         $this->sendVerificationCode();
-
         $this->error = '';
         $this->step  = 2;
     }
@@ -139,7 +161,6 @@ class Register extends Component
             return;
         }
 
-        // Rate limit verification attempts
         $key = 'verify:' . $this->email;
         if (RateLimiter::tooManyAttempts($key, 3)) {
             $this->error = 'Too many incorrect attempts. Please request a new code.';
@@ -163,36 +184,32 @@ class Register extends Component
 
         if (!Hash::check($enteredCode, $record->code)) {
             RateLimiter::hit($key, 900);
-            $remaining = 3 - RateLimiter::attempts($key);
+            $remaining   = 3 - RateLimiter::attempts($key);
             $this->error = "Incorrect code. {$remaining} attempt(s) remaining.";
             return;
         }
 
-        // Code is correct — delete it (one-time use)
         DB::table('email_verification_codes')->where('email', $this->email)->delete();
         RateLimiter::clear($key);
 
-        // Create tenant + user inside transaction
         try {
             $result = DB::transaction(function () {
-                $tenantService = app(\App\Services\TenantService::class);
-                $tenant = $tenantService->create([
-                    'name'             => $this->company_name,
-                    'owner_name'       => $this->name,
-                    'owner_email'      => $this->email,
-                    'owner_password'   => $this->password,
-                    'billing_currency' => 'NGN',
+                $tenantService = app(TenantService::class);
+                return $tenantService->create([
+                    'name'               => $this->company_name,
+                    'owner_name'        => $this->name,
+                    'owner_email'       => $this->email,
+                    'owner_password'    => $this->password,
+                    'billing_currency'  => $this->getCurrency(),
+                    'country'           => $this->country,
                     'is_self_registered' => true,
                 ]);
-                return $tenant;
             });
 
-            $this->tenant_id = $result->id;
+            $this->tenant_id    = $result->id;
             $this->codeVerified = true;
-            $this->error = '';
-
-            // Auto advance to step 3 after short delay
-            $this->step = 3;
+            $this->error        = '';
+            $this->step         = 3;
 
         } catch (\Exception $e) {
             $this->error = 'Something went wrong creating your account. Please try again.';
@@ -207,21 +224,18 @@ class Register extends Component
 
         $this->selected_plan_id = $planId;
 
-        // Update tenant subscription
         $tenant = Tenant::find($this->tenant_id);
         if ($tenant) {
             $tenant->update(['plan_id' => $planId]);
-
-            // Create subscription record
             $trialDays = $plan->trial_days ?? 30;
             DB::table('subscriptions')->insert([
                 'tenant_id'            => $tenant->id,
                 'plan_id'              => $planId,
-                'status'               => $plan->billing_cycle === 'trial' ? 'trial' : 'trial',
+                'status'               => 'trial',
                 'trial_ends_at'        => now()->addDays($trialDays),
                 'current_period_start' => now(),
                 'current_period_end'   => now()->addDays($trialDays),
-                'currency'             => $tenant->billing_currency ?? 'NGN',
+                'currency'             => $tenant->billing_currency,
                 'amount'               => 0,
                 'created_at'           => now(),
                 'updated_at'           => now(),
@@ -232,19 +246,11 @@ class Register extends Component
     }
 
     // ── Step 4 Onboarding (skippable) ────────────────────────
-    public function submitOnboarding(): void
-    {
-        $this->finishRegistration();
-    }
-
-    public function skip(): void
-    {
-        $this->finishRegistration();
-    }
+    public function submitOnboarding(): void { $this->finishRegistration(); }
+    public function skip(): void             { $this->finishRegistration(); }
 
     private function finishRegistration(): void
     {
-        // Log them in automatically
         $user = User::withoutGlobalScope('tenant')
             ->where('email', $this->email)
             ->where('tenant_id', $this->tenant_id)
@@ -255,27 +261,18 @@ class Register extends Component
             $user->update(['last_login_at' => now()]);
         }
 
-        $this->step = 5;
-
-        // Redirect to onboarding after short delay
         $this->redirect(route('tenant.onboarding'), navigate: true);
     }
 
-    // ── Toggle Password Visibility ────────────────────────────
-    public function togglePassword(): void
-    {
-        $this->showPassword = !$this->showPassword;
-    }
-
-    public function togglePasswordConfirm(): void
-    {
-        $this->showPasswordConfirm = !$this->showPasswordConfirm;
-    }
+    public function togglePassword(): void        { $this->showPassword = !$this->showPassword; }
+    public function togglePasswordConfirm(): void { $this->showPasswordConfirm = !$this->showPasswordConfirm; }
 
     public function render()
     {
         return view('livewire.auth.register', [
-            'plans' => Plan::where('is_active', true)->get(),
+            'plans'     => Plan::where('is_active', true)->get(),
+            'countries' => CurrencyHelper::countries(),
+            'currency'  => $this->getCurrency(),
         ]);
     }
 }

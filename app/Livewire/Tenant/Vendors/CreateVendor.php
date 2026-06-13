@@ -65,6 +65,7 @@ class CreateVendor extends Component
         ]);
 
         $data = [
+            'tenant_id'          => auth()->user()->tenant_id,
             'name'               => $this->name,
             'vendor_category_id' => $this->vendor_category_id,
             'contact_name'       => $this->contact_name ?: null,

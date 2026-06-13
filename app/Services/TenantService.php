@@ -27,14 +27,14 @@ class TenantService
                 'name'             => $data['name'],
                 'slug'             => $this->generateSlug($data['name']),
                 'status'           => 'trial',
-                'plan_id'          => $data['plan_id'] ?? null, // ← use provided plan or null
+                'plan_id'          => $data['plan_id'] ?? null,
                 'billing_currency' => $data['billing_currency'] ?? 'NGN',
+                'country'          => $data['country'] ?? null,
                 'branding'         => [
                     'primary_color' => '#7C3AED',
                     'accent_color'  => '#F59E0B',
                 ],
             ]);
-
             // Create subscription if plan provided
             if (!empty($data['plan_id'])) {
                 $plan = Plan::find($data['plan_id']);

@@ -262,12 +262,9 @@ class EventBudget extends Component
 
     protected function getCurrencySymbol(): string
     {
-        $currency = $this->budget?->currency ?? 'NGN';
-        return match($currency) {
-            'NGN' => '₦', 'GHS' => '₵', 'GBP' => '£',
-            'USD' => '$', 'EUR' => '€', 'KES' => 'KSh', 'ZAR' => 'R',
-            default => $currency . ' '
-        };
+        return \App\Helpers\CurrencyHelper::symbol(
+            $this->budget?->currency ?? auth()->user()->tenant->billing_currency ?? 'NGN'
+        );
     }
 
     public function render()

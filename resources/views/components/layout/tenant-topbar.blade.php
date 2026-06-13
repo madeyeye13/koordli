@@ -5,13 +5,8 @@
         {{-- Mobile hamburger --}}
         <button
             class="krd-hamburger"
-            onclick="
-                const sidebar = document.getElementById('krd-sidebar');
-                const overlay = document.getElementById('krd-overlay');
-                sidebar.classList.toggle('open');
-                overlay.classList.toggle('active');
-            "
-        >
+            x-on:click="sidebarOpen = !sidebarOpen"
+            style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;color:#57534E;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="6" x2="21" y2="6"/>
                 <line x1="3" y1="12" x2="21" y2="12"/>

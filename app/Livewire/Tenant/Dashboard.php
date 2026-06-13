@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Tenant;
 
+use App\Helpers\CurrencyHelper;
 use App\Models\Tenant\Event;
 use App\Models\Tenant\Task;
 use App\Models\Tenant\Vendor;
@@ -16,39 +17,40 @@ class Dashboard extends Component
 {
     public function render()
     {
-        $tenantId = auth()->user()->tenant_id;
+        $totalEvents  = Event::count();
+        $totalTasks   = Task::count();
+        $overdueTasks = Task::pending()->overdue()->count();
+        $totalVendors = Vendor::where('is_active', true)->count();
+        $totalGuests  = Guest::count();
 
-        $totalEvents    = Event::count();
-        $totalTasks     = Task::count();
-        $overdueTasks   = Task::where('status', TaskStatus::ToDo->value)
-                              ->whereDate('due_date', '<', today())
-                              ->whereNotNull('due_date')
-                              ->count();
-        $totalVendors   = Vendor::count();
-        $totalGuests    = Guest::count();
+        $recentEvents = Event::with(['eventType', 'status'])
+            ->latest()->take(5)->get();
 
-        $recentEvents   = Event::with(['eventType', 'status'])
-                              ->latest()
-                              ->take(5)
-                              ->get();
+        $pendingTasks = Task::with('assignedTo')
+            ->pending()
+            ->orderBy('due_date')
+            ->take(5)
+            ->get();
 
-        $pendingTasks   = Task::with('assignedTo')
-                              ->where('status', '!=', TaskStatus::Done->value)
-                              ->orderBy('due_date')
-                              ->take(5)
-                              ->get();
-
-        $totalBudget    = Budget::sum('total_amount');
+        $allBudgets       = Budget::with(['items', 'clientPayments', 'event'])->get();
+        $totalAgreed      = $allBudgets->sum(fn($b) => $b->agreedBudget());
+        $totalCollected   = $allBudgets->sum(fn($b) => $b->totalClientPaid());
+        $totalOutstanding = $allBudgets->sum(fn($b) => $b->clientOutstanding());
+        $totalActual      = $allBudgets->sum(fn($b) => $b->totalActual());
 
         return view('livewire.tenant.dashboard', [
-            'totalEvents'  => $totalEvents,
-            'totalTasks'   => $totalTasks,
-            'overdueTasks' => $overdueTasks,
-            'totalVendors' => $totalVendors,
-            'totalGuests'  => $totalGuests,
-            'recentEvents' => $recentEvents,
-            'pendingTasks' => $pendingTasks,
-            'totalBudget'  => $totalBudget,
+            'totalEvents'      => $totalEvents,
+            'totalTasks'       => $totalTasks,
+            'overdueTasks'     => $overdueTasks,
+            'totalVendors'     => $totalVendors,
+            'totalGuests'      => $totalGuests,
+            'recentEvents'     => $recentEvents,
+            'pendingTasks'     => $pendingTasks,
+            'totalAgreed'      => $totalAgreed,
+            'totalCollected'   => $totalCollected,
+            'totalOutstanding' => $totalOutstanding,
+            'totalActual'      => $totalActual,
+            'symbol'           => CurrencyHelper::forTenant(),
         ]);
     }
 }

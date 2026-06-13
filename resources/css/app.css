@@ -1155,6 +1155,13 @@ body {
     }
 }
 
+
+@media (max-width: 768px) {
+    .krd-col-hide-mobile {
+        display: none;
+    }
+}
+
 /* Table responsive — horizontal scroll on mobile */
 .krd-table-wrap {
     overflow-x: auto;
@@ -1389,5 +1396,18 @@ body {
     .krd-task-list-row {
         padding: 14px 16px;
         gap: 10px;
+    }
+}
+
+.krd-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .krd-form-grid {
+        grid-template-columns: 1fr;
     }
 }

@@ -167,7 +167,9 @@
 
     {{-- List View --}}
     <div x-show="view === 'list'">
-        <div class="krd-card" style="padding:0;overflow:hidden;">
+
+        {{-- Desktop Table --}}
+        <div class="krd-card" style="padding:0;overflow:hidden;" id="vendor-list-desktop">
             <div class="krd-table-wrap">
                 <table class="krd-table">
                     <thead>
@@ -240,6 +242,66 @@
             <div style="padding:12px 16px;border-top:1px solid #E7E5E4;">{{ $vendors->links() }}</div>
             @endif
         </div>
+
+        {{-- Mobile Cards --}}
+        <div id="vendor-list-mobile" style="display:flex;flex-direction:column;gap:10px;">
+            @forelse($vendors as $vendor)
+            <div class="krd-card" style="padding:16px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;">
+                    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                        <div style="width:36px;height:36px;border-radius:8px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#7C3AED;flex-shrink:0;">
+                            {{ strtoupper(substr($vendor->name, 0, 1)) }}
+                        </div>
+                        <div style="min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#1C1917;">
+                                {{ $vendor->name }}
+                                @if($vendor->is_preferred)⭐@endif
+                            </div>
+                            @if($vendor->category)
+                            <div style="font-size:11px;color:#A8A29E;">{{ $vendor->category->name }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    @if($vendor->is_active)
+                    <span class="krd-badge krd-badge-green" style="flex-shrink:0;">Active</span>
+                    @else
+                    <span class="krd-badge krd-badge-stone" style="flex-shrink:0;">Inactive</span>
+                    @endif
+                </div>
+
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    @if($vendor->contact_name)
+                    <span style="font-size:11px;color:#78716C;">👤 {{ $vendor->contact_name }}</span>
+                    @endif
+                    @if($vendor->phone)
+                    <span style="font-size:11px;color:#78716C;">📞 {{ $vendor->phone }}</span>
+                    @endif
+                    @if($vendor->rating)
+                    <span style="font-size:11px;color:#F59E0B;">{{ $vendor->ratingStars() }}</span>
+                    @endif
+                    <span style="font-size:11px;color:#7C3AED;">{{ $vendor->eventAssignments->count() }} {{ Str::plural('event', $vendor->eventAssignments->count()) }}</span>
+                </div>
+
+                <div style="display:flex;gap:8px;">
+                    <a href="{{ route('tenant.vendors.show', $vendor->id) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">View</a>
+                    <a href="{{ route('tenant.vendors.edit', $vendor->id) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
+                    <button wire:click="confirmDelete({{ $vendor->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
+                </div>
+            </div>
+            @empty
+            <div class="krd-card">
+                <div class="krd-empty-state">
+                    <div class="krd-empty-state-icon">🏢</div>
+                    <div class="krd-empty-state-title">No vendors found</div>
+                    <div class="krd-empty-state-desc">Add your first vendor to build your directory.</div>
+                </div>
+            </div>
+            @endforelse
+            @if($vendors->hasPages())
+            <div style="margin-top:8px;">{{ $vendors->links() }}</div>
+            @endif
+        </div>
+
     </div>
 
     {{-- Delete Modal --}}
@@ -259,3 +321,14 @@
     @endif
 
 </div>
+
+<style>
+@media (min-width: 768px) {
+    #vendor-list-desktop { display: block !important; }
+    #vendor-list-mobile  { display: none !important; }
+}
+@media (max-width: 767px) {
+    #vendor-list-desktop { display: none !important; }
+    #vendor-list-mobile  { display: flex !important; }
+}
+</style>

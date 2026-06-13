@@ -92,7 +92,9 @@
 
     {{-- List View --}}
     <div x-show="view === 'list'">
-        <div class="krd-card" style="padding:0;overflow:hidden;">
+
+        {{-- Desktop Table --}}
+        <div class="krd-card" style="padding:0;overflow:hidden;" id="event-list-desktop">
             <div class="krd-table-wrap">
                 <table class="krd-table">
                     <thead>
@@ -141,19 +143,9 @@
                             </td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:6px;">
-                                    <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                                        View
-                                    </a>
-                                    <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                                        Edit
-                                    </a>
-                                    <button
-                                        wire:click="confirmDelete({{ $event->id }})"
-                                        class="krd-btn krd-btn-sm"
-                                        style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;"
-                                    >
-                                        Delete
-                                    </button>
+                                    <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">View</a>
+                                    <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
+                                    <button wire:click="confirmDelete({{ $event->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -163,9 +155,7 @@
                                 <div class="krd-empty-state">
                                     <div class="krd-empty-state-icon">📋</div>
                                     <div class="krd-empty-state-title">No events found</div>
-                                    <div class="krd-empty-state-desc">
-                                        {{ $search ? 'Try a different search term.' : 'Create your first event to get started.' }}
-                                    </div>
+                                    <div class="krd-empty-state-desc">{{ $search ? 'Try a different search term.' : 'Create your first event to get started.' }}</div>
                                 </div>
                             </td>
                         </tr>
@@ -174,11 +164,61 @@
                 </table>
             </div>
             @if($events->hasPages())
-            <div style="padding:12px 16px;border-top:1px solid #E7E5E4;">
-                {{ $events->links() }}
-            </div>
+            <div style="padding:12px 16px;border-top:1px solid #E7E5E4;">{{ $events->links() }}</div>
             @endif
         </div>
+
+        {{-- Mobile Cards --}}
+        <div id="event-list-mobile" style="display:flex;flex-direction:column;gap:10px;">
+            @forelse($events as $event)
+            <div class="krd-card" style="padding:0;overflow:hidden;">
+                <div style="height:3px;background:{{ $event->eventType->color ?? '#7C3AED' }};"></div>
+                <div style="padding:14px 16px;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                        <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate style="text-decoration:none;flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#1C1917;line-height:1.3;">{{ $event->name }}</div>
+                        </a>
+                        @if($event->status)
+                        <span class="krd-badge" style="background:{{ $event->status->color }}22;color:{{ $event->status->color }};font-size:10px;flex-shrink:0;">
+                            {{ $event->status->name }}
+                        </span>
+                        @endif
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        @if($event->eventType)
+                        <span style="font-size:11px;color:#78716C;display:flex;align-items:center;gap:4px;">
+                            <span style="width:7px;height:7px;border-radius:50%;background:{{ $event->eventType->color }};"></span>
+                            {{ $event->eventType->name }}
+                        </span>
+                        @endif
+                        @if($event->date)
+                        <span style="font-size:11px;color:#78716C;">📅 {{ $event->date->format('M d, Y') }}</span>
+                        @endif
+                        @if($event->venue)
+                        <span style="font-size:11px;color:#78716C;">📍 {{ Str::limit($event->venue, 25) }}</span>
+                        @endif
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">View</a>
+                        <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
+                        <button wire:click="confirmDelete({{ $event->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
+                    </div>
+                </div>
+            </div>
+            @empty
+            <div class="krd-card">
+                <div class="krd-empty-state">
+                    <div class="krd-empty-state-icon">📋</div>
+                    <div class="krd-empty-state-title">No events found</div>
+                    <div class="krd-empty-state-desc">{{ $search ? 'Try a different search term.' : 'Create your first event to get started.' }}</div>
+                </div>
+            </div>
+            @endforelse
+            @if($events->hasPages())
+            <div style="margin-top:8px;">{{ $events->links() }}</div>
+            @endif
+        </div>
+
     </div>
 
     {{-- Grid View --}}
@@ -286,3 +326,14 @@
     @endif
 
 </div>
+
+<style>
+@media (min-width: 768px) {
+    #event-list-desktop { display: block !important; }
+    #event-list-mobile  { display: none !important; }
+}
+@media (max-width: 767px) {
+    #event-list-desktop { display: none !important; }
+    #event-list-mobile  { display: flex !important; }
+}
+</style>

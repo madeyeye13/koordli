@@ -5,7 +5,7 @@
         <h2 class="krd-heading-3" style="color:#1C1917;">Create Event Company</h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start;">
+    <div class="krd-form-grid">
 
         {{-- Left — Form --}}
         <div>
@@ -73,6 +73,24 @@
                             @endforeach
                         </div>
                     </div>
+                </div>
+
+                {{-- Country --}}
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Country <span style="color:#EF4444;">*</span></label>
+                    <x-ui.dropdown
+                        wire="country"
+                        placeholder="Select country"
+                        selected="{{ $country ? ($countries[$country] ?? 'Select country') : 'Select country' }}"
+                    >
+                        @foreach($countries as $code => $name)
+                        <div class="krd-dropdown-option {{ $country === $code ? 'selected' : '' }}"
+                            x-on:click="select('{{ $name }}', '{{ $code }}')">
+                            {{ $name }}
+                        </div>
+                        @endforeach
+                    </x-ui.dropdown>
+                    @error('country') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
                 </div>
 
                 {{-- Plan Assignment --}}

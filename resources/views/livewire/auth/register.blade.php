@@ -156,6 +156,89 @@
                 @error('company_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
             </div>
 
+            {{-- Country + Currency --}}
+            <div
+                x-data="{
+                    open: false,
+                    selectedCountry: '{{ $country }}',
+                    selectedName: '{{ $country ? ($countries[$country] ?? "Select country") : "Select country" }}',
+                    currencyMap: {
+                        'NG': 'NGN — Nigerian Naira (₦)',
+                        'GH': 'GHS — Ghanaian Cedi (₵)',
+                        'GB': 'GBP — British Pound (£)',
+                        'US': 'USD — US Dollar ($)',
+                        'CA': 'USD — US Dollar ($)',
+                        'AU': 'USD — US Dollar ($)',
+                        'DE': 'EUR — Euro (€)',
+                        'FR': 'EUR — Euro (€)',
+                        'IT': 'EUR — Euro (€)',
+                        'ES': 'EUR — Euro (€)',
+                        'NL': 'EUR — Euro (€)',
+                        'BE': 'EUR — Euro (€)',
+                        'PT': 'EUR — Euro (€)',
+                        'AT': 'EUR — Euro (€)',
+                        'FI': 'EUR — Euro (€)',
+                        'IE': 'EUR — Euro (€)',
+                        'KE': 'KES — Kenyan Shilling (KSh)',
+                        'ZA': 'ZAR — South African Rand (R)',
+                        'AE': 'USD — US Dollar ($)',
+                        'SA': 'USD — US Dollar ($)',
+                        'IN': 'USD — US Dollar ($)',
+                        'SG': 'USD — US Dollar ($)',
+                    },
+                    get currencyLabel() {
+                        return this.currencyMap[this.selectedCountry] ?? 'USD — US Dollar ($)';
+                    },
+                    pick(code, name) {
+                        this.selectedCountry = code;
+                        this.selectedName    = name;
+                        this.open            = false;
+                        $wire.set('country', code);
+                    }
+                }"
+                x-on:click.outside="open = false"
+            >
+                {{-- Country Dropdown --}}
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Country <span style="color:#EF4444;">*</span></label>
+                    <div class="krd-dropdown">
+                        <button
+                            type="button"
+                            class="krd-dropdown-trigger"
+                            x-bind:class="{ open: open }"
+                            x-on:click="open = !open"
+                        >
+                            <span x-text="selectedName" :style="selectedName === 'Select country' ? 'color:#A8A29E' : ''"></span>
+                            <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <template x-if="open">
+                            <div class="krd-dropdown-menu">
+                                @foreach($countries as $code => $name)
+                                <div
+                                    class="krd-dropdown-option"
+                                    :class="selectedCountry === '{{ $code }}' ? 'selected' : ''"
+                                    x-on:click="pick('{{ $code }}', '{{ $name }}')"
+                                >
+                                    {{ $name }}
+                                </div>
+                                @endforeach
+                            </div>
+                        </template>
+                    </div>
+                    @error('country') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Currency — instant Alpine update --}}
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Billing Currency</label>
+                    <div style="padding:9px 12px;background:#F5F5F4;border:1px solid #E7E5E4;border-radius:6px;font-size:13px;color:#57534E;display:flex;align-items:center;justify-content:space-between;">
+                        <span x-text="currencyLabel"></span>
+                        <span style="font-size:11px;color:#A8A29E;">Auto-detected</span>
+                    </div>
+                    <span class="krd-input-hint">Automatically set from your country. You can change this later in settings.</span>
+                </div>
+            </div>
+
             <div class="krd-input-group">
                 <label class="krd-label-text">Your Full Name</label>
                 <input wire:model="name" type="text" class="krd-input @error('name') krd-input-error @enderror" placeholder="e.g. Amara Johnson" autocomplete="name" />

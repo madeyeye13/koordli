@@ -74,6 +74,11 @@
                         <label class="krd-label-text">Amount Agreed</label>
                         <input wire:model="assign_amount" type="number" step="0.01" min="0" class="krd-input" placeholder="0.00" />
                     </div>
+
+                    <div class="krd-input-group">
+                        <label class="krd-label-text">Amount Paid</label>
+                        <input wire:model="assign_amount_paid" type="number" step="0.01" min="0" class="krd-input" placeholder="0.00" />
+                    </div>
                     <div class="krd-input-group">
                         <label class="krd-label-text">Status</label>
                         <x-ui.dropdown wire="assign_status" placeholder="Pending"

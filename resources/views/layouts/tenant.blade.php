@@ -65,12 +65,9 @@
     </div>
 
     {{-- Mobile Sidebar Overlay --}}
-    <div id="krd-overlay"
-        class="krd-sidebar-overlay"
-        onclick="
-            document.getElementById('krd-sidebar').classList.remove('open');
-            document.getElementById('krd-overlay').classList.remove('active');
-        ">
+    <div class="krd-sidebar-overlay"
+        x-bind:class="{ 'active': sidebarOpen && window.innerWidth < 768 }"
+        x-on:click="sidebarOpen = false">
     </div>
 
     {{-- App Shell --}}
@@ -78,8 +75,11 @@
 
         {{-- Sidebar --}}
         <aside class="krd-sidebar"
-               id="krd-sidebar"
-               x-bind:class="{ 'krd-sidebar--collapsed': !sidebarOpen }">
+            id="krd-sidebar"
+            x-bind:class="{
+                'krd-sidebar--collapsed': !sidebarOpen && window.innerWidth >= 768,
+                'open': sidebarOpen && window.innerWidth < 768
+            }">
             @include('components.layout.tenant-sidebar')
         </aside>
 

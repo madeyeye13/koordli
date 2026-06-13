@@ -21,6 +21,7 @@ class VendorDetail extends Component
     public ?int   $assign_event_id = null;
     public string $assign_amount   = '';
     public string $assign_notes    = '';
+    public string $assign_amount_paid = '';
     public string $assign_status   = 'pending';
 
     // Edit assignment
@@ -34,11 +35,14 @@ class VendorDetail extends Component
     public bool $showDeleteAssign = false;
     public ?int $deleteAssignId   = null;
 
-    public function mount(int $id): void
+    public function mount(string $slug): void
     {
-        $this->vendor = Vendor::with(['category', 'eventAssignments.event'])->findOrFail($id);
+        $this->event = Event::with([
+            'eventType', 'status', 'tasks', 'rsvpResponses', 'team',
+            'vendorAssignments.vendor.category',
+        ])->where('slug', $slug)->firstOrFail();
     }
-
+    
     public function assignToEvent(): void
     {
         $this->validate([
@@ -63,13 +67,12 @@ class VendorDetail extends Component
             'vendor_id'     => $this->vendor->id,
             'event_id'      => $this->assign_event_id,
             'amount_agreed' => $this->assign_amount ?: 0,
-            'amount_paid'   => 0,
+            'amount_paid'   => $this->assign_amount_paid ?: 0,
             'status'        => $this->assign_status,
             'notes'         => $this->assign_notes ?: null,
         ]);
-
         $this->vendor->load('eventAssignments.event');
-        $this->reset(['showAssignForm', 'assign_event_id', 'assign_amount', 'assign_notes']);
+        $this->reset(['showAssignForm', 'assign_event_id', 'assign_amount', 'assign_amount_paid', 'assign_notes']);
         $this->assign_status = 'pending';
         $this->toastSuccess('Vendor assigned to event.');
     }

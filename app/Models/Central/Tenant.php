@@ -16,6 +16,7 @@ class Tenant extends Model
         'status',
         'plan_id',
         'branding',
+        'country',
     ];
 
     protected $casts = [
