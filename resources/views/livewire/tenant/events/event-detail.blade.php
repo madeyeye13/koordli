@@ -28,6 +28,17 @@
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <a href="{{ route('tenant.events.guests', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                👥 Guests
+            </a>
+
+            @if($event->rsvp_enabled)
+            <a href="{{ route('tenant.events.rsvp', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                📋 RSVP
+            </a>
+            @endif
+
+
             <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                 💰 Budget
             </a>
@@ -260,14 +271,38 @@
         {{-- Guests & RSVP --}}
         <div class="krd-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div class="krd-label">Guests & RSVP</div>
-                <a href="#" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add Guest</a>
+                <div class="krd-label">Guests</div>
+                <a href="{{ route('tenant.events.guests', $event->slug) }}" wire:navigate
+                    class="krd-btn krd-btn-secondary krd-btn-sm">Manage Guests</a>
             </div>
+            @php
+                $guestCount = \App\Models\Tenant\Guest::where('event_id', $event->id)->count();
+                $confirmedCount = \App\Models\Tenant\Guest::where('event_id', $event->id)->where('rsvp_status', 'confirmed')->count();
+            @endphp
+            @if($guestCount === 0 && !$event->max_guests)
             <div class="krd-empty-state" style="padding:24px;">
                 <div class="krd-empty-state-icon" style="font-size:24px;">👥</div>
                 <div class="krd-empty-state-title">No guests yet</div>
-                <div class="krd-empty-state-desc">Guest management coming in Phase 4.</div>
+                <div class="krd-empty-state-desc">Click Manage Guests to add guests or set an expected count.</div>
             </div>
+            @else
+            <div style="display:flex;flex-direction:column;gap:2px;">
+                @if($event->max_guests)
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #E7E5E4;">
+                    <span style="font-size:12px;color:#78716C;">Expected</span>
+                    <span style="font-size:12px;font-weight:600;color:#1C1917;">{{ number_format($event->max_guests) }}</span>
+                </div>
+                @endif
+                <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #E7E5E4;">
+                    <span style="font-size:12px;color:#78716C;">Added</span>
+                    <span style="font-size:12px;font-weight:600;color:#7C3AED;">{{ $guestCount }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 0;">
+                    <span style="font-size:12px;color:#78716C;">Confirmed</span>
+                    <span style="font-size:12px;font-weight:600;color:#10B981;">{{ $confirmedCount }}</span>
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- Budget Quick View --}}

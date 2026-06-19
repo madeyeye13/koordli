@@ -89,6 +89,24 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 Route::get('/vendors/{slug}/register', \App\Livewire\Public\VendorRegister::class)
     ->name('vendor.public.register');
 
+// RSVP
+Route::get('/rsvp/{slug}', \App\Livewire\Public\RsvpFormPage::class)->name('rsvp.form');
+Route::get('/rsvp/{slug}/edit/{token}', \App\Livewire\Public\RsvpEdit::class)->name('rsvp.edit');
+Route::get('/rsvp/ticket/{token}', function (string $token) {
+    $response = \App\Models\Tenant\RsvpResponse::with(['rsvpForm.event'])
+        ->where('qr_token', $token)
+        ->where('status', 'confirmed')
+        ->firstOrFail();
+
+    $event = $response->rsvpForm->event;
+
+    $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+        ->size(200)
+        ->generate($token);
+
+    return view('public.rsvp-ticket-pdf', compact('response', 'event', 'qrSvg'));
+})->name('rsvp.ticket');
+
 /*
 |--------------------------------------------------------------------------
 | Tenant Routes
@@ -130,6 +148,12 @@ Route::middleware(['tenant.resolve'])->group(function () {
         Route::get('/vendors/{id}/edit', \App\Livewire\Tenant\Vendors\CreateVendor::class)->name('tenant.vendors.edit');
         Route::get('/vendors/{id}', \App\Livewire\Tenant\Vendors\VendorDetail::class)->name('tenant.vendors.show');
         Route::get('/vendor-applications', \App\Livewire\Tenant\Vendors\VendorApplications::class)->name('tenant.vendor.applications');
+
+        // Guests
+        Route::get('/events/{slug}/guests', \App\Livewire\Tenant\Guests\GuestList::class)->name('tenant.events.guests');
+
+        // RSVP Management
+        Route::get('/events/{slug}/rsvp', \App\Livewire\Tenant\Rsvp\RsvpManager::class)->name('tenant.events.rsvp');
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');

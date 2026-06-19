@@ -29,6 +29,7 @@ class CreateEvent extends Component
     public string  $client_email  = '';
     public ?float  $agreed_budget = null;
     public string  $notes         = '';
+    public bool $rsvp_enabled = false;
 
     public ?string $eventSlug = null;
     public ?Event  $event     = null;
@@ -53,6 +54,7 @@ class CreateEvent extends Component
             $this->client_email  = $this->event->client_email ?? '';
             $this->agreed_budget = $this->event->agreed_budget;
             $this->notes         = $this->event->notes ?? '';
+            $this->rsvp_enabled  = (bool) $this->event->rsvp_enabled;
         } else {
             $default         = TenantEventStatus::where('is_default', true)->first();
             $this->status_id = $default?->id;
@@ -77,6 +79,7 @@ class CreateEvent extends Component
             'client_email'  => 'nullable|email|max:200',
             'agreed_budget' => 'nullable|numeric|min:0',
             'notes'         => 'nullable|string|max:2000',
+            'rsvp_enabled'  => 'boolean',
         ]);
 
         // Plan gate: max guests
@@ -108,6 +111,7 @@ class CreateEvent extends Component
             'client_email'  => $this->client_email ?: null,
             'agreed_budget' => $this->agreed_budget,
             'notes'         => $this->notes ?: null,
+            'rsvp_enabled'  => (bool) $this->rsvp_enabled,
         ];
 
         if ($this->event) {

@@ -4,6 +4,7 @@ namespace App\Models\Tenant;
 
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
+use App\Models\Central\VendorAccount;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,19 +15,10 @@ class Task extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id',
-        'event_id',
-        'task_category_id',
-        'assigned_to',
-        'created_by',
-        'title',
-        'description',
-        'priority',
-        'status',
-        'due_date',
-        'completed_at',
-        'sort_order',
-        'depends_on',
+        'tenant_id', 'event_id', 'task_category_id',
+        'assigned_to', 'vendor_account_id', 'created_by',
+        'title', 'description', 'priority', 'status',
+        'due_date', 'completed_at', 'sort_order', 'depends_on',
     ];
 
     protected $casts = [
@@ -72,6 +64,12 @@ class Task extends Model
     {
         return $query->where('assigned_to', $userId);
     }
+
+    public function scopeForVendor($query, int $vendorAccountId)
+    {
+        return $query->where('vendor_account_id', $vendorAccountId);
+    }
+
     public function scopePending($query)
     {
         return $query->whereNotIn('status', [
@@ -103,6 +101,11 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function assignedVendor(): BelongsTo
+    {
+        return $this->belongsTo(VendorAccount::class, 'vendor_account_id');
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -129,5 +132,12 @@ class Task extends Model
     public function isCompleted(): bool
     {
         return $this->status === TaskStatus::Done;
+    }
+
+    public function assigneeName(): string
+    {
+        if ($this->assignedTo) return $this->assignedTo->name;
+        if ($this->assignedVendor) return $this->assignedVendor->business_name ?? $this->assignedVendor->name;
+        return '—';
     }
 }

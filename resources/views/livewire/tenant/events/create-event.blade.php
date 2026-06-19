@@ -148,6 +148,55 @@
                 </div>
             </div>
 
+            {{-- RSVP Settings --}}
+            <div class="krd-card" style="padding:24px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <div class="krd-label" style="margin-bottom:4px;">RSVP</div>
+                        <div style="font-size:13px;font-weight:500;color:#1C1917;">Enable RSVP for this event</div>
+                        <div style="font-size:12px;color:#78716C;margin-top:3px;line-height:1.6;">
+                            Allow guests to RSVP via a public link. Configure the RSVP page after enabling.
+                        </div>
+                    </div>
+
+                    {{-- Toggle — Alpine owns visual only, hidden checkbox owns Livewire state --}}
+                    <div x-data="{ on: {{ $rsvp_enabled ? 'true' : 'false' }} }">
+                        {{-- Hidden checkbox synced to Livewire --}}
+                        <input type="checkbox" wire:model="rsvp_enabled"
+                            x-bind:checked="on"
+                            style="display:none;"
+                            id="rsvp_toggle_input" />
+
+                        {{-- Visual toggle --}}
+                        <div
+                            x-on:click="
+                                on = !on;
+                                document.getElementById('rsvp_toggle_input').checked = on;
+                                document.getElementById('rsvp_toggle_input').dispatchEvent(new Event('change'));
+                            "
+                            :style="on
+                                ? 'width:44px;height:24px;border-radius:12px;background:#7C3AED;cursor:pointer;position:relative;transition:background 200ms ease;flex-shrink:0;'
+                                : 'width:44px;height:24px;border-radius:12px;background:#D6D3D1;cursor:pointer;position:relative;transition:background 200ms ease;flex-shrink:0;'"
+                        >
+                            <div
+                                :style="on
+                                    ? 'position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms ease;'
+                                    : 'position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms ease;'">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if($rsvp_enabled)
+                <div style="margin-top:16px;padding:12px 16px;background:#F5F3FF;border-radius:6px;border:1px solid #DDD6FE;">
+                    <div style="font-size:12px;color:#7C3AED;font-weight:500;margin-bottom:4px;">✓ RSVP is enabled</div>
+                    <div style="font-size:12px;color:#78716C;line-height:1.6;">
+                        After saving, go to the event detail page to configure your RSVP form, set questions, and get your shareable RSVP link.
+                    </div>
+                </div>
+                @endif
+            </div>
+
             {{-- Submit --}}
             <div style="display:flex;gap:10px;">
                 <button wire:click="save" wire:loading.attr="disabled" class="krd-btn krd-btn-primary krd-btn-lg">

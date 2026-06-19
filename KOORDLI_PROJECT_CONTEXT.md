@@ -734,10 +734,83 @@ Business:   Forms & Bookings, Staff, Settings
 - Self-serve plan upgrades
 - Trial expiry notifications
 
-### Phase 10 — Public Facing
-- Landing page (SEO optimized)
-- Public booking/consultation pages
-- API v1
+### Phase 10 — Public Facing & Infrastructure
+- Landing page (SEO optimized, conversion focused)
+- Public booking pages: `koordli.com/book/{slug}`
+- Public consultation pages: `koordli.com/consult/{slug}`
+- API v1 (public)
+- SEO: meta tags, sitemap, structured data on all public pages
+
+### Phase 11 — Custom Domains & White Labeling
+
+**Custom Domain Flow:**
+1. Tenant adds domain in Settings → `haywhy-events.com`
+2. Koordli shows exact DNS instructions (CNAME → app.koordli.com)
+3. System verifies DNS propagation
+4. Auto-provisions SSL via Let's Encrypt
+5. Domain goes live — tenant + client + vendor + RSVP pages all served on custom domain
+
+**Database columns needed (tenants table):**
+- `subdomain` → haywhy-events (koordli subdomain, always exists)
+- `domain` → haywhy-events.com (custom domain, nullable)
+- `white_label_enabled` → boolean (controlled by platform owner per plan)
+
+**White Label Tiers:**
+
+### PLAN FEATURES ARE NOT LIMITED TO THIS BUT THIS SHOWS PLAN FOR THE CUSTOM DOMAIN, SUBDOMAINS LOGO, POWERED (WE MIGHT NEED TO REVISIT THE LOGINS WHERE THE LOGO ARE, POWERED BY ARE SO THAT IT SHOWS ACCORDING TO THE PLAN A TENANT IS ON)
+
+Starter Plan:
+
+URL:   haywhy-events.koordli.com
+
+Logo:  Koordli logo
+
+"Powered by Koordli" shown
+
+No white labeling
+Pro Plan:
+
+URL:   haywhy-events.com (custom domain allowed)
+
+Logo:  Tenant's own uploaded logo
+
+"Powered by Koordli" shown subtly in footer
+
+Partial white label
+Enterprise Plan:
+
+URL:   haywhy-events.com
+
+Logo:  Tenant's own logo
+
+"Powered by Koordli" completely hidden
+
+Custom email domain (mail sent from their domain)
+
+Full white label — clients never see Koordli branding
+
+**Logo Logic (already partially built):**
+```php
+if ($tenant->domain && $tenant->white_label_enabled) {
+    // Show tenant uploaded logo
+} else {
+    // Show Koordli logo
+}
+```
+
+**Why this matters:**
+- Event planners' clients should never know Koordli exists
+- White labeling is a premium selling point — planners pay more for it
+- Their clients visit haywhy-events.com and see Haywhy Events branding throughout
+- Already architected: stancl/tenancy supports custom domains natively
+- Tenant logo upload + branding colors + CSS variables already in place
+- No rearchitecting needed — just domain resolution + plan check addition
+
+**Infrastructure requirements:**
+- Wildcard SSL: `*.koordli.com` covers all subdomains automatically
+- Per-domain SSL: Let's Encrypt via acme.sh/Certbot for custom domains (auto-renewed)
+- Nginx/Apache: wildcard vhost accepts traffic on any domain, routes to Laravel
+- Laravel resolves correct tenant from subdomain OR custom domain via stancl/tenancy
 
 ### Still Pending from Phase 2
 - Platform tenant management (view, edit, suspend, activate)

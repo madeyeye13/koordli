@@ -19,7 +19,7 @@ class Event extends Model
         'name', 'slug', 'client_name', 'client_phone', 'client_email',
         'date', 'start_time', 'end_date', 'end_time',
         'venue', 'location', 'max_guests', 'agreed_budget',
-        'notes', 'settings', 'created_by',
+        'notes', 'settings', 'created_by', 'rsvp_enabled',
     ];
 
     protected $casts = [
@@ -27,6 +27,7 @@ class Event extends Model
         'end_date'      => 'date',
         'agreed_budget' => 'decimal:2',
         'settings'      => 'array',
+        'rsvp_enabled'  => 'boolean',
     ];
 
     protected static function booted(): void
