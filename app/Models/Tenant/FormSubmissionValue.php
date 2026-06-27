@@ -7,11 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FormSubmissionValue extends Model
 {
-    protected $fillable = [
-        'submission_id',
-        'field_id',
-        'value',
-    ];
+    protected $fillable = ['submission_id', 'field_id', 'value'];
 
     public function submission(): BelongsTo
     {

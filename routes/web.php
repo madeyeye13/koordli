@@ -17,6 +17,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/dashboard', \App\Livewire\Platform\Dashboard::class)->name('dashboard');
         Route::get('/tenants', \App\Livewire\Platform\Tenants\TenantList::class)->name('tenants');
         Route::get('/tenants/create', \App\Livewire\Platform\Tenants\CreateTenant::class)->name('tenants.create');
+        Route::get('/tenants/{tenant}/edit', \App\Livewire\Platform\Tenants\CreateTenant::class)->name('tenants.edit');
         Route::get('/plans', \App\Livewire\Platform\Plans\PlanList::class)->name('plans');
         Route::get('/plans/create', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.create');
         Route::get('/plans/{plan}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
@@ -70,6 +71,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
         Route::middleware('vendor.password.check')->group(function () {
             Route::get('/dashboard', \App\Livewire\Vendor\Dashboard::class)->name('dashboard');
+            Route::get('/runsheet', \App\Livewire\Vendor\VendorRunsheet::class)->name('runsheet');
             Route::get('/profile', \App\Livewire\Vendor\Profile::class)->name('profile');
         });
 
@@ -106,6 +108,10 @@ Route::get('/rsvp/ticket/{token}', function (string $token) {
 
     return view('public.rsvp-ticket-pdf', compact('response', 'event', 'qrSvg'));
 })->name('rsvp.ticket');
+
+// Booking Forms
+Route::get('/book/{slug}', \App\Livewire\Public\BookingForm::class)->name('public.booking');
+Route::get('/consult/{slug}', \App\Livewire\Public\ConsultationForm::class)->name('public.consultation');
 
 /*
 |--------------------------------------------------------------------------
@@ -151,6 +157,15 @@ Route::middleware(['tenant.resolve'])->group(function () {
 
         // Guests
         Route::get('/events/{slug}/guests', \App\Livewire\Tenant\Guests\GuestList::class)->name('tenant.events.guests');
+
+        // Runsheet
+        Route::get('/events/{slug}/runsheet', \App\Livewire\Tenant\Runsheet\RunsheetManager::class)->name('tenant.events.runsheet');
+
+        // Forms & Bookings
+Route::get('/forms', \App\Livewire\Tenant\Forms\FormList::class)->name('tenant.forms');
+Route::get('/forms/create', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.create');
+Route::get('/forms/{id}/edit', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.edit');
+Route::get('/forms/{id}/submissions', \App\Livewire\Tenant\Forms\FormSubmissions::class)->name('tenant.forms.submissions');
 
         // RSVP Management
         Route::get('/events/{slug}/rsvp', \App\Livewire\Tenant\Rsvp\RsvpManager::class)->name('tenant.events.rsvp');

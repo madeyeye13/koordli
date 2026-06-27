@@ -13,6 +13,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Log;
 
 #[Layout('layouts.tenant')]
 class RsvpManager extends Component
@@ -141,16 +142,36 @@ class RsvpManager extends Component
         $branding['bg_color']     = $this->bg_color;
 
         if ($this->cover_image) {
-            // Delete old image
-            if (!empty($branding['cover_image_path'])) {
-                Storage::disk('public')->delete($branding['cover_image_path']);
-            }
+            try {
+                // Delete old image
+                if (!empty($branding['cover_image_path'])) {
+                    Storage::disk('public')->delete($branding['cover_image_path']);
+                }
 
-            $path = $this->cover_image->store('rsvp-covers', 'public');
-            $branding['cover_image_path'] = $path;
-            $branding['cover_image']      = Storage::url($path);
-            $this->cover_image_url        = $branding['cover_image'];
-            $this->cover_image            = null;
+                // Ensure directory exists
+                Storage::disk('public')->makeDirectory('rsvp-covers');
+
+                $path = $this->cover_image->storeAs(
+                    'rsvp-covers',
+                    Str::uuid() . '.' . $this->cover_image->getClientOriginalExtension(),
+                    'public'
+                );
+
+                if (!$path) {
+                    $this->toastError('Image upload failed. Please try again.');
+                    return;
+                }
+
+                $branding['cover_image_path'] = $path;
+                $branding['cover_image']      = Storage::disk('public')->url($path);
+                $this->cover_image_url        = $branding['cover_image'];
+                $this->cover_image            = null;
+
+            } catch (\Exception $e) {
+                Log::error('RSVP cover image upload failed: ' . $e->getMessage());
+                $this->toastError('Image upload failed: ' . $e->getMessage());
+                return;
+            }
         }
 
         $this->form->update(['branding' => $branding]);

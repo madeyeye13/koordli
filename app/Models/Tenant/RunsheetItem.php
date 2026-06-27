@@ -51,4 +51,26 @@ class RunsheetItem extends Model
     {
         return $this->belongsTo(RunsheetItem::class, 'depends_on');
     }
+
+    public function statusColor(): string
+    {
+        return match($this->status->value) {
+            'in_progress' => '#F59E0B',
+            'done'        => '#10B981',
+            'delayed'     => '#EF4444',
+            default       => '#78716C',
+        };
+    }
+
+    public function statusLabel(): string
+    {
+        return match($this->status->value) {
+            'in_progress' => 'In Progress',
+            'done'        => 'Done',
+            'delayed'     => 'Delayed',
+            default       => 'Pending',
+        };
+    }
+
+
 }

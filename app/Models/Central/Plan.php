@@ -12,17 +12,20 @@ class Plan extends Model
         'slug',
         'price',
         'billing_cycle',
+        'trial_days',
         'features',
         'limits',
         'is_active',
+        'is_featured',
     ];
 
     protected $casts = [
-        'features'  => 'array',
-        'limits'    => 'array',
-        'is_active' => 'boolean',
+        'features'    => 'array',
+        'limits'      => 'array',
+        'is_active'   => 'boolean',
+        'is_featured' => 'boolean',
     ];
-
+    
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);

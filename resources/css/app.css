@@ -973,6 +973,36 @@ body {
     background-color: #292524 !important;
 }
 
+
+/* ============================================================
+   DARK MODE — INLINE COLOR OVERRIDES
+   These fix hardcoded color:#1C1917 inline styles across views
+   ============================================================ */
+
+.dark [style*="color:#1C1917"],
+.dark [style*="color: #1C1917"] {
+    color: #FAFAF9 !important;
+}
+
+.dark [style*="color:#57534E"],
+.dark [style*="color: #57534E"] {
+    color: #A8A29E !important;
+}
+
+.dark [style*="color:#78716C"],
+.dark [style*="color: #78716C"] {
+    color: #78716C !important;
+}
+
+.dark [style*="color:#A8A29E"],
+.dark [style*="color: #A8A29E"] {
+    color: #6B6763 !important;
+}
+
+
+
+
+
 /* ============================================================
    SCROLLBAR
    ============================================================ */

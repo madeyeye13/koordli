@@ -92,6 +92,11 @@ class Event extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function rsvpForm(): HasOne
+    {
+        return $this->hasOne(RsvpForm::class);
+    }
+
     public function rsvpResponses(): HasMany
     {
         return $this->hasMany(RsvpResponse::class);

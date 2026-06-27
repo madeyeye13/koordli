@@ -5,22 +5,14 @@ namespace App\Models\Tenant;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FormField extends Model
 {
     use BelongsToTenant;
 
     protected $fillable = [
-        'form_id',
-        'tenant_id',
-        'field_type',
-        'label',
-        'placeholder',
-        'is_required',
-        'options',
-        'settings',
-        'sort_order',
+        'form_id', 'tenant_id', 'field_type', 'label',
+        'placeholder', 'is_required', 'options', 'settings', 'sort_order',
     ];
 
     protected $casts = [
@@ -34,8 +26,25 @@ class FormField extends Model
         return $this->belongsTo(Form::class);
     }
 
-    public function submissionValues(): HasMany
+    public function fieldTypeLabel(): string
     {
-        return $this->hasMany(FormSubmissionValue::class, 'field_id');
+        return match($this->field_type) {
+            'text'     => 'Short Text',
+            'textarea' => 'Long Text',
+            'email'    => 'Email',
+            'phone'    => 'Phone',
+            'number'   => 'Number',
+            'dropdown' => 'Dropdown',
+            'checkbox' => 'Checkbox',
+            'radio'    => 'Radio',
+            'date'     => 'Date',
+            'file'     => 'File Upload',
+            default    => ucfirst($this->field_type),
+        };
+    }
+
+    public function hasOptions(): bool
+    {
+        return in_array($this->field_type, ['dropdown', 'radio', 'checkbox']);
     }
 }

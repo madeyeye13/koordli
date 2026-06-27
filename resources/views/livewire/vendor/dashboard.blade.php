@@ -135,15 +135,208 @@
     </div>
 
     @endif
+
+    {{-- ── Tasks ── --}}
+    @if($tasks->isNotEmpty())
+    <div style="margin-top:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div>
+                <div class="krd-label" style="margin-bottom:2px;">Your Tasks</div>
+                <div style="font-size:12px;color:#A8A29E;">{{ $tasks->count() }} task{{ $tasks->count() === 1 ? '' : 's' }} assigned to you</div>
+            </div>
+        </div>
+
+        {{-- Desktop --}}
+        <div class="krd-card" style="padding:0;overflow:hidden;" id="vendor-tasks-desktop">
+            <div class="krd-table-wrap">
+                <table class="krd-table">
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th>Event</th>
+                            <th>Priority</th>
+                            <th>Due Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($tasks as $task)
+                        <tr>
+                            <td>
+                                <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $task->title }}</div>
+                                @if($task->description)
+                                <div style="font-size:11px;color:#A8A29E;margin-top:2px;">{{ Str::limit($task->description, 60) }}</div>
+                                @endif
+                            </td>
+                            <td style="font-size:12px;color:#78716C;">
+                                {{ $task->event?->name ?? 'Company Task' }}
+                            </td>
+                            <td>
+                                @php
+                                    $priorityColor = match($task->priority->value) {
+                                        'urgent' => '#EF4444',
+                                        'high'   => '#F59E0B',
+                                        'normal' => '#3B82F6',
+                                        default  => '#A8A29E',
+                                    };
+                                @endphp
+                                <span class="krd-badge" style="background:{{ $priorityColor }}1a;color:{{ $priorityColor }};">
+                                    {{ ucfirst($task->priority->value) }}
+                                </span>
+                            </td>
+                            <td style="font-size:12px;color:{{ $task->isOverdue() ? '#EF4444' : '#78716C' }};">
+                                {{ $task->due_date?->format('M d, Y') ?? '—' }}
+                                @if($task->isOverdue())
+                                <span style="font-size:10px;display:block;color:#EF4444;">Overdue</span>
+                                @endif
+                            </td>
+                            <td>
+                                @php
+                                    $statusColor = match($task->status->value) {
+                                        'done'        => '#10B981',
+                                        'in_progress' => '#F59E0B',
+                                        'blocked'     => '#EF4444',
+                                        'cancelled'   => '#A8A29E',
+                                        default       => '#78716C',
+                                    };
+                                @endphp
+                                <span class="krd-badge" style="background:{{ $statusColor }}1a;color:{{ $statusColor }};">
+                                    {{ ucfirst(str_replace('_', ' ', $task->status->value)) }}
+                                </span>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- Mobile --}}
+        <div id="vendor-tasks-mobile" style="display:flex;flex-direction:column;gap:10px;">
+            @foreach($tasks as $task)
+            @php
+                $priorityColor = match($task->priority->value) {
+                    'urgent' => '#EF4444',
+                    'high'   => '#F59E0B',
+                    'normal' => '#3B82F6',
+                    default  => '#A8A29E',
+                };
+                $statusColor = match($task->status->value) {
+                    'done'        => '#10B981',
+                    'in_progress' => '#F59E0B',
+                    'blocked'     => '#EF4444',
+                    'cancelled'   => '#A8A29E',
+                    default       => '#78716C',
+                };
+            @endphp
+            <div class="krd-card" style="padding:16px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div style="font-size:14px;font-weight:600;color:#1C1917;">{{ $task->title }}</div>
+                    <span class="krd-badge" style="background:{{ $statusColor }}1a;color:{{ $statusColor }};flex-shrink:0;">
+                        {{ ucfirst(str_replace('_', ' ', $task->status->value)) }}
+                    </span>
+                </div>
+                @if($task->description)
+                <div style="font-size:12px;color:#A8A29E;margin-bottom:8px;">{{ Str::limit($task->description, 80) }}</div>
+                @endif
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <span class="krd-badge" style="background:{{ $priorityColor }}1a;color:{{ $priorityColor }};">
+                        {{ ucfirst($task->priority->value) }}
+                    </span>
+                    @if($task->due_date)
+                    <span style="font-size:11px;color:{{ $task->isOverdue() ? '#EF4444' : '#78716C' }};">
+                        Due {{ $task->due_date->format('M d, Y') }}
+                        @if($task->isOverdue()) · Overdue @endif
+                    </span>
+                    @endif
+                    @if($task->event)
+                    <span style="font-size:11px;color:#A8A29E;">· {{ $task->event->name }}</span>
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
+    {{-- ── Runsheet Items ── --}}
+    @if($runsheetItems->isNotEmpty())
+    <div style="margin-top:28px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div>
+                <div class="krd-label" style="margin-bottom:2px;">Runsheet Items</div>
+                <div style="font-size:12px;color:#A8A29E;">{{ $runsheetItems->count() }} item{{ $runsheetItems->count() === 1 ? '' : 's' }} assigned to you</div>
+            </div>
+            <a href="{{ route('vendor.runsheet') }}" wire:navigate class="krd-btn krd-btn-primary krd-btn-sm">
+                View Runsheet →
+            </a>
+        </div>
+
+        {{-- Summary strip --}}
+        @php
+            $rsDone       = $runsheetItems->where('status', \App\Enums\RunsheetItemStatus::Done)->count();
+            $rsInProgress = $runsheetItems->where('status', \App\Enums\RunsheetItemStatus::InProgress)->count();
+            $rsDelayed    = $runsheetItems->where('status', \App\Enums\RunsheetItemStatus::Delayed)->count();
+            $rsPending    = $runsheetItems->where('status', \App\Enums\RunsheetItemStatus::Pending)->count();
+            $rsTotal      = $runsheetItems->count();
+            $rsProgress   = $rsTotal > 0 ? round(($rsDone / $rsTotal) * 100) : 0;
+        @endphp
+        <div class="krd-grid-4" style="gap:10px;margin-bottom:12px;">
+            <div class="krd-card" style="padding:14px;border-left:3px solid #A8A29E;">
+                <div class="krd-label" style="margin-bottom:4px;">Pending</div>
+                <div style="font-size:22px;font-weight:700;color:#A8A29E;">{{ $rsPending }}</div>
+            </div>
+            <div class="krd-card" style="padding:14px;border-left:3px solid #F59E0B;">
+                <div class="krd-label" style="margin-bottom:4px;">In Progress</div>
+                <div style="font-size:22px;font-weight:700;color:#F59E0B;">{{ $rsInProgress }}</div>
+            </div>
+            <div class="krd-card" style="padding:14px;border-left:3px solid #10B981;">
+                <div class="krd-label" style="margin-bottom:4px;">Done</div>
+                <div style="font-size:22px;font-weight:700;color:#10B981;">{{ $rsDone }}</div>
+            </div>
+            <div class="krd-card" style="padding:14px;border-left:3px solid #EF4444;">
+                <div class="krd-label" style="margin-bottom:4px;">Delayed</div>
+                <div style="font-size:22px;font-weight:700;color:#EF4444;">{{ $rsDelayed }}</div>
+            </div>
+        </div>
+
+        {{-- Progress bar --}}
+        <div class="krd-card" style="padding:14px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <span style="font-size:12px;color:#57534E;">Overall progress</span>
+                <span style="font-size:12px;font-weight:600;color:#10B981;">{{ $rsProgress }}% complete</span>
+            </div>
+            <div style="height:8px;background:#E7E5E4;border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:{{ $rsProgress }}%;background:#10B981;border-radius:4px;transition:width 400ms;"></div>
+            </div>
+            <div style="margin-top:10px;text-align:center;">
+                <a href="{{ route('vendor.runsheet') }}" wire:navigate
+                    style="font-size:13px;color:#7C3AED;font-weight:500;text-decoration:none;">
+                    Open Runsheet to update statuses →
+                </a>
+            </div>
+        </div>
+    </div>
+    @endif
+
+
 </div>
 
 <style>
 @media (min-width: 768px) {
-    #vendor-events-desktop { display: block !important; }
-    #vendor-events-mobile  { display: none !important; }
+    #vendor-events-desktop   { display: block !important; }
+    #vendor-events-mobile    { display: none !important; }
+    #vendor-tasks-desktop    { display: block !important; }
+    #vendor-tasks-mobile     { display: none !important; }
+    #vendor-runsheet-desktop { display: block !important; }
+    #vendor-runsheet-mobile  { display: none !important; }
 }
 @media (max-width: 767px) {
-    #vendor-events-desktop { display: none !important; }
-    #vendor-events-mobile  { display: flex !important; }
+    #vendor-events-desktop   { display: none !important; }
+    #vendor-events-mobile    { display: flex !important; }
+    #vendor-tasks-desktop    { display: none !important; }
+    #vendor-tasks-mobile     { display: flex !important; }
+    #vendor-runsheet-desktop { display: none !important; }
+    #vendor-runsheet-mobile  { display: flex !important; }
 }
 </style>

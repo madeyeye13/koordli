@@ -21,6 +21,7 @@ class Dashboard extends Component
                 'status',
                 'budget.items',
                 'budget.clientPayments',
+                'rsvpForm.responses',
             ])
             ->orderBy('date', 'asc')
             ->get();

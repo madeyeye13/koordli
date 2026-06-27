@@ -32,6 +32,10 @@
                 👥 Guests
             </a>
 
+            <a href="{{ route('tenant.events.runsheet', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                📋 Runsheet
+            </a>
+
             @if($event->rsvp_enabled)
             <a href="{{ route('tenant.events.rsvp', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                 📋 RSVP

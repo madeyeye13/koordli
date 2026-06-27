@@ -186,6 +186,89 @@
             </div>
             @endif
 
+            {{-- RSVP --}}
+            @if($event->rsvp_enabled && $event->rsvpForm)
+            @php
+                $rsvpForm      = $event->rsvpForm;
+                $responses     = $rsvpForm->responses ?? collect();
+                $rsvpTotal     = $responses->count();
+                $rsvpConfirmed = $responses->where('status', 'confirmed')->count();
+                $rsvpDeclined  = $responses->where('status', 'declined')->count();
+                $rsvpPending   = $responses->where('status', 'pending')->count();
+                $rsvpAttendees = $responses->where('status', 'confirmed')->sum(fn($r) => 1 + $r->plus_one_count);
+            @endphp
+            <div style="border-top:1px solid #E7E5E4;padding-top:16px;margin-top:4px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A8A29E;">
+                        RSVP
+                    </div>
+                    <span class="krd-badge {{ $rsvpForm->is_active ? 'krd-badge-green' : 'krd-badge-stone' }}">
+                        {{ $rsvpForm->is_active ? 'Accepting responses' : 'Closed' }}
+                    </span>
+                </div>
+
+                {{-- Stats --}}
+                <div class="krd-grid-4" style="gap:8px;margin-bottom:14px;">
+                    <div class="krd-card-sm" style="border-left:3px solid #7C3AED;">
+                        <div style="font-size:10px;color:#A8A29E;margin-bottom:3px;">Total</div>
+                        <div style="font-size:20px;font-weight:700;color:#7C3AED;">{{ $rsvpTotal }}</div>
+                    </div>
+                    <div class="krd-card-sm" style="border-left:3px solid #10B981;">
+                        <div style="font-size:10px;color:#A8A29E;margin-bottom:3px;">Attending</div>
+                        <div style="font-size:20px;font-weight:700;color:#10B981;">{{ $rsvpConfirmed }}</div>
+                        @if($rsvpAttendees > $rsvpConfirmed)
+                        <div style="font-size:10px;color:#A8A29E;margin-top:1px;">{{ $rsvpAttendees }} total</div>
+                        @endif
+                    </div>
+                    <div class="krd-card-sm" style="border-left:3px solid #EF4444;">
+                        <div style="font-size:10px;color:#A8A29E;margin-bottom:3px;">Declined</div>
+                        <div style="font-size:20px;font-weight:700;color:#EF4444;">{{ $rsvpDeclined }}</div>
+                    </div>
+                    <div class="krd-card-sm" style="border-left:3px solid #F59E0B;">
+                        <div style="font-size:10px;color:#A8A29E;margin-bottom:3px;">Pending</div>
+                        <div style="font-size:20px;font-weight:700;color:#F59E0B;">{{ $rsvpPending }}</div>
+                    </div>
+                </div>
+
+                {{-- RSVP Link --}}
+                @if($rsvpForm->is_active)
+                <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:6px;padding:12px 14px;">
+                    <div style="font-size:11px;font-weight:600;color:#7C3AED;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">
+                        Public RSVP Link
+                    </div>
+                    <div style="font-size:12px;color:#1C1917;font-family:monospace;word-break:break-all;margin-bottom:8px;">
+                        {{ $rsvpForm->publicUrl() }}
+                    </div>
+                    <button
+                        x-data
+                        x-on:click="navigator.clipboard.writeText('{{ $rsvpForm->publicUrl() }}').then(() => {
+                            $el.textContent = '✓ Copied!';
+                            setTimeout(() => $el.textContent = 'Copy Link', 2000);
+                        })"
+                        class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Copy Link
+                    </button>
+                </div>
+                @endif
+
+                {{-- Deadline --}}
+                @if($rsvpForm->deadline)
+                <div style="margin-top:10px;font-size:12px;color:#78716C;">
+                    @if($rsvpForm->isDeadlinePassed())
+                    <span style="color:#EF4444;">⏰ RSVP deadline passed — {{ $rsvpForm->deadline->format('M d, Y') }}</span>
+                    @else
+                    ⏰ RSVP closes {{ $rsvpForm->deadline->format('M d, Y') }}
+                    @endif
+                </div>
+                @endif
+            </div>
+            @elseif($event->rsvp_enabled && !$event->rsvpForm)
+            <div style="border-top:1px solid #E7E5E4;padding-top:16px;margin-top:4px;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A8A29E;margin-bottom:8px;">RSVP</div>
+                <div style="font-size:13px;color:#A8A29E;">RSVP is being set up by your coordinator.</div>
+            </div>
+            @endif
+
         </div>
         @endforeach
     @endif

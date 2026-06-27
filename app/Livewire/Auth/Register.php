@@ -269,8 +269,15 @@ class Register extends Component
 
     public function render()
     {
+        $plans = Plan::where('is_active', true)->orderByDesc('is_featured')->get();
+
+        // Auto-select if only one plan exists
+        if ($plans->count() === 1 && !$this->selected_plan_id) {
+            $this->selected_plan_id = $plans->first()->id;
+        }
+
         return view('livewire.auth.register', [
-            'plans'     => Plan::where('is_active', true)->get(),
+            'plans'     => $plans,
             'countries' => CurrencyHelper::countries(),
             'currency'  => $this->getCurrency(),
         ]);

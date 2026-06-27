@@ -433,25 +433,25 @@
                 <div
                     wire:click="selectPlan({{ $plan->id }})"
                     style="
-                        border: 2px solid {{ $selected_plan_id === $plan->id ? '#7C3AED' : '#E7E5E4' }};
+                        border: 2px solid {{ $selected_plan_id === $plan->id ? '#7C3AED' : ($plan->is_featured ? '#DDD6FE' : '#E7E5E4') }};
                         border-radius: 8px;
                         padding: 16px 18px;
                         cursor: pointer;
                         transition: all 150ms ease;
-                        background: {{ $selected_plan_id === $plan->id ? '#F5F3FF' : '#FFFFFF' }};
+                        background: {{ $selected_plan_id === $plan->id ? '#F5F3FF' : ($plan->is_featured ? '#FAFAF9' : '#FFFFFF') }};
                         position: relative;
                     "
                 >
-                    @if($plan->billing_cycle === 'trial')
+                    @if($plan->is_featured)
                     <div style="position:absolute;top:-10px;right:16px;background:#7C3AED;color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:0.05em;">
-                        RECOMMENDED
+                        ⭐ RECOMMENDED
                     </div>
                     @endif
 
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
                         <div style="font-size:14px;font-weight:600;color:#1C1917;">{{ $plan->name }}</div>
-                        <div style="font-size:13px;font-weight:600;color:{{ $plan->billing_cycle === 'trial' ? '#7C3AED' : '#1C1917' }};">
-                            @if($plan->billing_cycle === 'trial')
+                        <div style="font-size:13px;font-weight:600;color:#7C3AED;">
+                            @if($plan->trial_days > 0)
                                 Free for {{ $plan->trial_days }} days
                             @else
                                 Contact us

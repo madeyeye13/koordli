@@ -24,6 +24,15 @@
                 </svg>
                 My Events
             </a>
+            <a href="{{ route('vendor.runsheet') }}"
+               class="krd-nav-item {{ request()->routeIs('vendor.runsheet') ? 'active' : '' }}"
+               wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+                </svg>
+                My Runsheet
+            </a>
             <a href="{{ route('vendor.profile') }}"
                class="krd-nav-item {{ request()->routeIs('vendor.profile') ? 'active' : '' }}"
                wire:navigate>

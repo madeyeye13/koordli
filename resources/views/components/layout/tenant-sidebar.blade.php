@@ -97,7 +97,9 @@
                 </svg>
                 Guests & RSVP
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.events') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.events.runsheet') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
                 </svg>
@@ -107,7 +109,9 @@
 
         <div class="krd-nav-section">
             <div class="krd-nav-label">Business</div>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.forms') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.forms*') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                 </svg>
