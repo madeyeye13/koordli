@@ -6,7 +6,6 @@ use App\Helpers\PublicHolidayHelper;
 use App\Jobs\SendFormSubmissionConfirmationJob;
 use App\Jobs\SendFormSubmissionNotificationJob;
 use App\Models\Central\Tenant;
-use App\Models\Tenant\ConsultationAvailability;
 use App\Models\Tenant\ConsultationBooking;
 use App\Models\Tenant\Form;
 use App\Models\Tenant\FormSubmission;
@@ -15,6 +14,7 @@ use App\Models\Tenant\User;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 #[Layout('layouts.rsvp')]
@@ -22,24 +22,24 @@ class ConsultationForm extends Component
 {
     public Form $form;
 
-    public string $selectedDate          = '';
-    public string $selectedTime          = '';
-    public string $consultation_type     = 'physical';
-    public array  $answers               = [];
-    public bool   $submitted             = false;
-    public string $error                 = '';
-    public ?string $whatsappUrl          = null;
-    public array  $availableSlots        = [];
-    public string $currentMonth          = '';
-    public int    $currentYear           = 0;
-    public array  $calendarDays          = [];
-    public array  $blockedDates          = [];
-    public array  $availableDays         = [];
+    public int    $step                 = 1;
+    public string $consultation_type    = 'physical';
+    public string $selectedDate         = '';
+    public string $selectedTime         = '';
+    public array  $answers              = [];
+    public bool   $submitted            = false;
+    public string $error                = '';
+    public ?string $whatsappUrl         = null;
+    public array  $availableSlots       = [];
+    public string $currentMonth         = '';
+    public int    $currentYear          = 0;
+    public array  $calendarDays         = [];
+    public array  $availableDays        = [];
 
     public function mount(string $slug): void
     {
         $this->form = Form::with([
-            'fields' => fn($q) => $q->orderBy('sort_order'),
+            'fields'         => fn($q) => $q->orderBy('sort_order'),
             'redirect',
             'availabilities' => fn($q) => $q->where('is_active', true),
         ])
@@ -52,7 +52,11 @@ class ConsultationForm extends Component
         $this->currentMonth = $now->format('F');
         $this->currentYear  = $now->year;
 
-        $this->consultation_type = $this->form->consultation_type === 'virtual' ? 'virtual' : 'physical';
+        $this->consultation_type = match($this->form->consultation_type) {
+            'virtual'  => 'virtual',
+            'physical' => 'physical',
+            default    => 'physical',
+        };
 
         foreach ($this->form->fields as $field) {
             $this->answers[$field->id] = '';
@@ -60,6 +64,12 @@ class ConsultationForm extends Component
 
         $this->availableDays = $this->form->availabilities->pluck('day_of_week')->toArray();
         $this->loadCalendar($now->year, $now->month);
+    }
+
+    #[Renderless]
+    public function setConsultationType(string $type): void
+    {
+        $this->consultation_type = $type;
     }
 
     public function loadCalendar(int $year, int $month): void
@@ -80,47 +90,45 @@ class ConsultationForm extends Component
             ->groupBy(fn($b) => $b->booking_date->format('Y-m-d'))
             ->map->count();
 
-        $firstDay   = Carbon::create($year, $month, 1);
+        $firstDay    = Carbon::create($year, $month, 1);
         $daysInMonth = $firstDay->daysInMonth;
-        $startDow   = $firstDay->dayOfWeek;
-        $today      = Carbon::today();
+        $startDow    = $firstDay->dayOfWeek;
+        $today       = Carbon::today();
 
         $days = [];
-
-        // Empty cells before first day
         for ($i = 0; $i < $startDow; $i++) {
             $days[] = null;
         }
 
         for ($d = 1; $d <= $daysInMonth; $d++) {
-            $date     = Carbon::create($year, $month, $d);
-            $dateStr  = $date->format('Y-m-d');
-            $dow      = $date->dayOfWeek;
-            $isPast   = $date->lt($today);
-            $isHoliday= in_array($dateStr, $holidays);
-            $isAvailDay = in_array($dow, $this->availableDays);
+            $date      = Carbon::create($year, $month, $d);
+            $dateStr   = $date->format('Y-m-d');
+            $dow       = $date->dayOfWeek;
+            $isPast    = $date->lt($today);
+            $isHoliday = in_array($dateStr, $holidays);
+            $isAvailDay= in_array($dow, $this->availableDays);
 
-            // Check if fully booked
-            $avail = $this->form->availabilities->firstWhere('day_of_week', $dow);
-            $maxSlots = 0;
+            $avail     = $this->form->availabilities->firstWhere('day_of_week', $dow);
+            $maxSlots  = 0;
             if ($avail) {
                 $start    = Carbon::parse($avail->start_time);
                 $end      = Carbon::parse($avail->end_time);
                 $maxSlots = (int) floor($start->diffInMinutes($end) / $this->form->duration_minutes);
             }
-            $bookedCount  = $bookedDates[$dateStr] ?? 0;
+
+            $bookedCount   = $bookedDates[$dateStr] ?? 0;
             $isFullyBooked = $maxSlots > 0 && $bookedCount >= $maxSlots;
 
             $days[] = [
-                'day'           => $d,
-                'date'          => $dateStr,
-                'isPast'        => $isPast,
-                'isHoliday'     => $isHoliday,
-                'isAvailable'   => !$isPast && !$isHoliday && $isAvailDay && !$isFullyBooked,
-                'isSelected'    => $dateStr === $this->selectedDate,
-                'isToday'       => $date->isToday(),
-                'holidayNote'   => $isHoliday ? 'Public holiday' : null,
-                'fullyBooked'   => $isFullyBooked,
+                'day'         => $d,
+                'date'        => $dateStr,
+                'isPast'      => $isPast,
+                'isHoliday'   => $isHoliday,
+                'isAvailable' => !$isPast && !$isHoliday && $isAvailDay && !$isFullyBooked,
+                'isSelected'  => $dateStr === $this->selectedDate,
+                'isToday'     => $date->isToday(),
+                'fullyBooked' => $isFullyBooked,
+                'holidayNote' => $isHoliday ? 'Public holiday' : null,
             ];
         }
 
@@ -129,28 +137,33 @@ class ConsultationForm extends Component
 
     public function prevMonth(): void
     {
-        $date = Carbon::create($this->currentYear, Carbon::parse("1 {$this->currentMonth} {$this->currentYear}")->month, 1)->subMonth();
+        $month = Carbon::parse("1 {$this->currentMonth} {$this->currentYear}")->month;
+        $date  = Carbon::create($this->currentYear, $month, 1)->subMonth();
         if ($date->gte(Carbon::today()->startOfMonth())) {
-            $this->loadCalendar($date->year, $date->month);
-            $this->selectedDate = '';
-            $this->selectedTime = '';
+            $this->selectedDate   = '';
+            $this->selectedTime   = '';
             $this->availableSlots = [];
+            $this->loadCalendar($date->year, $date->month);
         }
     }
 
     public function nextMonth(): void
     {
-        $date = Carbon::create($this->currentYear, Carbon::parse("1 {$this->currentMonth} {$this->currentYear}")->month, 1)->addMonth();
-        $this->loadCalendar($date->year, $date->month);
-        $this->selectedDate = '';
-        $this->selectedTime = '';
+        $month = Carbon::parse("1 {$this->currentMonth} {$this->currentYear}")->month;
+        $date  = Carbon::create($this->currentYear, $month, 1)->addMonth();
+        $this->selectedDate   = '';
+        $this->selectedTime   = '';
         $this->availableSlots = [];
+        $this->loadCalendar($date->year, $date->month);
     }
 
     public function selectDate(string $date): void
     {
-        $this->selectedDate = $date;
-        $this->selectedTime = '';
+        $this->selectedDate   = $date;
+        $this->selectedTime   = '';
+        $month = Carbon::parse($date)->month;
+        $year  = Carbon::parse($date)->year;
+        $this->loadCalendar($year, $month);
         $this->loadTimeSlots($date);
     }
 
@@ -158,8 +171,8 @@ class ConsultationForm extends Component
     {
         $carbon = Carbon::parse($date);
         $dow    = $carbon->dayOfWeek;
+        $avail  = $this->form->availabilities->firstWhere('day_of_week', $dow);
 
-        $avail = $this->form->availabilities->firstWhere('day_of_week', $dow);
         if (!$avail) {
             $this->availableSlots = [];
             return;
@@ -195,7 +208,7 @@ class ConsultationForm extends Component
         $this->selectedTime = $time;
     }
 
-    public function submit(): void
+    public function proceedToStep2(): void
     {
         if (empty($this->selectedDate)) {
             $this->error = 'Please select a date.';
@@ -205,6 +218,36 @@ class ConsultationForm extends Component
             $this->error = 'Please select a time slot.';
             return;
         }
+        $this->error = '';
+        $this->step  = 2;
+    }
+
+    public function backToStep1(): void
+    {
+        $this->step  = 1;
+        $this->error = '';
+    }
+
+    public function submit(): void
+    {
+        // Build rules
+        $rules    = [];
+        $messages = [];
+
+        foreach ($this->form->fields as $field) {
+            $rule = $field->is_required ? 'required' : 'nullable';
+            if ($field->field_type === 'email') {
+                $rule .= '|email';
+                $messages["answers.{$field->id}.email"] = "Please enter a valid email for \"{$field->label}\".";
+            }
+            if ($field->is_required) {
+                $messages["answers.{$field->id}.required"] = "\"{$field->label}\" is required.";
+            }
+            $rules["answers.{$field->id}"] = $rule;
+        }
+
+        // Run validation — in Livewire 4 this throws and halts if invalid
+        $this->validate($rules, $messages);
 
         // Check slot still available
         $existing = ConsultationBooking::withoutGlobalScope('tenant')
@@ -215,20 +258,11 @@ class ConsultationForm extends Component
             ->exists();
 
         if ($existing) {
-            $this->error = 'Sorry, this time slot was just booked. Please choose another.';
+            $this->error = 'This slot was just booked. Please go back and choose another.';
+            $this->step  = 1;
             $this->loadTimeSlots($this->selectedDate);
             return;
         }
-
-        $rules = [];
-        foreach ($this->form->fields as $field) {
-            $rules["answers.{$field->id}"] = $field->is_required ? 'required' : 'nullable';
-            if ($field->field_type === 'email') {
-                $rules["answers.{$field->id}"] .= '|email';
-            }
-        }
-
-        $this->validate($rules);
 
         $submission = FormSubmission::create([
             'tenant_id'    => $this->form->tenant_id,
@@ -253,8 +287,8 @@ class ConsultationForm extends Component
                 'value'         => is_array($value) ? implode(', ', $value) : $value,
             ]);
             $fields[] = ['label' => $field->label, 'value' => $value];
-            if ($field->field_type === 'email' && empty($guestEmail)) $guestEmail = $value;
-            if ($field->field_type === 'phone' && empty($guestPhone)) $guestPhone = $value;
+            if ($field->field_type === 'email' && empty($guestEmail))   $guestEmail = $value;
+            if ($field->field_type === 'phone' && empty($guestPhone))   $guestPhone = $value;
             if (in_array(strtolower($field->label), ['name', 'full name', 'your name']) && empty($guestName)) $guestName = $value;
         }
 
@@ -274,7 +308,7 @@ class ConsultationForm extends Component
             'guest_phone'       => $guestPhone ?: null,
         ]);
 
-        $tenant = Tenant::find($this->form->tenant_id);
+        $tenant      = Tenant::find($this->form->tenant_id);
         $plannerUser = User::withoutGlobalScope('tenant')
             ->where('tenant_id', $this->form->tenant_id)
             ->whereHas('roles', fn($q) => $q->where('name', 'company_owner'))

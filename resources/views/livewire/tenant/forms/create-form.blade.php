@@ -1,5 +1,4 @@
-<div x-data="{ activeTab: '{{ $activeTab }}' }">
-
+<div x-data="{ activeTab: '{{ $activeTab }}', formType: '{{ $type }}', consultationType: '{{ $consultation_type }}' }">
     {{-- Header --}}
     <div style="margin-bottom:24px;">
         <div style="margin-bottom:8px;">
@@ -10,15 +9,15 @@
         <h2 class="krd-heading-3" style="color:#1C1917;">{{ $form ? 'Edit Form' : 'New Form' }}</h2>
     </div>
 
-    {{-- Tabs --}}
+    {{-- Tabs — Alpine owns visual state, Livewire tracks server state --}}
     <div style="display:flex;gap:4px;border-bottom:1px solid #E7E5E4;margin-bottom:20px;flex-wrap:wrap;">
         @foreach(['details' => 'Details', 'fields' => 'Fields', 'redirect' => 'After Submission', 'availability' => 'Availability', 'embed' => 'Embed & Share'] as $tab => $label)
-        @if($tab === 'availability' && $type !== 'consultation') @continue @endif
         <button type="button"
+            @if($tab === 'availability') x-show="formType === 'consultation'" @endif
             x-on:click="activeTab = '{{ $tab }}'; $wire.setTab('{{ $tab }}')"
             :style="activeTab === '{{ $tab }}'
-                ? 'padding:10px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #7C3AED;color:#7C3AED;margin-bottom:-1px;'
-                : 'padding:10px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#78716C;margin-bottom:-1px;'"
+                ? 'padding:10px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;margin-bottom:-1px;border-bottom:2px solid #7C3AED;color:#7C3AED;'
+                : 'padding:10px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;margin-bottom:-1px;border-bottom:2px solid transparent;color:#78716C;'"
         >{{ $label }}</button>
         @endforeach
     </div>
@@ -41,23 +40,22 @@
                     <div class="krd-grid-2" style="gap:12px;">
                         {{-- Type --}}
                         <div class="krd-input-group"
-                            x-data="{
-                                open: false,
-                                label: '{{ $type === 'consultation' ? 'Consultation' : 'Booking' }}',
-                                pick(val, label) { this.label = label; this.open = false; $wire.set('type', val); }
-                            }"
-                            x-on:click.outside="open = false" style="position:relative;">
+                            x-data="{ open: false }"
+                            x-on:click.outside="open = false"
+                            style="position:relative;">
                             <label class="krd-label-text">Form Type</label>
-                            <button type="button" x-on:click="open = !open"
-                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'" style="width:100%;">
-                                <span x-text="label"></span>
+                            <button type="button"
+                                x-on:click="open = !open"
+                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                                style="width:100%;">
+                                <span x-text="formType === 'consultation' ? 'Consultation' : 'Booking'"></span>
                                 <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div x-show="open" x-cloak class="krd-dropdown-menu">
-                                <div class="krd-dropdown-option {{ $type === 'booking' ? 'selected' : '' }}"
-                                    x-on:click="pick('booking', 'Booking')">Booking</div>
-                                <div class="krd-dropdown-option {{ $type === 'consultation' ? 'selected' : '' }}"
-                                    x-on:click="pick('consultation', 'Consultation')">Consultation</div>
+                                <div class="krd-dropdown-option" :class="{ selected: formType === 'booking' }"
+                                    x-on:click="open = false; formType = 'booking'; $wire.setType('booking')">Booking</div>
+                                <div class="krd-dropdown-option" :class="{ selected: formType === 'consultation' }"
+                                    x-on:click="open = false; formType = 'consultation'; $wire.setType('consultation')">Consultation</div>
                             </div>
                         </div>
 
@@ -65,21 +63,29 @@
                         <div class="krd-input-group"
                             x-data="{
                                 open: false,
-                                label: '{{ ucfirst($status) }}',
-                                pick(val, label) { this.label = label; this.open = false; $wire.set('status', val); }
+                                selected: '{{ $status }}',
+                                label() { return this.selected === 'active' ? 'Active' : 'Inactive'; },
+                                pick(val) {
+                                    this.open = false;
+                                    this.selected = val;
+                                    $wire.setStatus(val);
+                                }
                             }"
-                            x-on:click.outside="open = false" style="position:relative;">
+                            x-on:click.outside="open = false"
+                            style="position:relative;">
                             <label class="krd-label-text">Status</label>
-                            <button type="button" x-on:click="open = !open"
-                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'" style="width:100%;">
-                                <span x-text="label"></span>
+                            <button type="button"
+                                x-on:click="open = !open"
+                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                                style="width:100%;">
+                                <span x-text="label()"></span>
                                 <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div x-show="open" x-cloak class="krd-dropdown-menu">
-                                <div class="krd-dropdown-option {{ $status === 'active' ? 'selected' : '' }}"
-                                    x-on:click="pick('active', 'Active')">Active</div>
-                                <div class="krd-dropdown-option {{ $status === 'inactive' ? 'selected' : '' }}"
-                                    x-on:click="pick('inactive', 'Inactive')">Inactive</div>
+                                <div class="krd-dropdown-option" :class="{ selected: selected === 'active' }"
+                                    x-on:click="pick('active')">Active</div>
+                                <div class="krd-dropdown-option" :class="{ selected: selected === 'inactive' }"
+                                    x-on:click="pick('inactive')">Inactive</div>
                             </div>
                         </div>
                     </div>
@@ -128,30 +134,30 @@
                     </div>
                 </div>
 
-                {{-- Consultation specific --}}
-                @if($type === 'consultation')
+                {{-- Consultation specific — visibility now driven by Alpine formType,
+                     not a Blade @if, so it reacts instantly to the dropdown above --}}
+                <div x-show="formType === 'consultation'">
                 <div class="krd-card" style="padding:24px;margin-bottom:16px;">
                     <div class="krd-label" style="margin-bottom:16px;">Consultation Settings</div>
 
                     <div class="krd-grid-2" style="gap:12px;">
                         {{-- Consultation type --}}
                         <div class="krd-input-group"
-                            x-data="{
-                                open: false,
-                                label: '{{ ['physical' => 'Physical Only', 'virtual' => 'Virtual Only', 'both' => 'Physical & Virtual'][$consultation_type] ?? 'Both' }}',
-                                pick(val, label) { this.label = label; this.open = false; $wire.set('consultation_type', val); }
-                            }"
-                            x-on:click.outside="open = false" style="position:relative;">
+                            x-data="{ open: false }"
+                            x-on:click.outside="open = false"
+                            style="position:relative;">
                             <label class="krd-label-text">Consultation Type</label>
-                            <button type="button" x-on:click="open = !open"
-                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'" style="width:100%;">
-                                <span x-text="label"></span>
+                            <button type="button"
+                                x-on:click="open = !open"
+                                x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                                style="width:100%;">
+                                <span x-text="({physical:'Physical Only',virtual:'Virtual Only',both:'Physical & Virtual'})[consultationType] ?? 'Physical & Virtual'"></span>
                                 <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div x-show="open" x-cloak class="krd-dropdown-menu">
-                                @foreach(['physical' => 'Physical Only', 'virtual' => 'Virtual Only', 'both' => 'Physical & Virtual'] as $val => $label)
-                                <div class="krd-dropdown-option {{ $consultation_type === $val ? 'selected' : '' }}"
-                                    x-on:click="pick('{{ $val }}', '{{ $label }}')">{{ $label }}</div>
+                                @foreach(['physical' => 'Physical Only', 'virtual' => 'Virtual Only', 'both' => 'Physical & Virtual'] as $val => $ctLabel)
+                                <div class="krd-dropdown-option" :class="{ selected: consultationType === '{{ $val }}' }"
+                                    x-on:click="open = false; consultationType = '{{ $val }}'; $wire.setConsultationType('{{ $val }}')">{{ $ctLabel }}</div>
                                 @endforeach
                             </div>
                         </div>
@@ -163,15 +169,13 @@
                         </div>
                     </div>
 
-                    @if(in_array($consultation_type, ['physical', 'both']))
-                    <div class="krd-input-group" style="margin-bottom:0;">
+                    <div class="krd-input-group" style="margin-bottom:0;" x-show="['physical', 'both'].includes(consultationType)">
                         <label class="krd-label-text">Physical Location</label>
                         <input wire:model="location" type="text" class="krd-input"
                             placeholder="e.g. 12 Adeola Odeku Street, Victoria Island, Lagos" />
                     </div>
-                    @endif
                 </div>
-                @endif
+                </div>
 
                 <button wire:click="saveDetails" wire:loading.attr="disabled" class="krd-btn krd-btn-primary">
                     <span wire:loading.remove wire:target="saveDetails">{{ $form ? 'Save Changes' : 'Create Form' }}</span>
@@ -183,14 +187,24 @@
             <div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:12px;" id="form-details-tips">
                 <div class="krd-card" style="padding:20px;">
                     <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;">💡 Tips</div>
-                    <div style="display:flex;flex-direction:column;gap:10px;">
-                        @foreach($type === 'consultation' ? [
+
+                    <div x-show="formType === 'consultation'" style="display:flex;flex-direction:column;gap:10px;">
+                        @foreach([
                             'Set your available days and times in the Availability tab.',
                             'Guests pick a date and time slot on the public page.',
                             'Past dates and already-booked slots are automatically blocked.',
                             'Public holidays for your country are blocked automatically.',
                             'Add custom fields to collect specific information.',
-                        ] : [
+                        ] as $tip)
+                        <div style="display:flex;gap:8px;align-items:flex-start;">
+                            <div style="width:5px;height:5px;border-radius:50%;background:#7C3AED;flex-shrink:0;margin-top:6px;"></div>
+                            <p style="font-size:12px;color:#78716C;line-height:1.6;">{{ $tip }}</p>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    <div x-show="formType !== 'consultation'" style="display:flex;flex-direction:column;gap:10px;">
+                        @foreach([
                             'Add custom fields to collect exactly the information you need.',
                             'Use the After Submission tab to set up WhatsApp redirect.',
                             'Share the public link or embed the form on your website.',
@@ -207,6 +221,7 @@
             </div>
         </div>
     </div>
+    
 
     {{-- ══ Fields Tab ══ --}}
     <div x-show="activeTab === 'fields'">
@@ -246,20 +261,22 @@
                         <div class="krd-input-group"
                             x-data="{
                                 open: false,
-                                label: '{{ collect(['text'=>'Short Text','textarea'=>'Long Text','email'=>'Email','phone'=>'Phone','number'=>'Number','dropdown'=>'Dropdown','radio'=>'Radio','checkbox'=>'Checkbox','date'=>'Date'])->get($f_type, 'Short Text') }}',
-                                pick(val, label) { this.label = label; this.open = false; $wire.set('f_type', val); }
+                                selected: '{{ $f_type }}',
+                                labels: {text:'Short Text',textarea:'Long Text',email:'Email',phone:'Phone',number:'Number',dropdown:'Dropdown',radio:'Radio',checkbox:'Checkbox',date:'Date'},
+                                label() { return this.labels[this.selected] ?? 'Short Text'; },
+                                pick(val) { this.open = false; this.selected = val; $wire.set('f_type', val); }
                             }"
                             x-on:click.outside="open = false" style="position:relative;">
                             <label class="krd-label-text">Field Type</label>
                             <button type="button" x-on:click="open = !open"
                                 x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'" style="width:100%;">
-                                <span x-text="label"></span>
+                                <span x-text="label()"></span>
                                 <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             <div x-show="open" x-cloak class="krd-dropdown-menu">
-                                @foreach(['text'=>'Short Text','textarea'=>'Long Text','email'=>'Email','phone'=>'Phone','number'=>'Number','dropdown'=>'Dropdown','radio'=>'Radio','checkbox'=>'Checkbox','date'=>'Date'] as $val => $label)
-                                <div class="krd-dropdown-option {{ $f_type === $val ? 'selected' : '' }}"
-                                    x-on:click="pick('{{ $val }}', '{{ $label }}')">{{ $label }}</div>
+                                @foreach(['text'=>'Short Text','textarea'=>'Long Text','email'=>'Email','phone'=>'Phone','number'=>'Number','dropdown'=>'Dropdown','radio'=>'Radio','checkbox'=>'Checkbox','date'=>'Date'] as $val => $ftLabel)
+                                <div class="krd-dropdown-option" :class="{ selected: selected === '{{ $val }}' }"
+                                    x-on:click="pick('{{ $val }}')">{{ $ftLabel }}</div>
                                 @endforeach
                             </div>
                         </div>
@@ -280,16 +297,18 @@
                     @endif
 
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                        <div x-data="{ on: {{ $f_required ? 'true' : 'false' }} }">
-                            <input type="checkbox" wire:model="f_required" x-bind:checked="on"
-                                style="display:none;" id="f_required_cb" />
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <div x-on:click="on = !on; document.getElementById('f_required_cb').checked = on; document.getElementById('f_required_cb').dispatchEvent(new Event('change'))"
-                                    :style="on ? 'width:44px;height:24px;border-radius:12px;background:#7C3AED;cursor:pointer;position:relative;' : 'width:44px;height:24px;border-radius:12px;background:#D6D3D1;cursor:pointer;position:relative;'">
-                                    <div :style="on ? 'position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms;' : 'position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms;'"></div>
+                        <div x-data="{ on: {{ $f_required ? 'true' : 'false' }} }"
+                            style="display:flex;align-items:center;gap:8px;">
+                            <div x-on:click="on = !on; $wire.toggleFieldRequired()"
+                                :style="on
+                                    ? 'width:44px;height:24px;border-radius:12px;background:#7C3AED;cursor:pointer;position:relative;flex-shrink:0;'
+                                    : 'width:44px;height:24px;border-radius:12px;background:#D6D3D1;cursor:pointer;position:relative;flex-shrink:0;'">
+                                <div :style="on
+                                    ? 'position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms;'
+                                    : 'position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all 200ms;'">
                                 </div>
-                                <span style="font-size:12px;color:#57534E;" x-text="on ? 'Required' : 'Optional'"></span>
                             </div>
+                            <span style="font-size:12px;color:#57534E;" x-text="on ? 'Required' : 'Optional'"></span>
                         </div>
                     </div>
 
@@ -355,10 +374,10 @@
                 <div class="krd-card" style="padding:20px;">
                     <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;">📝 Field Types</div>
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        @foreach(['Short Text' => 'Single line text', 'Long Text' => 'Multi-line textarea', 'Email' => 'Email address field', 'Phone' => 'Phone number field', 'Number' => 'Numeric input', 'Dropdown' => 'Select from a list', 'Radio' => 'Choose one option', 'Checkbox' => 'Choose multiple options', 'Date' => 'Date picker'] as $type => $desc)
+                        @foreach(['Short Text' => 'Single line text', 'Long Text' => 'Multi-line textarea', 'Email' => 'Email address field', 'Phone' => 'Phone number field', 'Number' => 'Numeric input', 'Dropdown' => 'Select from a list', 'Radio' => 'Choose one option', 'Checkbox' => 'Choose multiple options', 'Date' => 'Date picker'] as $ftName => $ftDesc)
                         <div style="display:flex;gap:8px;align-items:flex-start;">
-                            <span class="krd-badge krd-badge-stone" style="font-size:10px;flex-shrink:0;">{{ $type }}</span>
-                            <span style="font-size:11px;color:#78716C;">{{ $desc }}</span>
+                            <span class="krd-badge krd-badge-stone" style="font-size:10px;flex-shrink:0;">{{ $ftName }}</span>
+                            <span style="font-size:11px;color:#78716C;">{{ $ftDesc }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -367,6 +386,7 @@
         </div>
         @endif
     </div>
+    
 
     {{-- ══ After Submission Tab ══ --}}
     <div x-show="activeTab === 'redirect'">
@@ -382,24 +402,25 @@
             <div class="krd-card" style="padding:24px;">
                 <div class="krd-label" style="margin-bottom:16px;">After Submission Action</div>
 
-                {{-- Redirect type --}}
                 <div class="krd-input-group"
                     x-data="{
                         open: false,
-                        label: '{{ ['none' => 'No redirect (show thank you message)', 'url' => 'Redirect to URL', 'whatsapp' => 'Redirect to WhatsApp'][$redirect_type] ?? 'No redirect' }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('redirect_type', val); }
+                        selected: '{{ $redirect_type }}',
+                        labels: {none:'No redirect (show thank you message)', url:'Redirect to URL', whatsapp:'Redirect to WhatsApp'},
+                        label() { return this.labels[this.selected] ?? 'No redirect (show thank you message)'; },
+                        pick(val) { this.open = false; this.selected = val; $wire.set('redirect_type', val); }
                     }"
                     x-on:click.outside="open = false" style="position:relative;">
                     <label class="krd-label-text">What happens after submission?</label>
                     <button type="button" x-on:click="open = !open"
                         x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'" style="width:100%;">
-                        <span x-text="label"></span>
+                        <span x-text="label()"></span>
                         <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
                     <div x-show="open" x-cloak class="krd-dropdown-menu">
-                        @foreach(['none' => 'No redirect (show thank you message)', 'url' => 'Redirect to URL', 'whatsapp' => 'Redirect to WhatsApp'] as $val => $label)
-                        <div class="krd-dropdown-option {{ $redirect_type === $val ? 'selected' : '' }}"
-                            x-on:click="pick('{{ $val }}', '{{ $label }}')">{{ $label }}</div>
+                        @foreach(['none' => 'No redirect (show thank you message)', 'url' => 'Redirect to URL', 'whatsapp' => 'Redirect to WhatsApp'] as $val => $rdLabel)
+                        <div class="krd-dropdown-option" :class="{ selected: selected === '{{ $val }}' }"
+                            x-on:click="pick('{{ $val }}')">{{ $rdLabel }}</div>
                         @endforeach
                     </div>
                 </div>
@@ -422,7 +443,7 @@
                 <div class="krd-input-group">
                     <label class="krd-label-text">Pre-filled Message</label>
                     <textarea wire:model="whatsapp_message" class="krd-input" rows="3"
-                        placeholder="Hello, I just submitted a booking enquiry via your website..."></textarea>
+                        placeholder="Hello, I just submitted a booking enquiry..."></textarea>
                     <span class="krd-input-hint">Use {name} to insert the guest's name automatically.</span>
                 </div>
                 @endif
@@ -435,9 +456,10 @@
         </div>
         @endif
     </div>
+   
 
     {{-- ══ Availability Tab (Consultation only) ══ --}}
-    <div x-show="activeTab === 'availability'">
+    <div x-show="activeTab === 'availability' && formType === 'consultation'">
         @if(!$form)
         <div class="krd-card">
             <div class="krd-empty-state">
@@ -460,7 +482,6 @@
                     @endphp
                     @foreach($days as $dayNum => $dayName)
                     <div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid #E7E5E4;flex-wrap:wrap;">
-                        {{-- Day toggle --}}
                         <div style="width:100px;flex-shrink:0;"
                             x-data="{ on: {{ $availability[$dayNum]['active'] ? 'true' : 'false' }} }">
                             <input type="checkbox"
@@ -477,7 +498,6 @@
                             </div>
                         </div>
 
-                        {{-- Time inputs --}}
                         @if($availability[$dayNum]['active'])
                         <div style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
                             <div style="display:flex;align-items:center;gap:6px;">
@@ -508,6 +528,7 @@
         </div>
         @endif
     </div>
+    
 
     {{-- ══ Embed & Share Tab ══ --}}
     <div x-show="activeTab === 'embed'">
@@ -520,8 +541,6 @@
         </div>
         @else
         <div style="display:flex;flex-direction:column;gap:16px;max-width:680px;">
-
-            {{-- Public link --}}
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;">🔗 Public Link</div>
                 <div style="font-size:12px;color:#1C1917;font-family:monospace;word-break:break-all;background:#F5F5F4;padding:10px 12px;border-radius:6px;margin-bottom:10px;">
@@ -530,16 +549,11 @@
                 <div style="display:flex;gap:8px;">
                     <button x-data
                         x-on:click="navigator.clipboard.writeText('{{ $form->publicUrl() }}').then(() => { KrdToast.success('Link copied!') })"
-                        class="krd-btn krd-btn-secondary krd-btn-sm">
-                        🔗 Copy Link
-                    </button>
-                    <a href="{{ $form->publicUrl() }}" target="_blank" class="krd-btn krd-btn-ghost krd-btn-sm">
-                        Preview ↗
-                    </a>
+                        class="krd-btn krd-btn-secondary krd-btn-sm">🔗 Copy Link</button>
+                    <a href="{{ $form->publicUrl() }}" target="_blank" class="krd-btn krd-btn-ghost krd-btn-sm">Preview ↗</a>
                 </div>
             </div>
 
-            {{-- External endpoint --}}
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:6px;">⚡ External Endpoint</div>
                 <p style="font-size:12px;color:#78716C;line-height:1.6;margin-bottom:12px;">
@@ -558,12 +572,9 @@
                 </div>
                 <button x-data
                     x-on:click="navigator.clipboard.writeText('{{ $form->endpointUrl() }}').then(() => { KrdToast.success('Endpoint copied!') })"
-                    class="krd-btn krd-btn-secondary krd-btn-sm">
-                    Copy Endpoint URL
-                </button>
+                    class="krd-btn krd-btn-secondary krd-btn-sm">Copy Endpoint URL</button>
             </div>
 
-            {{-- Embed code --}}
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:6px;">🖼️ Embed on Your Website</div>
                 <p style="font-size:12px;color:#78716C;line-height:1.6;margin-bottom:12px;">
@@ -574,14 +585,12 @@
                 </div>
                 <button x-data
                     x-on:click="navigator.clipboard.writeText('{{ addslashes($form->embedCode()) }}').then(() => { KrdToast.success('Embed code copied!') })"
-                    class="krd-btn krd-btn-secondary krd-btn-sm">
-                    Copy Embed Code
-                </button>
+                    class="krd-btn krd-btn-secondary krd-btn-sm">Copy Embed Code</button>
             </div>
-
         </div>
         @endif
     </div>
+    
 
 </div>
 

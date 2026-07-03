@@ -106,9 +106,27 @@ class CreateForm extends Component
         }
     }
 
+    public function setType(string $type): void
+    {
+        $this->type      = $type;
+        $this->activeTab = $this->activeTab; // preserve current tab
+    }
+
+    #[\Livewire\Attributes\Renderless]
     public function setTab(string $tab): void
     {
         $this->activeTab = $tab;
+    }
+
+    #[\Livewire\Attributes\Renderless]
+    public function setStatus(string $status): void
+    {
+        $this->status = $status;
+    }
+
+    public function setConsultationType(string $type): void
+    {
+        $this->consultation_type = $type;
     }
 
     public function saveDetails(): void
@@ -177,6 +195,12 @@ class CreateForm extends Component
         }
 
         $this->toastSuccess('Form details saved.');
+    }
+
+    #[\Livewire\Attributes\Renderless]
+    public function toggleFieldRequired(): void
+    {
+        $this->f_required = !$this->f_required;
     }
 
     public function saveRedirect(): void
