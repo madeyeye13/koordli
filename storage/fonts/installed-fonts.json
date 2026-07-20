@@ -1,0 +1,13 @@
+{
+    "satoshi": {
+        "normal": "C:\\Users\\Bezalel Koncept\\Downloads\\Coding\\koordli\\storage\\fonts\/satoshi_normal_7e3630a2bc3015dc87d64e55aa80f075",
+        "bold": "C:\\Users\\Bezalel Koncept\\Downloads\\Coding\\koordli\\storage\\fonts\/satoshi_bold_d00389ef6a70fb09fc4e848e928e0bf6",
+        "italic": "C:\\Users\\Bezalel Koncept\\Downloads\\Coding\\koordli\\storage\\fonts\/satoshi_italic_0d226e50743a5574440a364c61e313d6",
+        "bold_italic": "satoshi_bold_italic_ad7ee745a72610af472078c71ade340d"
+    },
+    "spline sans": {
+        "normal": "C:\\Users\\Bezalel Koncept\\Downloads\\Coding\\koordli\\storage\\fonts\/spline_sans_normal_6eca282c635cd6358f92fc33b87af9ce",
+        "500": "C:\\Users\\Bezalel Koncept\\Downloads\\Coding\\koordli\\storage\\fonts\/spline_sans_500_5aba8b9c2e5554cd619447bda5f78c92",
+        "bold": "spline_sans_bold_49ba32bb3c7c4f22f963a13590ed24ed"
+    }
+}

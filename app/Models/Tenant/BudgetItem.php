@@ -13,6 +13,8 @@ class BudgetItem extends Model
     protected $fillable = [
         'tenant_id',
         'budget_id',
+        'vendor_invoice_id',
+        'source',
         'category',
         'estimated',
         'actual',
@@ -26,8 +28,18 @@ class BudgetItem extends Model
         'paid'      => 'decimal:2',
     ];
 
-    public function budget(): BelongsTo
+   public function budget(): BelongsTo
     {
         return $this->belongsTo(Budget::class);
+    }
+
+    public function vendorInvoice(): BelongsTo
+    {
+        return $this->belongsTo(VendorInvoice::class);
+    }
+
+    public function isFromVendorInvoice(): bool
+    {
+        return $this->source === 'vendor_invoice';
     }
 }

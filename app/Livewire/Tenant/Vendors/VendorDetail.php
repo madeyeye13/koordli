@@ -28,6 +28,21 @@ class VendorDetail extends Component
     public string $assign_amount_paid = '';
     public string $assign_status      = 'pending';
 
+
+    public array $assignConflicts = [];
+
+    // Reviews
+    public ?int $reviewAssignId = null;
+    public bool $showReviewForm = false;
+    public int  $r_professionalism    = 5;
+    public int  $r_communication      = 5;
+    public int  $r_punctuality        = 5;
+    public int  $r_quality_of_service = 5;
+    public int  $r_reliability        = 5;
+    public int  $r_overall_experience = 5;
+    public string $r_comment = '';
+    public ?int $editingReviewId = null;
+
     public ?int   $editAssignId     = null;
     public string $editAmountAgreed = '';
     public string $editAmountPaid   = '';
@@ -42,7 +57,39 @@ class VendorDetail extends Component
         $this->vendor = Vendor::with([
             'category',
             'eventAssignments.event',
+            'eventAssignments.reviews',
+            'unavailableDates' => fn($q) => $q->orderBy('date_from'),
         ])->findOrFail($id);
+    }
+
+    public function checkConflicts(): void
+    {
+        $this->assignConflicts = [];
+
+        if (!$this->assign_event_id) return;
+
+        $event = Event::find($this->assign_event_id);
+        if (!$event || !$event->date) return;
+
+        $dateStr = $event->date->format('Y-m-d');
+
+        // Check personal unavailability
+        if ($this->vendor->isUnavailableOn($dateStr)) {
+            $this->assignConflicts[] = "This vendor has marked themselves unavailable on {$event->date->format('d M Y')}.";
+        }
+
+        // Check other event assignments same day
+        $conflicts = $this->vendor->conflictingAssignments($dateStr);
+        foreach ($conflicts as $eventName) {
+            $this->assignConflicts[] = "This vendor is already assigned to \"{$eventName}\" on the same date.";
+        }
+    }
+
+    public function updated($property): void
+    {
+        if ($property === 'assign_event_id') {
+            $this->checkConflicts();
+        }
     }
 
     public function assignToEvent(): void
@@ -63,7 +110,7 @@ class VendorDetail extends Component
             return;
         }
 
-        VendorEventAssignment::create([
+        $assignment = VendorEventAssignment::create([
             'tenant_id'     => auth()->user()->tenant_id,
             'vendor_id'     => $this->vendor->id,
             'event_id'      => $this->assign_event_id,
@@ -73,63 +120,37 @@ class VendorDetail extends Component
             'notes'         => $this->assign_notes ?: null,
         ]);
 
-        // Send notification email if vendor has email
-        if ($this->vendor->email) {
-            $tenant    = auth()->user()->tenant;
-            $event     = Event::find($this->assign_event_id);
-            $eventName = $event?->name ?? 'Upcoming Event';
-            $eventDate = $event?->date?->format('D, d M Y') ?? 'TBC';
+        // Auto-create a matching invoice if an amount was agreed
+        if ((float) $this->assign_amount > 0) {
+            $invoice = \App\Models\Tenant\VendorInvoice::create([
+                'tenant_id'                  => auth()->user()->tenant_id,
+                'vendor_id'                  => $this->vendor->id,
+                'event_id'                   => $this->assign_event_id,
+                'vendor_event_assignment_id' => $assignment->id,
+                'title'                      => 'Service Agreement',
+                'issue_date'                 => now()->format('Y-m-d'),
+                'amount'                     => $this->assign_amount,
+                'tax_amount'                 => 0,
+                'discount_amount'            => 0,
+                'total_amount'               => $this->assign_amount,
+                'status'                     => 'sent',
+                'notes'                      => 'Auto-created from vendor assignment.',
+            ]);
 
-            $existing = VendorAccount::where('tenant_id', $tenant->id)
-                ->where('email', $this->vendor->email)
-                ->first();
-
-            if ($existing) {
-                // Already has account — send assignment notification only
-                SendVendorAssignedJob::dispatch(
-                    $this->vendor->email,
-                    $existing->name,
-                    $this->vendor->name,
-                    $eventName,
-                    $eventDate,
-                    $tenant->name,
-                    false,
-                );
-            } else {
-                // No account — create one and send combined email
-                $password = Str::random(10);
-
-                $account = VendorAccount::create([
-                    'tenant_id'      => $tenant->id,
-                    'vendor_id'      => $this->vendor->id,
-                    'name'           => $this->vendor->contact_name ?? $this->vendor->name,
-                    'email'          => $this->vendor->email,
-                    'password'       => Hash::make($password),
-                    'phone'          => $this->vendor->phone,
-                    'business_name'  => $this->vendor->name,
-                    'is_active'      => true,
-                    'password_changed' => false,
+            if ((float) $this->assign_amount_paid > 0) {
+                \App\Models\Tenant\VendorInvoicePayment::create([
+                    'tenant_id'         => auth()->user()->tenant_id,
+                    'vendor_invoice_id' => $invoice->id,
+                    'amount'            => $this->assign_amount_paid,
+                    'paid_on'           => now()->format('Y-m-d'),
+                    'payment_method'    => 'other',
+                    'notes'             => 'Recorded at time of vendor assignment.',
                 ]);
-
-                SendVendorAssignedJob::dispatch(
-                    $this->vendor->email,
-                    $account->name,
-                    $this->vendor->name,
-                    $eventName,
-                    $eventDate,
-                    $tenant->name,
-                    true,
-                    $password,
-                );
+                $invoice->recalculateStatus();
             }
         }
 
-        $this->vendor->load('eventAssignments.event');
-        $this->reset(['showAssignForm', 'assign_event_id', 'assign_amount', 'assign_amount_paid', 'assign_notes']);
-        $this->assign_status = 'pending';
-        $this->toastSuccess('Vendor assigned to event successfully.');
     }
-
     public function inviteVendor(): void
     {
         if (empty($this->vendor->email)) {
@@ -225,6 +246,95 @@ class VendorDetail extends Component
         $this->showDeleteAssign = false;
         $this->deleteAssignId   = null;
         $this->toastSuccess('Assignment removed.');
+    }
+
+   
+    public function showReview(int $assignmentId): void
+    {
+        $assignment = \App\Models\Tenant\VendorEventAssignment::find($assignmentId);
+        if (!$assignment) return;
+
+        if (!$assignment->eventHasEnded()) {
+            $this->toastError('You can only review a vendor after the event has ended.');
+            return;
+        }
+
+        $existing = $assignment->plannerReview();
+
+        if ($existing && !$existing->isEditable()) {
+            $this->toastError('This review is locked and can no longer be edited (7-day edit window has passed).');
+            return;
+        }
+
+        $this->reviewAssignId = $assignmentId;
+        $this->editingReviewId = $existing?->id;
+
+        if ($existing) {
+            $this->r_professionalism    = $existing->professionalism;
+            $this->r_communication      = $existing->communication;
+            $this->r_punctuality        = $existing->punctuality;
+            $this->r_quality_of_service = $existing->quality_of_service;
+            $this->r_reliability        = $existing->reliability;
+            $this->r_overall_experience = $existing->overall_experience;
+            $this->r_comment            = $existing->comment ?? '';
+        } else {
+            $this->reset(['r_comment']);
+            $this->r_professionalism = $this->r_communication = $this->r_punctuality =
+                $this->r_quality_of_service = $this->r_reliability = $this->r_overall_experience = 5;
+        }
+
+        $this->showReviewForm = true;
+    }
+
+    public function setRating(string $field, int $value): void
+    {
+        if (in_array($field, ['r_professionalism', 'r_communication', 'r_punctuality', 'r_quality_of_service', 'r_reliability', 'r_overall_experience'])) {
+            $this->{$field} = $value;
+        }
+    }
+
+    public function saveReview(): void
+    {
+        $this->validate([
+            'r_professionalism'    => 'required|integer|min:1|max:5',
+            'r_communication'      => 'required|integer|min:1|max:5',
+            'r_punctuality'        => 'required|integer|min:1|max:5',
+            'r_quality_of_service' => 'required|integer|min:1|max:5',
+            'r_reliability'        => 'required|integer|min:1|max:5',
+            'r_overall_experience' => 'required|integer|min:1|max:5',
+            'r_comment'            => 'nullable|string|max:1000',
+        ]);
+
+        $assignment = \App\Models\Tenant\VendorEventAssignment::find($this->reviewAssignId);
+        if (!$assignment) return;
+
+        $data = [
+            'tenant_id'                  => auth()->user()->tenant_id,
+            'vendor_id'                  => $this->vendor->id,
+            'vendor_event_assignment_id' => $assignment->id,
+            'event_id'                   => $assignment->event_id,
+            'reviewer_type'              => 'planner',
+            'reviewer_id'                => auth()->id(),
+            'professionalism'            => $this->r_professionalism,
+            'communication'              => $this->r_communication,
+            'punctuality'                => $this->r_punctuality,
+            'quality_of_service'         => $this->r_quality_of_service,
+            'reliability'                => $this->r_reliability,
+            'overall_experience'         => $this->r_overall_experience,
+            'comment'                    => $this->r_comment ?: null,
+        ];
+
+        if ($this->editingReviewId) {
+            \App\Models\Tenant\VendorReview::find($this->editingReviewId)?->update($data);
+        } else {
+            \App\Models\Tenant\VendorReview::create($data);
+        }
+
+        $this->vendor->refresh();
+        $this->showReviewForm = false;
+        $this->reviewAssignId = null;
+        $this->editingReviewId = null;
+        $this->toastSuccess('Review saved.');
     }
 
     public function render()

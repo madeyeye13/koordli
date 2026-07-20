@@ -41,6 +41,8 @@
 33. **FORM FIELD REQUIRED TOGGLE** — Hidden checkbox `wire:model` does NOT reliably sync in Livewire 4 for boolean toggles in nested components. Use a dedicated `#[Renderless]` method e.g. `toggleFieldRequired()` that flips the property directly.
 34. **NEW MIGRATIONS — ALWAYS VERIFY AUTO_INCREMENT** — When creating a new table's `id` column, always use `$table->id()`, never `$table->unsignedBigInteger('id')->primary()` manually — the latter creates a primary key WITHOUT auto_increment and every insert fails with "Field 'id' doesn't have a default value". This bug hit `subscriptions`, `subscription_invoices`, and `plan_prices` in Phase 9 and required `ALTER TABLE x MODIFY id BIGINT UNSIGNED AUTO_INCREMENT` migrations to fix. When debugging a mysterious insert failure on a table, always check `DB::select('SHOW COLUMNS FROM {table} WHERE Field = "id"')` for `"Extra": "auto_increment"` first.
 35. **LIVEWIRE V4 WRITE-BLOCKING (E.G. FOR BILLING LOCKOUT) MUST USE COMPONENT HOOKS, NOT HTTP MIDDLEWARE** — Livewire v4 sends all component method calls to `/livewire/update` (or similar internal path) which is OUTSIDE named route groups, so normal route middleware (`Route::middleware([...])->group(...)`) never intercepts Livewire POST calls — only the initial page GET. To block specific Livewire actions (e.g. locked-tenant write prevention), register a `Livewire\ComponentHook` via `Livewire::componentHook(HookClass::class)` and override `call($method, $params, $returnEarly, $metadata, $componentContext)`. Call `$returnEarly(null)` to stop the method from executing. **Critical:** register the hook inside `AppServiceProvider::register()`, NOT `boot()` — `ComponentHookRegistry::boot()` runs during `LivewireServiceProvider::boot()`, and if your hook is registered in your own `boot()` it may run too late and be silently ignored, since Laravel calls `register()` on all providers before `boot()` on any.
+36. **NEVER PASS `{{ $phpString }}` DIRECTLY INTO A JS FUNCTION CALL INSIDE AN HTML ATTRIBUTE** — e.g. `x-on:click="select('{{ $vendor->name }}', {{ $vendor->id }})"`. Blade's `{{ }}` HTML-escapes the value (turning `&` into `&amp;`), and when that escaped string is later re-displayed via Alpine's `x-text`, it can end up double-escaped and show literal `&amp;` on screen instead of `&`. This bit names like "Chukwuemeka & Adaeze Wedding" across dropdown option click-handlers (Contracts, Invoices, Forms create pages, etc.). **Fix:** use Laravel's `@js()` Blade directive instead, which properly JSON-encodes the value for a JavaScript context: `x-on:click="select(@js($vendor->name), {{ $vendor->id }})"`. Apply this to every dropdown option's JS-string argument that could contain `&`, `'`, `"`, or other special characters (vendor names, event names, contract titles, etc.) — plain `'{{ }}'` interpolation into a JS string literal is never safe for user-entered text.
+37. **`x-ui.dropdown` COMPONENT ALREADY RENDERS ITS OWN PLACEHOLDER OPTION** — the shared `resources/views/components/ui/dropdown.blade.php` component auto-renders a `@if($placeholder)` option at the top of its menu that calls `clear()`. Never ALSO manually add your own "None" / "No contract" / "General (no event)" option inside the slot — this creates a duplicate entry in the dropdown. Only pass the desired text via the `placeholder` prop; don't repeat it in the slot content.
 
 ---
 
@@ -197,7 +199,7 @@ All registered in `config/auth.php` and `bootstrap/app.php` middleware aliases:
 ## SIDEBAR NAVIGATION (tenant)
 ```
 Overview:   Dashboard
-Operations: Events, Tasks, Vendors, Applications, Budget
+Operations: Events, Tasks, Vendors, Applications, Budget, Contracts, Vendor Invoices
 Experience: Clients, Guests & RSVP, Runsheet
 Business:   Forms & Bookings, Billing, Staff, Settings
 ```
@@ -294,7 +296,51 @@ consultation_bookings           ← uuid, tenant_id, form_id, submission_id,
                                    booking_date, booking_time, consultation_type,
                                    status (pending|confirmed|cancelled),
                                    guest_name, guest_email, guest_phone, meeting_link, notes
+vendor_unavailable_dates        ← tenant_id, vendor_id, date_from, date_to,
+                                   reason (personal|vacation|holiday|other), notes
+                                   — MANAGED BY VENDOR (their own portal), planner sees read-only
+vendor_reviews                  ← tenant_id, vendor_id, vendor_event_assignment_id, event_id,
+                                   reviewer_type (planner|client), reviewer_id nullable,
+                                   professionalism/communication/punctuality/quality_of_service/
+                                   reliability/overall_experience (1-5 each), comment,
+                                   is_public (future marketplace), is_archived, locked_at
+                                   — one review per reviewer_type per assignment, editable 7 days
+vendor_contract_templates       ← tenant_id, name, category, content (HTML w/ {{placeholders}}),
+                                   is_active, created_by
+vendor_contracts                ← uuid, signing_token, tenant_id, vendor_id, event_id nullable,
+                                   vendor_event_assignment_id nullable, template_id nullable,
+                                   title, content, contract_amount, payment_schedule,
+                                   status (draft|sent|signed|expired|cancelled),
+                                   unsigned_file_path, signed_file_path,
+                                   expires_at, sent_at, signed_at, cancelled_at, created_by,
+                                   planner_signature_type/data/name, planner_signed_at, planner_signed_ip,
+                                   vendor_signature_type/data/name, vendor_signed_at, vendor_signed_ip
+vendor_contract_status_history  ← tenant_id, vendor_contract_id, from_status, to_status,
+                                   changed_by, note (table name is singular "history" — model
+                                   MUST set protected $table manually, Eloquent's auto-pluralizer
+                                   guesses "histories" which doesn't exist)
+vendor_invoices                 ← uuid, tenant_id, vendor_id, event_id nullable,
+                                   vendor_contract_id nullable, vendor_event_assignment_id nullable,
+                                   invoice_number (auto: INV-YYYYMM-0001), title,
+                                   issue_date, due_date, amount, tax_amount, discount_amount,
+                                   total_amount, status (draft|sent|partially_paid|paid|overdue|cancelled),
+                                   notes, attachment_path, created_by
+vendor_invoice_payments         ← tenant_id, vendor_invoice_id, amount, paid_on,
+                                   payment_method (cash|bank_transfer|card|other),
+                                   reference, notes, receipt_path, recorded_by
 ```
+
+### Marketplace-Ready Fields (Phase 8.5 — dormant, inert until Global Marketplace is built)
+```
+vendors.is_public               ← bool, default false
+vendors.slug                    ← nullable, unique
+vendors.city / vendors.country  ← nullable (country = ISO2)
+vendors.portfolio_images        ← JSON array, nullable
+vendors.public_description      ← separate from internal 'description', nullable
+vendors.marketplace_views       ← unsigned int, default 0
+vendors.marketplace_inquiries   ← unsigned int, default 0
+```
+`Vendor::isMarketplaceReady()` and `Vendor::generateMarketplaceSlug()` helper methods exist on the model but are not called anywhere yet — pure architecture prep so a future Global Vendor Marketplace phase needs zero schema changes.
 
 ### Known Migration Bugs Fixed (Phase 9)
 `subscriptions`, `subscription_invoices`, and `plan_prices` were originally created with `id` columns missing `auto_increment` (likely from a copy-pasted migration using `unsignedBigInteger('id')->primary()` instead of `$table->id()`). Fixed via follow-up migrations:
@@ -347,11 +393,21 @@ app/Livewire/Vendor/Dashboard.php                       ← events + tasks + run
 app/Livewire/Vendor/Profile.php
 app/Livewire/Vendor/Onboarding.php
 app/Livewire/Vendor/VendorRunsheet.php                  ← dedicated runsheet page, step status updates, delay modal
+app/Livewire/Vendor/Availability.php                    ← vendor manages own unavailable dates (personal/vacation/holiday/other)
+app/Livewire/Tenant/Contracts/ContractTemplates.php     ← reusable templates w/ placeholders, contenteditable rich text + preview toggle
+app/Livewire/Tenant/Contracts/ContractList.php          ← stats + filters
+app/Livewire/Tenant/Contracts/CreateContract.php        ← template selection auto-fills placeholders, editable before save
+app/Livewire/Tenant/Contracts/ContractDetail.php        ← send (emails branded PDF + signing link), upload signed copy,
+                                                            planner e-signature capture, download signed/unsigned PDF, status history
+app/Livewire/Tenant/Invoices/InvoiceList.php             ← stats (total invoiced/paid/outstanding/overdue), filters
+app/Livewire/Tenant/Invoices/CreateInvoice.php           ← vendor/event/contract linking, amount+tax+discount breakdown
+app/Livewire/Tenant/Invoices/InvoiceDetail.php           ← record payments (multiple, partial), cancel, attachment/receipt uploads
 app/Livewire/Public/RsvpFormPage.php                    ← NOT RsvpForm (model name collision)
 app/Livewire/Public/RsvpEdit.php
 app/Livewire/Public/VendorRegister.php
 app/Livewire/Public/BookingForm.php                     ← public booking form, left/right split
 app/Livewire/Public/ConsultationForm.php                ← public consultation form, 2-step (date/time → details)
+app/Livewire/Public/VendorContractSign.php              ← e-signature public page, no login required, token-based, expires with contract
 ```
 
 ### Models
@@ -368,9 +424,22 @@ app/Models/Central/Client.php                           ← password_changed boo
 app/Models/Central/VendorAccount.php                    ← password_changed bool, vendor_id FK
 app/Models/Tenant/Event.php                             ← rsvp_enabled bool cast, rsvpForm() HasOne
 app/Models/Tenant/Task.php                              ← vendor_account_id nullable FK, assigneeName() helper
-app/Models/Tenant/Vendor.php
+app/Models/Tenant/Vendor.php                            ← recalculateRating(), categoryAverages(), isUnavailableOn(),
+                                                            conflictingAssignments(), isMarketplaceReady() (dormant),
+                                                            generateMarketplaceSlug() (dormant)
 app/Models/Tenant/VendorApplication.php                 ← available_to_travel bool
-app/Models/Tenant/VendorEventAssignment.php
+app/Models/Tenant/VendorEventAssignment.php             ← invoices() HasMany (added Phase 8.4)
+app/Models/Tenant/VendorUnavailableDate.php             ← reasonLabel(), reasonColor()
+app/Models/Tenant/VendorReview.php                      ← averageScore() (6-category avg), isEditable() (7-day window)
+app/Models/Tenant/VendorContractTemplate.php            ← availablePlaceholders(), render() — resolves {{placeholders}}
+app/Models/Tenant/VendorContract.php                    ← changeStatus() (logs history), isFullySigned(), isSigningLinkExpired(),
+                                                            checkAndUpdateSignedStatus(), statusLabel(), statusColor()
+app/Models/Tenant/VendorContractStatusHistory.php       ← protected $table = 'vendor_contract_status_history' REQUIRED
+                                                            (Eloquent's auto-pluralizer guesses wrong table name otherwise)
+app/Models/Tenant/VendorInvoice.php                     ← generateInvoiceNumber(), totalPaid(), balance(), isPaid(), isOverdue(),
+                                                            recalculateStatus(), syncBudgetItem() (auto budget_item),
+                                                            syncAssignmentAmount() (keeps VendorEventAssignment in sync)
+app/Models/Tenant/VendorInvoicePayment.php              ← methodLabel(), triggers invoice recalculation on save/delete
 app/Models/Tenant/Budget.php
 app/Models/Tenant/BudgetItem.php
 app/Models/Tenant/ClientPayment.php
@@ -428,6 +497,27 @@ app/Console/Commands/BackfillTenantSubscriptions.php    ← koordli:backfill-sub
                                                            creates expired subscription records for tenants that
                                                            registered before Phase 9 billing was built and have
                                                            no subscription row at all
+app/Console/Commands/BackfillVendorInvoicesFromAssignments.php ← koordli:backfill-vendor-invoices — ONE-TIME command,
+                                                           converts existing VendorEventAssignment.amount_agreed/
+                                                           amount_paid into proper VendorInvoice + VendorInvoicePayment
+                                                           records (Phase 8.4 migration). Re-runnable, skips already-
+                                                           converted assignments via whereDoesntHave('invoices')
+```
+
+### PDF Generation (Phase 8.3)
+```
+barryvdh/laravel-dompdf                                 ← installed via composer, used ONLY for contract PDFs
+                                                           (config published to config/dompdf.php)
+resources/views/pdf/vendor-contract-pdf.blade.php       ← branded PDF template: tenant logo/colors from
+                                                           tenants.branding JSON, custom @font-face (Satoshi body +
+                                                           Spline Sans headings, both loaded as .ttf from storage/fonts/),
+                                                           two-column signature block at bottom (planner left, vendor right)
+storage/fonts/                                          ← Satoshi-Regular/Bold/Italic/BoldItalic.ttf,
+                                                           SplineSans-Regular/Medium/Bold.ttf — DomPDF's font_dir AND
+                                                           font_cache both point here (config/dompdf.php).
+                                                           MUST be actual .ttf files — DomPDF cannot load .woff2.
+                                                           default_font in config/dompdf.php set to 'Satoshi'
+                                                           (was 'serif' by default)
 ```
 
 ### Jobs (all queued)
@@ -447,6 +537,12 @@ SendFormSubmissionNotificationJob                       ← notifies tenant on b
 SendFormSubmissionConfirmationJob                       ← confirms to guest on booking/consultation submission
 SendSubscriptionReminderJob                             ← 14-day and 3-day renewal reminder email
 SendSubscriptionExpiredJob                              ← sent when subscription/trial fully expires
+SendSubscriptionActivatedJob                            ← sent to TENANT on successful payment (receipt-style email)
+SendPlatformPaymentNotificationJob                      ← sent to PLATFORM OWNER (config('mail.from.address')) on any
+                                                           successful subscription payment — revenue notification
+SendVendorContractJob                                   ← emails branded contract PDF + e-signature link to vendor
+SendContractSignedNotificationJob                       ← notifies planner (contract creator) when vendor signs;
+                                                           subject/wording differs if fully executed vs vendor-only
 ```
 
 ### Email Views
@@ -466,6 +562,10 @@ resources/views/emails/form-submission-notification.blade.php ← sent to tenant
 resources/views/emails/form-submission-confirmation.blade.php ← sent to guest on form submission
 resources/views/emails/subscription-reminder.blade.php ← 14-day / 3-day renewal reminder (color changes if urgent)
 resources/views/emails/subscription-expired.blade.php  ← sent when account is locked
+resources/views/emails/subscription-activated.blade.php ← receipt-style email to tenant on successful payment
+resources/views/emails/platform-payment-notification.blade.php ← revenue notification to platform owner
+resources/views/emails/vendor-contract.blade.php       ← sent to vendor, PDF attached, includes signing link
+resources/views/emails/contract-signed-notification.blade.php ← sent to planner when vendor signs (or fully executed)
 ```
 
 ### Layouts
@@ -495,6 +595,8 @@ resources/views/livewire/public/rsvp-edit.blade.php           ← edit via secur
 resources/views/public/rsvp-ticket-pdf.blade.php              ← print/save as PDF page with QR
 resources/views/livewire/public/booking-form.blade.php        ← left/right split, Fraunces + Spline Sans
 resources/views/livewire/public/consultation-form.blade.php   ← 2-step: date/time → details, custom calendar
+resources/views/livewire/public/vendor-contract-sign.blade.php ← e-signature page, no auth, token-based,
+                                                                    signature pad (draw/type), download-after-sign
 ```
 
 ### Tenant Form Views
@@ -512,6 +614,31 @@ resources/views/livewire/tenant/billing/billing-dashboard.blade.php
 resources/views/livewire/platform/billing-config.blade.php      ← 3 tabs, fee absorption calculator (pure Alpine, no server round trip)
 ```
 
+### Vendor Contract Views (Phase 8.3)
+```
+resources/views/livewire/tenant/contracts/contract-templates.blade.php ← contenteditable rich text editor + Edit/Preview toggle
+resources/views/livewire/tenant/contracts/contract-list.blade.php      ← stats strip, status filter
+resources/views/livewire/tenant/contracts/create-contract.blade.php    ← template picker, Edit/Preview toggle for generated content
+resources/views/livewire/tenant/contracts/contract-detail.blade.php    ← signature status card, send/cancel modals,
+                                                                            signed-copy upload, status history timeline
+resources/views/components/ui/signature-pad.blade.php                 ← shared canvas signature component (draw/type toggle),
+                                                                            used by BOTH planner (contract-detail) and
+                                                                            vendor (vendor-contract-sign) — props: wireModel, label
+```
+
+### Vendor Invoice Views (Phase 8.4)
+```
+resources/views/livewire/tenant/invoices/invoice-list.blade.php   ← stats (invoiced/paid/outstanding/overdue)
+resources/views/livewire/tenant/invoices/create-invoice.blade.php ← two-column layout w/ explanatory sidebar
+                                                                       (Base Amount/Tax/Discount breakdown, status guide)
+resources/views/livewire/tenant/invoices/invoice-detail.blade.php ← payment history, record-payment form, receipt uploads
+```
+
+### Vendor Availability Views (Phase 8.1)
+```
+resources/views/livewire/vendor/availability.blade.php ← vendor-facing, upcoming/past sections, block-dates form
+```
+
 ---
 
 ## ROUTES (complete current state)
@@ -524,6 +651,7 @@ resources/views/livewire/platform/billing-config.blade.php      ← 3 tabs, fee 
 /vendors/{slug}/register              → Public\VendorRegister
 /book/{slug}                          → Public\BookingForm
 /consult/{slug}                       → Public\ConsultationForm
+/contracts/sign/{token}               → Public\VendorContractSign  (e-signature, no login, expires with contract)
 ```
 
 ### API
@@ -570,6 +698,13 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /billing                              → Tenant\Billing\BillingDashboard
 /billing/upgrade                      → Tenant\Billing\UpgradePage
 /billing/callback/{gateway}           → Tenant\Billing\BillingCallback
+/contract-templates                   → Tenant\Contracts\ContractTemplates
+/contracts                            → Tenant\Contracts\ContractList
+/contracts/create                     → Tenant\Contracts\CreateContract
+/contracts/{uuid}                     → Tenant\Contracts\ContractDetail
+/invoices                             → Tenant\Invoices\InvoiceList
+/invoices/create                      → Tenant\Invoices\CreateInvoice
+/invoices/{uuid}                      → Tenant\Invoices\InvoiceDetail
 ```
 
 ### Client Portal
@@ -587,6 +722,7 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /vendor/dashboard                     → Vendor\Dashboard
 /vendor/profile                       → Vendor\Profile
 /vendor/runsheet                      → Vendor\VendorRunsheet
+/vendor/availability                  → Vendor\Availability
 /vendor/logout (POST)
 ```
 
@@ -774,6 +910,79 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 
 ---
 
+## VENDOR ECOSYSTEM ARCHITECTURE (Phase 8 — complete: 8.1 through 8.5)
+
+### Product Direction (locked in)
+Koordli stays an **Event Operations Platform first, not a vendor marketplace**. Vendor Directory (private, per-tenant) is the MVP; a Global Vendor Marketplace is architected for but NOT built (Phase 8.5 is schema-prep only). Priority chain: Vendor Discovery (future) → Onboarding → Approval → Assignment → Communication → Tasks → Runsheet → Contracts → Payments → Performance History.
+
+---
+
+### 8.1 — Vendor Availability Calendar (complete)
+- **Vendor manages their own unavailable dates** — NOT the planner. This was corrected mid-build: initially built as planner-managed, then moved to `/vendor/availability` (dedicated vendor portal page) once it was realized the planner has no way to actually know a vendor's real availability.
+- Reasons: personal, vacation, holiday, other. Date range (from/to), optional notes.
+- Planner sees these read-only on the vendor's detail page (no add/delete controls on tenant side).
+- **Conflict warning (not a hard block)** on the "Assign to Event" form: when an event date is picked, `Vendor::isUnavailableOn()` and `Vendor::conflictingAssignments()` run, showing a yellow warning banner if the vendor is either personally blocked OR already assigned to another event same day. Planner can still proceed — this is visibility, not enforcement, since vendor availability can change after the fact via verbal agreement.
+- Livewire quirk hit: cannot call an `updated{Property}()` lifecycle hook directly from a dropdown's `x-on:click` — Livewire blocks "Unable to call lifecycle method directly on component". Fixed by using the generic `updated($property)` hook and checking `if ($property === 'assign_event_id')` inside it, rather than a dedicated `updatedAssignEventId()` method.
+
+### 8.2 — Ratings & Reviews (complete, awaiting first real-world test once an event date passes)
+- Reviews are tied to a specific `vendor_event_assignment_id` — never generic. One vendor can accumulate multiple reviews across multiple events.
+- **Planner review**: only allowed after the event has ended (`assignment->eventHasEnded()`). One planner review per assignment. Submitted from the vendor detail page ("★ Rate Vendor" button appears once event has passed).
+- **Client review**: submitted from the Client Portal dashboard, under a "Rate Your Vendors" section that appears once the event date has passed and vendor assignments exist for that event. One client review per vendor per assignment. Client can only review vendors actually assigned to their own event (ownership check via `client_email` match).
+- **6 scoring categories**, 1-5 stars each: Professionalism, Communication, Punctuality, Quality of Service, Reliability, Overall Experience. Comment field supported.
+- **Weighting: Planner 80% / Client 20%.** If only one type of review exists for a vendor, that type's average is used alone (no artificial dilution). `Vendor::recalculateRating()` runs automatically via the `VendorReview::saved` model event and updates `planner_rating_avg`, `client_rating_avg`, `weighted_rating`, `rating` (rounded int for star display), `reviews_count`.
+- **Editable for 7 days** (`locked_at` set on creation to `now()->addDays(7)`), then permanently locked (`isEditable()` check). Reviews are never hard-deleted — `is_archived` bool exists for hiding without destroying history.
+- **Private to tenant for MVP** — `is_public` bool exists on the table (default false) purely for future Global Marketplace use; no UI currently exposes it.
+- Vendor detail page shows a "Performance History" card: overall weighted score + stars, Planner Avg vs Client Avg side by side, and a per-category breakdown (`Vendor::categoryAverages()`).
+
+### 8.3 — Vendor Contracts (complete, went beyond original MVP scope to include full e-signature)
+**Templates:**
+- Reusable HTML templates with `{{placeholder}}` tokens: `{{vendor_name}}`, `{{company_name}}`, `{{event_name}}`, `{{event_date}}`, `{{event_location}}`, `{{service_category}}`, `{{contract_amount}}`, `{{payment_schedule}}`, `{{planner_name}}`, `{{generated_date}}`.
+- `VendorContractTemplate::render($vendor, $event, $amount, $paymentSchedule, $plannerName)` does the token replacement — this happens ONCE at contract-generation time and the resolved text is saved as plain HTML into `vendor_contracts.content`. Editing the template later does NOT retroactively change already-generated contracts.
+- Rich text editing uses a plain `contenteditable="true"` div + a manual toolbar (Bold/Italic/Underline/H2/H3/lists via `document.execCommand()`) — **no TipTap/Quill/CKEditor package installed**, deliberately kept lightweight. Content synced to Livewire via `x-on:input="$wire.set('content', $el.innerHTML, false)"` (the `false` third arg avoids a re-render loop that would blow away the contenteditable cursor position).
+- Edit/Preview toggle (pure Alpine `x-data="{ mode: 'edit' }"`) lets the planner see exactly how the rendered content will look before saving — added on user request, present on both the Template editor and the Create Contract page.
+
+**Contract lifecycle:**
+- A contract may be linked to a specific event assignment OR exist as a general vendor agreement (event_id nullable).
+- Status: `draft → sent → signed / expired / cancelled`. Every status change is logged to `vendor_contract_status_history` via `VendorContract::changeStatus($newStatus, $note)`.
+- **"Send" triggers real delivery**: generates a branded PDF (see PDF section below), emails it to the vendor as an attachment via `SendVendorContractJob`, AND includes a unique e-signature link. Planner can also "Mark as Sent Manually" if delivered outside Koordli.
+- Signed copy upload (PDF/JPG/PNG) always supported as the no-e-signature fallback, independent of the e-signature flow below.
+
+**E-Signature (built after initial MVP, per user request — "let vendor sign in-browser"):**
+- Both planner and vendor can sign: **draw (canvas) or type (script-font text)** — user's choice via a toggle, both stored the same way (`signature_type`: draw|type, `signature_data`: base64 PNG or plain text name).
+- Shared `<x-ui.signature-pad>` Blade component (canvas + draw/type toggle) used identically by the planner-side modal (`ContractDetail`) and the public vendor-side page (`VendorContractSign`).
+- Planner signs from the contract detail page ("✍️ Add Your Signature" button/modal) — can happen before or after sending.
+- Vendor signs via a public, no-login-required link: `/contracts/sign/{signing_token}`. Token is a random 40-char string generated on contract creation (`Str::random(40)`), stored in `vendor_contracts.signing_token`.
+- **Signing link expires exactly when the contract's `expires_at` date passes** (`VendorContract::isSigningLinkExpired()`) — shows a clear "Signing Link Expired" page instead of the form.
+- **Audit trail captured**: IP address + timestamp for both planner and vendor signatures (`planner_signed_ip`/`planner_signed_at`, `vendor_signed_ip`/`vendor_signed_at`). No "Signed via Koordli" watermark on the PDF — deliberately omitted per user request so white-label tenants (future paid tier) aren't stuck with Koordli branding.
+- `VendorContract::isFullySigned()` = both `planner_signed_at` AND `vendor_signed_at` are set → status auto-flips to `signed` via `checkAndUpdateSignedStatus()`.
+- After vendor signs on the public page: "Signed Successfully" confirmation + a "Download Your Copy" button (re-generates the same branded PDF with both signatures baked in).
+- **Planner is notified by email the moment the vendor signs** (`SendContractSignedNotificationJob`) — subject/wording differs depending on whether it's just the vendor's signature or the contract is now fully executed by both parties.
+
+**Branded PDF (`resources/views/pdf/vendor-contract-pdf.blade.php`):**
+- Uses `barryvdh/laravel-dompdf` (installed this phase — no other PDF package existed before).
+- Pulls tenant's actual logo + brand colors from `tenants.branding` JSON (`primary_color`, `accent_color`, `logo`) — same source used elsewhere in the app (RSVP, Forms).
+- Custom fonts: **Satoshi** (body) + **Spline Sans** (headings) — DomPDF requires actual `.ttf` files (NOT `.woff2`, which the web app uses) registered via `@font-face` inside the PDF blade, with the files physically present in `storage/fonts/` (DomPDF's configured `font_dir`/`font_cache`). `config/dompdf.php`'s `default_font` changed from `'serif'` to `'Satoshi'`.
+- **Currency symbol bug**: Satoshi (like most fonts) does NOT include the ₦ (Naira, U+20A6) glyph — DomPDF renders it as `?` or an empty box. **Fix: use currency CODES (NGN, GHS, USD) instead of symbols anywhere a PDF-rendered amount is generated by the system** — `CurrencyHelper::formatForPdf($amount, $currency)` returns `"NGN 1,500,000.00"` instead of `"₦1,500,000.00"`. This is also arguably more correct for a legal document (avoids ambiguity between currencies that share symbols, e.g. `$`). **Caveat:** any amount a planner manually TYPES into the free-form contract content (e.g. typing "₦1,500,000" directly in the rich text editor) will still show the symbol since that's raw saved HTML — only the system-generated `{{contract_amount}}` placeholder and the meta-info box use the code-based formatter. Contracts created before this fix have the broken symbol baked into their saved `content` and must be manually edited once to correct it.
+- Signature block: two-column table at the bottom of the PDF, company/planner on the left, vendor on the right, each showing their signature image (if drawn) or script-styled typed name, full name, and signed timestamp.
+
+### 8.4 — Vendor Invoicing & Payment Tracking (complete)
+**Core model: Invoices are separate from Payments.** An invoice represents what is owed; payments record money actually received. This allows partial payments, full payment history, and accurate outstanding balances without turning Koordli into an accounting package.
+
+- **Multiple invoices per vendor per event** supported (Deposit, Progress, Final Balance, Additional Service, Change Request, etc.) — each invoice is its own record with its own number (`INV-YYYYMM-0001` auto-generated), issue/due dates, amount, tax, discount, computed total, status, notes, and optional attachment.
+- **Multiple payments per invoice** — `vendor_invoice_payments` table, each with amount, date, method (cash/bank_transfer/card/other), reference, optional receipt upload. `VendorInvoice::totalPaid()` sums all payments; `balance()` = total_amount − totalPaid().
+- Status: `draft → sent → partially_paid → paid`, plus `overdue` (auto-detected via due_date past + unpaid) and `cancelled`. `recalculateStatus()` runs automatically whenever a payment is saved/deleted.
+- **"Invoice" does NOT require the vendor to have sent a formal document.** It's fundamentally the planner's internal record of "what's owed to this vendor" — the attachment field is optional precisely because many vendor agreements are verbal/WhatsApp-based with no paperwork. This was clarified mid-build when the user questioned the module's purpose.
+- **This is planner-initiated bookkeeping, NOT a vendor-facing feature** — vendors never see or interact with the Invoices module. It mirrors how Client Payments already work (planner records what the client paid, not the client self-reporting).
+- **Budget auto-sync**: every invoice with an `event_id` automatically creates/updates a matching `budget_item` (`VendorInvoice::syncBudgetItem()`, triggered on `saved`). Budget items are tagged `source = 'vendor_invoice'` and linked via `budget_items.vendor_invoice_id` so they're distinguishable from manually-added budget lines and get cleaned up (`deleted`) if the invoice is cancelled/removed.
+- **Unified with the older Vendor Event Assignment payment fields**: `vendor_event_assignments.amount_agreed`/`amount_paid` predate the Invoices module. Rather than deprecating them, **Option A was chosen**: assigning a vendor with an amount now auto-creates a matching `VendorInvoice` (+ payment record if `amount_paid` was also entered) behind the scenes, transparently, so planners who just want a quick assignment never have to think about "invoices" explicitly. `VendorInvoice::syncAssignmentAmount()` then keeps the two views in sync bidirectionally — editing the invoice's amount or recording a payment there updates the assignment's `amount_agreed`/`amount_paid` fields too (via `updateQuietly()` to avoid event loops). A "View Full Invoice →" link appears on the assignment card once one exists.
+- **One-time backfill**: `koordli:backfill-vendor-invoices` command converts pre-existing assignments (created before this phase) with `amount_agreed > 0` into proper invoice + payment records. Safe to re-run (skips assignments that already have an invoice via `whereDoesntHave('invoices')`).
+- Invoice creation page uses a two-column layout with an explanatory right sidebar (What Base Amount/Tax/Discount mean, how the module works, status guide) — added after user feedback that a blank right column "looked empty on desktop" and some terms needed explaining for less technical users.
+
+### 8.5 — Marketplace-Ready Schema (complete — dormant, zero UI)
+Pure architecture prep so a future Global Vendor Marketplace phase requires no schema migrations on existing tables. Added to `vendors`: `is_public` (bool, default false), `slug` (nullable unique), `city`, `country` (ISO2), `portfolio_images` (JSON array), `public_description` (separate from internal `description`), `marketplace_views`, `marketplace_inquiries` (both unsigned int counters). Helper methods `Vendor::isMarketplaceReady()` and `Vendor::generateMarketplaceSlug()` exist but are not called anywhere yet.
+
+---
+
 ## BILLING & SUBSCRIPTIONS ARCHITECTURE (Phase 9 — complete)
 
 ### Key Decisions (locked in)
@@ -875,6 +1084,14 @@ ZAR → R  (South Africa)
 - All plan prices set by platform in NGN; converted live to tenant's `billing_currency` at checkout
 - Gateway selection also currency-aware: `getPreferredGateway()` checks which enabled gateway supports the tenant's currency (Paystack: NGN/GHS/USD/ZAR/KES/GBP; Flutterwave: those + EUR/XOF/XAF)
 
+### PDF-Safe Currency Formatting (Phase 8.3 — CRITICAL)
+```php
+CurrencyHelper::code('NGN')                    // → 'NGN' (just the ISO code, uppercased)
+CurrencyHelper::codeForTenant()                // → code for current auth user's tenant
+CurrencyHelper::formatForPdf(1500000, 'NGN')   // → 'NGN 1,500,000.00'
+```
+**Use `formatForPdf()`, never `symbol()`/`format()`, for any amount rendered inside a DomPDF-generated PDF.** Currency symbols like ₦ are missing from most fonts' glyph sets (confirmed with Satoshi) and render as `?` or an empty box in PDF output. Using the plain ISO code instead is both a reliable fix AND arguably more correct for a legal document (avoids symbol ambiguity, e.g. `$` meaning USD/CAD/AUD). This distinction does NOT apply to the web UI (Blade views rendered in-browser) — `symbol()`/`format()` remain correct there since browsers render currency glyphs fine.
+
 ---
 
 ## REUSABLE UI COMPONENTS
@@ -884,6 +1101,8 @@ ZAR → R  (South Africa)
 - Uses `krdDropdown` Alpine data component registered in `app.js`
 - Props: `wire`, `placeholder`, `selected`, `max-width`
 - **DO NOT use for country/currency selection** — use plain Alpine pick() pattern
+- **Auto-renders its own placeholder option** — the component's `@if($placeholder)` block already adds a "None"/clear option at the top of the menu that calls `clear()`. Never manually duplicate this inside the slot (e.g. don't also add `<div class="krd-dropdown-option" x-on:click="select('No contract', null)">` — this creates a visible duplicate entry). Just pass the desired text via the `placeholder` prop.
+- **Always use `@js($value)` instead of `'{{ $value }}'`** when passing a PHP string into a `select()` JS call inside an option's `x-on:click` — see Rule 36. Applies to any option label that could contain `&`, `'`, or `"` (vendor names, event names, contract titles).
 
 ### Toast System
 - `window.showToast(message, type)` — global function
@@ -1130,17 +1349,30 @@ Two-column admin layouts (settings + sidebar-tips pattern) also need a mobile br
 - Daily scheduled command `koordli:process-subscriptions` — expires subs, sends 14-day + 3-day reminders, sends expiry emails
 - One-time `koordli:backfill-subscriptions` command for pre-Phase-9 tenants with no subscription row
 - Platform Billing Config (`/platform/billing`, 3 tabs): Settings (with Billing Overview stats/revenue + live Fee Absorption Calculator), Gateway Charges (editable rates + formula explainer), API Keys (with where-to-find guide + webhook URLs)
+- Jobs/Emails `SubscriptionActivatedMail + PlatformPaymentNotificationMail` — SubscriptionActivatedMail sent to TENANT as
+  a payment receipt, PlatformPaymentNotificationMail sent to PLATFORM OWNER for revenue tracking, both dispatched from
+  `BillingService::activateSubscription()` right after successful payment verification
 - Fixed critical migration bug: `subscriptions`, `subscription_invoices`, `plan_prices` all had `id` columns missing `auto_increment` — fixed via `ALTER TABLE ... MODIFY id BIGINT UNSIGNED AUTO_INCREMENT` migrations
+
+### Phase 8 — Vendor Ecosystem ✅ (8.1 through 8.5, all complete)
+- **8.1 Availability**: vendor self-manages unavailable dates from `/vendor/availability`; planner sees read-only + gets
+  a non-blocking conflict warning banner when assigning to a conflicting event date
+- **8.2 Reviews**: planner (80% weight) + client (20% weight) reviews, tied to specific event assignments, 6 scored
+  categories, 7-day edit window then locked, weighted `Vendor::recalculateRating()` auto-runs on save, private to
+  tenant for MVP (marketplace-ready `is_public` flag exists but unused)
+- **8.3 Contracts**: reusable placeholder templates, contenteditable rich text + Preview toggle, branded PDF export
+  (tenant logo/colors, custom Satoshi+Spline Sans fonts), full e-signature flow (draw or type, both planner and vendor,
+  IP+timestamp audit trail, unique expiring signing link, auto status update when both parties sign, planner notified
+  by email when vendor signs), signed-copy upload fallback, full status history log
+- **8.4 Invoicing**: multi-invoice-per-vendor-per-event, multi-payment-per-invoice, auto budget sync, auto-created
+  transparently when a vendor is assigned with an amount (keeps old Assignment fields in bidirectional sync), one-time
+  backfill command for pre-existing assignment data
+- **8.5 Marketplace-ready schema**: dormant `is_public`/`slug`/`city`/`country`/`portfolio_images` fields on `vendors`,
+  zero UI, zero behavior change — pure future-proofing
 
 ---
 
 ## PENDING
-
-### Phase 8 — Vendor Ecosystem
-- Vendor marketplace
-- Vendor ratings/reviews
-- Vendor availability calendars
-- Vendor contracts + invoicing
 
 ### Phase 9 — Remaining polish (optional)
 - Test Flutterwave checkout flow end-to-end (only Paystack tested so far)
@@ -1172,6 +1404,7 @@ spatie/laravel-sluggable
 simplesoftwareio/simple-qrcode    ← QR code generation (SVG format)
 stevebauman/location
 barryvdh/laravel-debugbar (dev)
+barryvdh/laravel-dompdf           ← installed Phase 8.3, used ONLY for branded vendor contract PDFs
 ```
 
 Note: `yasumi/yasumi` was NOT installed (unavailable). Public holiday logic is handled by `App\Helpers\PublicHolidayHelper` — no package needed.

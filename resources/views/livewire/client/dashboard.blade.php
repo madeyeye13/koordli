@@ -176,6 +176,41 @@
 
             @endif
 
+            {{-- Vendors — Rate Your Vendors --}}
+            @if($event->vendorAssignments->isNotEmpty() && $event->date && $event->date->isPast())
+            <div style="border-top:1px solid #E7E5E4;padding-top:16px;margin-top:4px;">
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#A8A29E;margin-bottom:12px;">
+                    Rate Your Vendors
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    @foreach($event->vendorAssignments as $assignment)
+                    @php
+                        $clientReview = $assignment->reviews->firstWhere('reviewer_type', 'client');
+                    @endphp
+                    <div class="krd-card-sm" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:#1C1917;">{{ $assignment->vendor->name }}</div>
+                            @if($assignment->vendor->category)
+                            <div style="font-size:11px;color:#A8A29E;">{{ $assignment->vendor->category->name }}</div>
+                            @endif
+                            @if($clientReview)
+                            <div style="margin-top:4px;color:#F59E0B;font-size:12px;">
+                                {{ str_repeat('★', round($clientReview->averageScore())) }}{{ str_repeat('☆', 5 - round($clientReview->averageScore())) }}
+                                <span style="color:#78716C;">({{ $clientReview->averageScore() }})</span>
+                            </div>
+                            @endif
+                        </div>
+                        <button wire:click="showReview({{ $assignment->id }})"
+                            class="krd-btn krd-btn-sm"
+                            style="background:{{ $clientReview ? '#F5F3FF' : '#EDE9FE' }};color:#7C3AED;border-color:#DDD6FE;flex-shrink:0;">
+                            {{ $clientReview ? '★ Edit Review' : '★ Rate Vendor' }}
+                        </button>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- Notes --}}
             @if($event->notes)
             <div style="border-top:1px solid #E7E5E4;padding-top:16px;">
@@ -271,5 +306,55 @@
 
         </div>
         @endforeach
+@endif
+
+    {{-- Review Modal --}}
+    @if($showReviewForm)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+        <div style="background:#fff;border-radius:8px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;">
+            <h3 style="font-size:17px;font-weight:600;color:#1C1917;margin-bottom:4px;">Rate This Vendor</h3>
+            <p style="font-size:12px;color:#78716C;margin-bottom:20px;">Your honest feedback helps other clients and the event team.</p>
+
+            @php
+                $categories = [
+                    'r_professionalism'    => 'Professionalism',
+                    'r_communication'      => 'Communication',
+                    'r_punctuality'        => 'Punctuality',
+                    'r_quality_of_service' => 'Quality of Service',
+                    'r_reliability'        => 'Reliability',
+                    'r_overall_experience' => 'Overall Experience',
+                ];
+            @endphp
+
+            @foreach($categories as $field => $label)
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px;font-weight:500;color:#1C1917;margin-bottom:6px;">{{ $label }}</div>
+                <div style="display:flex;gap:4px;" x-data="{ val: {{ $this->{$field} }} }">
+                    @for($i = 1; $i <= 5; $i++)
+                    <button type="button"
+                        x-on:click="val = {{ $i }}; $wire.setRating('{{ $field }}', {{ $i }})"
+                        style="background:none;border:none;cursor:pointer;font-size:24px;line-height:1;padding:0;"
+                        :style="val >= {{ $i }} ? 'color:#F59E0B;' : 'color:#D6D3D1;'">
+                        ★
+                    </button>
+                    @endfor
+                </div>
+            </div>
+            @endforeach
+
+            <div class="krd-input-group" style="margin-bottom:0;">
+                <label class="krd-label-text">Comment <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                <textarea wire:model="r_comment" class="krd-input" rows="3" placeholder="Share your experience with this vendor..."></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button wire:click="saveReview" wire:loading.attr="disabled" class="krd-btn krd-btn-primary" style="flex:1;">
+                    <span wire:loading.remove wire:target="saveReview">{{ $editingReviewId ? 'Update Review' : 'Submit Review' }}</span>
+                    <span wire:loading wire:target="saveReview">Saving...</span>
+                </button>
+                <button wire:click="$set('showReviewForm', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
     @endif
 </div>

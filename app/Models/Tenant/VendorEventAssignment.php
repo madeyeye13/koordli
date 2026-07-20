@@ -59,4 +59,29 @@ class VendorEventAssignment extends Model
     {
         return (float)$this->amount_agreed - (float)$this->amount_paid;
     }
+
+    public function invoices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(VendorInvoice::class);
+    }
+
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(VendorReview::class, 'vendor_event_assignment_id');
+    }
+
+    public function plannerReview(): ?VendorReview
+    {
+        return $this->reviews()->where('reviewer_type', 'planner')->first();
+    }
+
+    public function clientReview(): ?VendorReview
+    {
+        return $this->reviews()->where('reviewer_type', 'client')->first();
+    }
+
+    public function eventHasEnded(): bool
+    {
+        return $this->event?->date && $this->event->date->isPast();
+    }
 }

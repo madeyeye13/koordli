@@ -22,6 +22,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/plans/create', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.create');
         Route::get('/plans/{plan}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
         Route::get('/billing', \App\Livewire\Platform\BillingConfig::class)->name('billing');
+        Route::get('/site-settings', \App\Livewire\Platform\SiteSettings::class)->name('site-settings');
         Route::post('/logout', function () {
             Auth::guard('platform')->logout();
             return redirect()->route('platform.login');
@@ -73,6 +74,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::middleware('vendor.password.check')->group(function () {
             Route::get('/dashboard', \App\Livewire\Vendor\Dashboard::class)->name('dashboard');
             Route::get('/runsheet', \App\Livewire\Vendor\VendorRunsheet::class)->name('runsheet');
+            Route::get('/availability', \App\Livewire\Vendor\Availability::class)->name('availability');
             Route::get('/profile', \App\Livewire\Vendor\Profile::class)->name('profile');
         });
 
@@ -113,6 +115,9 @@ Route::get('/rsvp/ticket/{token}', function (string $token) {
 // Booking Forms
 Route::get('/book/{slug}', \App\Livewire\Public\BookingForm::class)->name('public.booking');
 Route::get('/consult/{slug}', \App\Livewire\Public\ConsultationForm::class)->name('public.consultation');
+
+// Vendor Contract e-signature
+Route::get('/contracts/sign/{token}', \App\Livewire\Public\VendorContractSign::class)->name('public.contract.sign');
 
 /*
 |--------------------------------------------------------------------------
@@ -174,6 +179,17 @@ Route::middleware(['tenant.resolve'])->group(function () {
 
         // RSVP Management
         Route::get('/events/{slug}/rsvp', \App\Livewire\Tenant\Rsvp\RsvpManager::class)->name('tenant.events.rsvp');
+
+        // Vendor Contracts
+        Route::get('/contract-templates', \App\Livewire\Tenant\Contracts\ContractTemplates::class)->name('tenant.contract-templates');
+        Route::get('/contracts', \App\Livewire\Tenant\Contracts\ContractList::class)->name('tenant.contracts');
+        Route::get('/contracts/create', \App\Livewire\Tenant\Contracts\CreateContract::class)->name('tenant.contracts.create');
+        Route::get('/contracts/{uuid}', \App\Livewire\Tenant\Contracts\ContractDetail::class)->name('tenant.contracts.show');
+
+        // Vendor Invoices
+        Route::get('/invoices', \App\Livewire\Tenant\Invoices\InvoiceList::class)->name('tenant.invoices');
+        Route::get('/invoices/create', \App\Livewire\Tenant\Invoices\CreateInvoice::class)->name('tenant.invoices.create');
+        Route::get('/invoices/{uuid}', \App\Livewire\Tenant\Invoices\InvoiceDetail::class)->name('tenant.invoices.show');
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');
@@ -185,6 +201,4 @@ Route::middleware(['tenant.resolve'])->group(function () {
 | Root
 |--------------------------------------------------------------------------
 */
-Route::get('/', function () {
-    return redirect()->route('tenant.login');
-});
+// Route::get('/', \App\Livewire\Public\LandingPage::class)->name('landing');

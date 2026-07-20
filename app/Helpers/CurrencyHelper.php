@@ -23,6 +23,27 @@ class CurrencyHelper
         return static::symbol($currency) . number_format($amount, 2);
     }
 
+    public static function code(string $currency): string
+    {
+        return strtoupper($currency);
+    }
+
+    /**
+     * PDF-safe format — uses currency code instead of symbol to avoid
+     * missing-glyph issues in PDF fonts (e.g. ₦ not supported by most fonts).
+     */
+    public static function formatForPdf(float $amount, string $currency): string
+    {
+        return static::code($currency) . ' ' . number_format($amount, 2);
+    }
+
+    public static function codeForTenant(): string
+    {
+        return static::code(
+            auth()->user()?->tenant?->billing_currency ?? 'NGN'
+        );
+    }
+
     public static function forTenant(): string
     {
         return static::symbol(
