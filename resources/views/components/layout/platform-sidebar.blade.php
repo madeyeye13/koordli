@@ -53,11 +53,13 @@
                     </svg>
                     Plans
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('platform.billing') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.billing') ? 'active' : '' }}"
+                wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                    <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
                 </svg>
-                Subscriptions
+                Billing Config
             </a>
         </div>
 

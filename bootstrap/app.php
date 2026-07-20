@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'onboarding.check'       => EnsureOnboardingComplete::class,
             'vendor.password.check'  => EnsureVendorPasswordChanged::class,
             'client.password.check'  => EnsureClientPasswordChanged::class,
+            'tenant.active' => \App\Http\Middleware\EnsureTenantActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

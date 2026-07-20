@@ -29,16 +29,18 @@
 21. **RESPONSIVE RULE** — Every list/table view must have: desktop table (hidden on mobile via CSS) + mobile cards (hidden on desktop via CSS). NEVER just a table alone
 22. **CURRENCY** — Never hardcode ₦. Always use `CurrencyHelper::forTenant()` or `CurrencyHelper::symbol($currency)`. Currency auto-detected from IP on registration
 23. **DROPDOWN RULE** — Never use `krdDropdown` Alpine component when the selection needs to trigger instant UI updates. Use plain Alpine dropdown with `pick()` method instead
-24. **TOGGLE PATTERN** — Hidden checkbox with `wire:model` + Alpine visual div dispatching `change` event — avoids `$wire.set` re-render loop. Exception: when hidden checkbox itself doesn't sync reliably (e.g. required field toggles), use a dedicated `#[Renderless]` Livewire method instead.
+24. **TOGGLE PATTERN** — Hidden checkbox with `wire:model` + Alpine visual div dispatching `change` event — avoids `$wire.set` re-render loop. Exception: when hidden checkbox itself doesn't sync reliably (e.g. required field toggles, gateway enable toggles), use a dedicated `#[Renderless]` Livewire method instead.
 25. **BOOLEAN VALIDATION** — Always include `'field' => 'boolean'` in validate() for bool properties or Laravel throws foreach error
 26. **RSVP COMPONENT NAME** — Public RSVP Livewire component is `RsvpFormPage` (NOT `RsvpForm`) to avoid collision with `RsvpForm` model
 27. **QR CODES** — SimpleSoftwareIO SVG format. Store token string only (`qr_payload`), regenerate on demand. Never store image files.
-28. **DARK MODE INLINE STYLES** — Never hardcode `color:#1C1917` in inline styles across tenant blade views — use CSS classes. A global dark mode override exists in `app.css` for legacy inline styles.
-29. **ALPINE OWNERSHIP RULE (CRITICAL)** — Any text or state that lives inside an `x-data` block AND needs to change after a Livewire round trip MUST use `x-text` bound to an Alpine variable, NOT `{{ $phpVariable }}`. Livewire's DOM morph is conservative about patching inside `x-data` scopes and can leave server-rendered text stale. Always initialize Alpine's label from server (`label: '{{ $serverValue }}'`) then update via Alpine (`this.label = newVal`) before calling `$wire.*`. Never rely on Blade re-rendering text inside an `x-data` scope after a Wirewire re-render.
+28. **DARK MODE INLINE STYLES** — Never hardcode `color:#1C1917` in inline styles across tenant blade views — use CSS classes (e.g. `krd-btn-primary`) so dark mode adapts automatically. A global dark mode override exists in `app.css` for legacy inline styles.
+29. **ALPINE OWNERSHIP RULE (CRITICAL)** — Any text or state that lives inside an `x-data` block AND needs to change after a Livewire round trip MUST use `x-text` bound to an Alpine variable, NOT `{{ $phpVariable }}`. Livewire's DOM morph is conservative about patching inside `x-data` scopes and can leave server-rendered text stale. Always initialize Alpine's label from server (`label: '{{ $serverValue }}'`) then update via Alpine (`this.label = newVal`) before calling `$wire.*`. Never rely on Blade re-rendering text inside an `x-data` scope after a Livewire re-render. When multiple related toggles/values live together (e.g. two gateway toggles), put them in ONE shared `x-data` scope, not separate ones — separate scopes can visually interfere with each other during re-renders.
 30. **SESSION ISOLATION** — Each portal has its own session cookie via `ConfigureSessionByPortal` middleware: `koordli_platform_session`, `koordli_client_session`, `koordli_vendor_session`, `koordli_session` (tenant). Prevents cross-portal session bleeding.
 31. **EMAILS ALWAYS QUEUED** — All emails go through Jobs. Never call `Mail::send()` directly in Livewire or controllers. Always dispatch a Job that calls `Mail::send()` inside `handle()`.
 32. **PUBLIC HOLIDAY BLOCKING** — Use `App\Helpers\PublicHolidayHelper::getHolidays($countryCode, $year)` — no external package. Country pulled from `tenants.country`.
 33. **FORM FIELD REQUIRED TOGGLE** — Hidden checkbox `wire:model` does NOT reliably sync in Livewire 4 for boolean toggles in nested components. Use a dedicated `#[Renderless]` method e.g. `toggleFieldRequired()` that flips the property directly.
+34. **NEW MIGRATIONS — ALWAYS VERIFY AUTO_INCREMENT** — When creating a new table's `id` column, always use `$table->id()`, never `$table->unsignedBigInteger('id')->primary()` manually — the latter creates a primary key WITHOUT auto_increment and every insert fails with "Field 'id' doesn't have a default value". This bug hit `subscriptions`, `subscription_invoices`, and `plan_prices` in Phase 9 and required `ALTER TABLE x MODIFY id BIGINT UNSIGNED AUTO_INCREMENT` migrations to fix. When debugging a mysterious insert failure on a table, always check `DB::select('SHOW COLUMNS FROM {table} WHERE Field = "id"')` for `"Extra": "auto_increment"` first.
+35. **LIVEWIRE V4 WRITE-BLOCKING (E.G. FOR BILLING LOCKOUT) MUST USE COMPONENT HOOKS, NOT HTTP MIDDLEWARE** — Livewire v4 sends all component method calls to `/livewire/update` (or similar internal path) which is OUTSIDE named route groups, so normal route middleware (`Route::middleware([...])->group(...)`) never intercepts Livewire POST calls — only the initial page GET. To block specific Livewire actions (e.g. locked-tenant write prevention), register a `Livewire\ComponentHook` via `Livewire::componentHook(HookClass::class)` and override `call($method, $params, $returnEarly, $metadata, $componentContext)`. Call `$returnEarly(null)` to stop the method from executing. **Critical:** register the hook inside `AppServiceProvider::register()`, NOT `boot()` — `ComponentHookRegistry::boot()` runs during `LivewireServiceProvider::boot()`, and if your hook is registered in your own `boot()` it may run too late and be silently ignored, since Laravel calls `register()` on all providers before `boot()` on any.
 
 ---
 
@@ -90,6 +92,7 @@ Replaces: WhatsApp chaos, spreadsheets, scattered notes, disorganized workflows.
 - Blade
 - MySQL
 - NOT React
+- Payments: Laravel `Http` facade (Guzzle, bundled with Laravel — no SDK packages) for Paystack + Flutterwave API calls
 
 ---
 
@@ -134,6 +137,7 @@ Text:        #FAFAF9
 - **Tenant branding via CSS variables:** `--tenant-primary`, `--tenant-accent`
 - **Dark mode:** intentionally designed, not inverted
 - **Mobile responsive** on everything — desktop table + mobile cards pattern
+- **Use `krd-btn-primary` / `krd-btn-secondary` classes instead of hardcoded inline colors on buttons** — inline `background:#1C1917` etc. breaks dark mode (buttons become invisible against dark surfaces)
 
 ### Logo Component
 - `color="light"` — white logo (auth left panels, dark backgrounds)
@@ -167,7 +171,7 @@ Text:        #FAFAF9
 - `vendor` guard → `VendorAccount` (Central) → `/vendor/login`
 
 All registered in `config/auth.php` and `bootstrap/app.php` middleware aliases:
-`auth.platform`, `auth.tenant`, `auth.client`, `auth.vendor`, `tenant.resolve`, `onboarding.check`, `vendor.password.check`, `client.password.check`
+`auth.platform`, `auth.tenant`, `auth.client`, `auth.vendor`, `tenant.resolve`, `onboarding.check`, `vendor.password.check`, `client.password.check`, `tenant.active`
 
 ### Session Isolation
 `ConfigureSessionByPortal` middleware (prepended in `bootstrap/app.php`) assigns different session cookie names per route prefix:
@@ -195,7 +199,14 @@ All registered in `config/auth.php` and `bootstrap/app.php` middleware aliases:
 Overview:   Dashboard
 Operations: Events, Tasks, Vendors, Applications, Budget
 Experience: Clients, Guests & RSVP, Runsheet
-Business:   Forms & Bookings, Staff, Settings
+Business:   Forms & Bookings, Billing, Staff, Settings
+```
+
+## SIDEBAR NAVIGATION (platform)
+```
+Overview:   Dashboard
+Management: Companies, Plans, Billing Config
+System:     Settings
 ```
 
 ## SECURITY ARCHITECTURE
@@ -221,14 +232,16 @@ Business:   Forms & Bookings, Staff, Settings
 ```
 platform_users
 tenants                         ← country (ISO2), billing_currency, branding JSON, slug
-plans                           ← is_featured bool (only one featured at a time = Recommended)
-plan_prices
+plans                           ← is_featured bool, annual_discount_percent, allowed_cycles JSON
+plan_prices                     ← currency, amount, billing_cycle, amount_with_charges, annual_discount_percent
 feature_flags
 plan_features
 tenant_feature_overrides
-subscriptions
-subscription_invoices
+subscriptions                   ← expires_at, grace_until, billing_cycle, reminder_14_sent, reminder_3_sent
+subscription_invoices           ← uuid, amount_ngn, exchange_rate, billing_cycle
 currency_settings
+gateway_charges                 ← gateway, region, percentage, fixed_fee, cap, absorb, is_active, description
+billing_settings                ← key/value config store (grace period, reminder days, API keys, enabled gateways)
 email_verification_codes
 clients                         ← password_changed bool
 vendor_accounts                 ← password_changed bool, vendor_id FK, vendor_application_id FK
@@ -283,6 +296,13 @@ consultation_bookings           ← uuid, tenant_id, form_id, submission_id,
                                    guest_name, guest_email, guest_phone, meeting_link, notes
 ```
 
+### Known Migration Bugs Fixed (Phase 9)
+`subscriptions`, `subscription_invoices`, and `plan_prices` were originally created with `id` columns missing `auto_increment` (likely from a copy-pasted migration using `unsignedBigInteger('id')->primary()` instead of `$table->id()`). Fixed via follow-up migrations:
+```php
+DB::statement('ALTER TABLE {table} MODIFY id BIGINT UNSIGNED AUTO_INCREMENT');
+```
+Applied to all three tables. `gateway_charges` and `billing_settings` were unaffected (created correctly with `$table->id()`).
+
 ---
 
 ## KEY FILE LOCATIONS
@@ -295,6 +315,7 @@ app/Livewire/Platform/Tenants/TenantList.php
 app/Livewire/Platform/Tenants/CreateTenant.php          ← edit mode via ?Tenant $tenant param
 app/Livewire/Platform/Plans/PlanList.php                ← toggle active, set featured, delete w/ modal
 app/Livewire/Platform/Plans/CreatePlan.php
+app/Livewire/Platform/BillingConfig.php                 ← 3 tabs: Settings/Gateway Charges/API Keys
 app/Livewire/Tenant/Dashboard.php
 app/Livewire/Tenant/Events/EventList.php
 app/Livewire/Tenant/Events/CreateEvent.php              ← rsvp_enabled bool, hidden checkbox toggle
@@ -315,6 +336,9 @@ app/Livewire/Tenant/Runsheet/RunsheetManager.php        ← timeline view, item 
 app/Livewire/Tenant/Forms/FormList.php                  ← booking + consultation forms list
 app/Livewire/Tenant/Forms/CreateForm.php                ← WithFileUploads, 5 tabs: Details/Fields/AfterSubmission/Availability/Embed
 app/Livewire/Tenant/Forms/FormSubmissions.php           ← submissions table + consultation bookings
+app/Livewire/Tenant/Billing/UpgradePage.php             ← plan grid, cycle toggle, gateway selector, checkout()
+app/Livewire/Tenant/Billing/BillingCallback.php         ← verifies Paystack/Flutterwave payment, activates subscription
+app/Livewire/Tenant/Billing/BillingDashboard.php        ← current plan, invoice history
 app/Livewire/Client/Auth/Login.php
 app/Livewire/Client/Dashboard.php                       ← RSVP read-only stats + link
 app/Livewire/Client/Onboarding.php
@@ -334,7 +358,12 @@ app/Livewire/Public/ConsultationForm.php                ← public consultation 
 ```
 app/Models/Central/Tenant.php
 app/Models/Central/PlatformUser.php
-app/Models/Central/Plan.php                             ← is_featured bool
+app/Models/Central/Plan.php                             ← is_featured bool, allowsMonthly()/allowsAnnual(), getPriceFor()
+app/Models/Central/PlanPrice.php                         ← displayAmount(), annualSavings()
+app/Models/Central/Subscription.php                     ← isActive(), isTrialing(), isExpired(), isInGracePeriod(), isLocked(), trialDaysRemaining(), daysUntilExpiry()
+app/Models/Central/SubscriptionInvoice.php
+app/Models/Central/GatewayCharge.php                     ← calculateAbsorbed(), calculateFee()
+app/Models/Central/BillingSetting.php                    ← static get()/set(), cached
 app/Models/Central/Client.php                           ← password_changed bool
 app/Models/Central/VendorAccount.php                    ← password_changed bool, vendor_id FK
 app/Models/Tenant/Event.php                             ← rsvp_enabled bool cast, rsvpForm() HasOne
@@ -368,16 +397,37 @@ app/Helpers/PublicHolidayHelper.php                     ← getHolidays($country
                                                            Supports: NG, GH, KE, ZA, GB, US + Easter calc
                                                            No external package — hardcoded per country
 app/Http/Middleware/ConfigureSessionByPortal.php        ← isolates session cookies per portal
+app/Http/Middleware/EnsureTenantActive.php              ← shares $tenantLocked/$tenantSubscription to views,
+                                                           blocks non-GET requests at the HTTP layer (page-level,
+                                                           NOT Livewire actions — see SubscriptionLockHook below)
+app/Livewire/Hooks/SubscriptionLockHook.php             ← ComponentHook that blocks write-action Livewire methods
+                                                           for locked tenants; registered in AppServiceProvider::register()
 app/Traits/WithToast.php                                ← toastSuccess(), toastError(), toastWarning()
 app/Traits/BelongsToTenant.php
 app/Services/TenantService.php
-app/Services/FeatureGateService.php
+app/Services/FeatureGateService.php                     ← isOnTrial(), trialDaysLeft(), isHighestPlan(), canAccess()
+app/Services/BillingService.php                         ← getExchangeRate(), convertAmount(), getPriceForTenant(),
+                                                           getPreferredGateway(), initializePaystackPayment(),
+                                                           initializeFlutterwavePayment(), activateSubscription(),
+                                                           verifyPaystackPayment(), verifyFlutterwavePayment(),
+                                                           processExpiredSubscriptions()
 ```
 
 ### API Controllers
 ```
 app/Http/Controllers/Api/FormSubmissionController.php   ← POST /api/forms/{token}/submit (booking)
 app/Http/Controllers/Api/ConsultationSubmissionController.php ← POST /api/consult/{token}/submit
+```
+
+### Console Commands
+```
+app/Console/Commands/ProcessSubscriptions.php           ← koordli:process-subscriptions — daily 6am cron.
+                                                           Processes expired subs, sends 14-day + 3-day reminders,
+                                                           sends expiry notifications
+app/Console/Commands/BackfillTenantSubscriptions.php    ← koordli:backfill-subscriptions — ONE-TIME command,
+                                                           creates expired subscription records for tenants that
+                                                           registered before Phase 9 billing was built and have
+                                                           no subscription row at all
 ```
 
 ### Jobs (all queued)
@@ -395,6 +445,8 @@ SendRsvpConfirmationJob                                 ← sends QR code SVG in
 SendRsvpNotificationJob                                 ← notifies planner + client on each response
 SendFormSubmissionNotificationJob                       ← notifies tenant on booking/consultation submission
 SendFormSubmissionConfirmationJob                       ← confirms to guest on booking/consultation submission
+SendSubscriptionReminderJob                             ← 14-day and 3-day renewal reminder email
+SendSubscriptionExpiredJob                              ← sent when subscription/trial fully expires
 ```
 
 ### Email Views
@@ -412,17 +464,28 @@ resources/views/emails/rsvp-confirmation.blade.php     ← QR SVG inline, downlo
 resources/views/emails/rsvp-notification.blade.php     ← sent to planner + client
 resources/views/emails/form-submission-notification.blade.php ← sent to tenant on form submission
 resources/views/emails/form-submission-confirmation.blade.php ← sent to guest on form submission
+resources/views/emails/subscription-reminder.blade.php ← 14-day / 3-day renewal reminder (color changes if urgent)
+resources/views/emails/subscription-expired.blade.php  ← sent when account is locked
 ```
 
 ### Layouts
 ```
 resources/views/layouts/auth.blade.php
 resources/views/layouts/platform.blade.php
-resources/views/layouts/tenant.blade.php
+resources/views/layouts/tenant.blade.php               ← includes trial banner + subscription-locked JS listener
 resources/views/layouts/client.blade.php
 resources/views/layouts/vendor.blade.php
 resources/views/layouts/rsvp.blade.php                 ← bare layout, Fraunces + Spline Sans Google Fonts
                                                            Also used by public booking + consultation forms
+```
+
+### Sidebar / UI Components
+```
+resources/views/components/layout/tenant-sidebar.blade.php  ← includes Billing nav link
+resources/views/layouts/platform-sidebar.blade.php           ← includes Billing Config nav link
+resources/views/components/ui/trial-banner.blade.php         ← ACTUAL location (not layouts/ or components/layout/)
+                                                                 Shows trial/grace/locked/expiring states,
+                                                                 links to tenant.billing.upgrade
 ```
 
 ### Public Views
@@ -439,6 +502,14 @@ resources/views/livewire/public/consultation-form.blade.php   ← 2-step: date/t
 resources/views/livewire/tenant/forms/form-list.blade.php
 resources/views/livewire/tenant/forms/create-form.blade.php   ← 5 tabs (pure @if server-driven, no x-show)
 resources/views/livewire/tenant/forms/form-submissions.blade.php
+```
+
+### Billing Views
+```
+resources/views/livewire/tenant/billing/upgrade-page.blade.php   ← plan grid, cycle toggle (Alpine-owned), gateway selector
+resources/views/livewire/tenant/billing/billing-callback.blade.php
+resources/views/livewire/tenant/billing/billing-dashboard.blade.php
+resources/views/livewire/platform/billing-config.blade.php      ← 3 tabs, fee absorption calculator (pure Alpine, no server round trip)
 ```
 
 ---
@@ -468,7 +539,7 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /logout (POST)
 ```
 
-### Tenant Authenticated
+### Tenant Authenticated (middleware: auth.tenant, tenant.resolve, onboarding.check, tenant.active)
 ```
 /dashboard                            → Tenant\Dashboard
 /onboarding                           → Tenant\Onboarding
@@ -496,6 +567,9 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /forms/create                         → Tenant\Forms\CreateForm
 /forms/{id}/edit                      → Tenant\Forms\CreateForm
 /forms/{id}/submissions               → Tenant\Forms\FormSubmissions
+/billing                              → Tenant\Billing\BillingDashboard
+/billing/upgrade                      → Tenant\Billing\UpgradePage
+/billing/callback/{gateway}           → Tenant\Billing\BillingCallback
 ```
 
 ### Client Portal
@@ -526,6 +600,7 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /platform/plans                       → Platform\Plans\PlanList
 /platform/plans/create                → Platform\Plans\CreatePlan
 /platform/plans/{plan}/edit           → Platform\Plans\CreatePlan
+/platform/billing                     → Platform\BillingConfig
 /platform/logout (POST)
 ```
 
@@ -677,6 +752,8 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 - Delete with modal — blocked if tenants are on the plan
 - Toggle active/inactive
 - Edit via existing `CreatePlan` component
+- `allowed_cycles` JSON (`["monthly","annual"]`) controls which billing cycles tenants can pick for that plan
+- `annual_discount_percent` — e.g. 20 means annual price = monthly × 12 × 0.8
 
 ---
 
@@ -694,6 +771,80 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 - Done items show "Undo" link to revert to pending
 - Auto-refresh: `wire:poll.60s` on page
 - Dashboard shows summary strip (4 stat cards + progress bar) + "Open Runsheet" link
+
+---
+
+## BILLING & SUBSCRIPTIONS ARCHITECTURE (Phase 9 — complete)
+
+### Key Decisions (locked in)
+- **Gateways**: Both Paystack and Flutterwave supported, tenant chooses at checkout (whichever are enabled by platform)
+- **Payment implementation**: Laravel `Http` facade only — NO Paystack/Flutterwave SDK packages installed. All API calls are plain HTTP POST/GET via Guzzle (bundled with Laravel).
+- **Billing model**: Self-serve (tenant pays via `/billing/upgrade`) + platform can still manually assign/edit plans from `/platform/tenants/{id}/edit`
+- **Billing cycles**: Monthly and/or Annual, configurable per-plan via `allowed_cycles`. Annual gets a discount via `annual_discount_percent` (like Hostinger-style yearly savings)
+- **Renewal**: Manual only (no card-on-file auto-charge). Reminder emails sent 14 days and 3 days before expiry (configurable via platform billing settings)
+- **Trial expiry behavior**: Read-only lockout. Tenant can view ALL their data (GET requests always allowed) but cannot create/edit/delete anything. Grace period (default 7 days, configurable) exists between expiry and full lockout.
+- **Currency**: Platform sets prices in NGN (base currency). Frankfurter API (cached, configurable hours) converts to tenant's billing currency at checkout time.
+- **Gateway fee absorption**: Platform never eats payment processor fees. When platform sets a plan price (e.g. ₦5,000), the system calculates what to actually charge the tenant so that after Paystack/Flutterwave deduct their cut, the platform receives exactly ₦5,000. Formula: `charge = (desired_amount + fixed_fee) / (1 - percentage_fee)`, capped if a fee cap exists. Gateway rates (percentage, fixed fee, cap) are fully configurable from `/platform/billing` — Gateway Charges tab — no code changes needed when Paystack/Flutterwave update their pricing.
+
+### Gateway Charges (seeded defaults, editable in platform admin)
+```
+Paystack Nigeria:        1.5% + ₦100, capped at ₦2,000
+Paystack International:  3.8% + ₦100, no cap
+Flutterwave Nigeria:     1.4%, capped at ₦2,800
+Flutterwave International: 3.8%, no cap
+```
+
+### Billing Settings (key/value store, `BillingSetting::get()/set()`, cached)
+```
+base_currency            → NGN
+grace_period_days        → 7
+reminder_days            → 14
+reminder_days_urgent     → 3
+paystack_secret_key / paystack_public_key
+flutterwave_secret_key / flutterwave_public_key
+enabled_gateways          → ["paystack","flutterwave"]
+frankfurter_cache_hours   → 24
+```
+
+### Read-Only Lockout — How It Actually Works (IMPORTANT — took multiple iterations to get right)
+Two layers are needed because Livewire v4 requests bypass normal route middleware:
+
+1. **`EnsureTenantActive` middleware** (HTTP layer) — handles the initial page GET request. Shares `$tenantLocked` and `$tenantSubscription` to all views for the trial banner. Allows all GET requests through. Blocks non-GET requests that somehow do hit named routes directly (rare, since Livewire doesn't use named routes for updates).
+
+2. **`SubscriptionLockHook`** (Livewire component hook, THE REAL ENFORCEMENT LAYER) — registered via `Livewire::componentHook(SubscriptionLockHook::class)` inside `AppServiceProvider::register()` (must be `register()`, not `boot()`, due to Livewire's own boot-order — see Rule 35). Overrides `call($method, $params, $returnEarly, ...)`. Only blocks methods whose name matches a write-action pattern (`save`, `create`, `delete`, `confirm`, `update`, `store`, `submit`, `approve`, `reject`, `activate`, `deactivate`, `toggle`, `send`, `invite`, `cancel`, `suspend`, `assign`) — everything else (dropdowns, `$set`, tab switches, date/time pickers) is whitelisted and works freely so the UI doesn't feel broken while filling out a form. When a blocked method is called: `$returnEarly(null)` stops execution, then `$this->component->dispatch('subscription-locked')` fires a browser event. Billing components (`App\Livewire\Tenant\Billing\*`) are always exempt so the tenant can still renew.
+
+3. **Browser listener** in `tenant.blade.php` catches `subscription-locked` event → shows toast "This action requires an active plan. Redirecting to billing..." → redirects to `/billing/upgrade` after 1.5s.
+
+### Trial Banner (`resources/views/components/ui/trial-banner.blade.php`)
+Color-coded by state, always links to `route('tenant.billing.upgrade')`:
+- 🟣 Violet gradient — on trial, X days left
+- 🟠 Amber — in grace period (expired but not yet locked)
+- 🔴 Red — fully locked
+- Falls back to querying `Subscription` directly if `$tenantSubscription` isn't shared yet (defensive)
+
+### Upgrade Page (`/billing/upgrade`)
+- Billing cycle toggle (Monthly/Annual) — pure Alpine, instant, no server round trip until checkout
+- Gateway selector (Paystack/Flutterwave) if multiple enabled — same pure-Alpine pattern
+- Plan cards show price in tenant's currency with gateway fees already included ("gateway fees included" label), plus NGN equivalent + exchange rate shown for transparency
+- Featured plan gets ⭐ ribbon + violet border
+- Buttons use `krd-btn-primary` class (NOT hardcoded `background:#1C1917`) so they remain visible in dark mode
+
+### Payment Flow
+1. Tenant picks plan + cycle + gateway → `checkout()` called
+2. `BillingService::getPriceForTenant()` computes converted + fee-absorbed amount
+3. `BillingService::initializePaystackPayment()` or `initializeFlutterwavePayment()` — Http::withToken()->post() to gateway API
+4. Tenant redirected to gateway's hosted checkout page
+5. On success, gateway redirects to `/billing/callback/{gateway}`
+6. `BillingCallback` component verifies payment server-side (`verifyPaystackPayment()`/`verifyFlutterwavePayment()`) then calls `BillingService::activateSubscription()` which creates the `Subscription` + `SubscriptionInvoice` records and unlocks the tenant
+
+### Platform Billing Config (`/platform/billing`) — 3 tabs
+1. **Settings** — grace period, reminder days, exchange rate cache, enabled gateways (single shared `x-data` for both toggles to avoid cross-interference — see Rule 24/29), Billing Overview (active/trial/grace/expired counts + revenue this/last month + recent payments) placed ABOVE the settings form on the left column, Fee Absorption Calculator (live, pure Alpine/JS, no Livewire round trip) + Current Gateway Rates reference on the right column (sticky)
+2. **Gateway Charges** — editable percentage/fixed fee/cap per gateway+region, absorb toggle, formula explainer + worked example on the right
+3. **API Keys** — Paystack/Flutterwave secret + public keys, where-to-find-keys guide + webhook URL reference on the right
+
+### Console Commands
+- `koordli:process-subscriptions` — scheduled `dailyAt('06:00')` in `routes/console.php`. Expires trials/subscriptions past `trial_ends_at`/`expires_at`, sends 14-day and 3-day reminder emails (tracked via `reminder_14_sent`/`reminder_3_sent` to avoid duplicates), sends expiry notification emails.
+- `koordli:backfill-subscriptions` — **one-time manual command**, NOT scheduled. Needed because tenants who registered before Phase 9 was built have zero rows in `subscriptions`. Finds tenants with no subscription, creates one with `status: expired`, `trial_ends_at` set to yesterday, `grace_until` = today + grace period days. Safe to re-run — skips tenants that already have a subscription.
 
 ---
 
@@ -718,6 +869,11 @@ EUR → €  (DE, FR, IT, ES, NL, BE, PT, AT, FI, IE)
 KES → KSh (Kenya)
 ZAR → R  (South Africa)
 ```
+
+### Billing Currency Conversion (Phase 9)
+- `BillingService::getExchangeRate($from, $to)` — Frankfurter API (`https://api.frankfurter.app/latest`), cached per configurable hours (default 24) via `BillingSetting`
+- All plan prices set by platform in NGN; converted live to tenant's `billing_currency` at checkout
+- Gateway selection also currency-aware: `getPreferredGateway()` checks which enabled gateway supports the tenant's currency (Paystack: NGN/GHS/USD/ZAR/KES/GBP; Flutterwave: those + EUR/XOF/XAF)
 
 ---
 
@@ -775,7 +931,7 @@ public function togglePreferred(int $id): void
 ">
 ```
 
-**Exception:** For simple boolean toggles where hidden checkbox doesn't sync (e.g. field required toggle in form builder), use a dedicated renderless method:
+**Exception:** For simple boolean toggles where hidden checkbox doesn't sync (e.g. field required toggle in form builder, gateway enable/disable toggles), use a dedicated renderless method:
 ```php
 #[\Livewire\Attributes\Renderless]
 public function toggleFieldRequired(): void
@@ -785,6 +941,22 @@ public function toggleFieldRequired(): void
 ```
 ```html
 <div x-on:click="on = !on; $wire.toggleFieldRequired()">
+```
+
+**When multiple related toggles live near each other** (e.g. two gateway enable/disable switches), put them in ONE shared `x-data` scope with an array, not separate scopes — separate scopes can visually interfere with each other:
+```html
+<div x-data="{
+    gateways: {{ json_encode($enabled_gateways) }},
+    toggle(gw) {
+        this.gateways = this.gateways.includes(gw)
+            ? this.gateways.filter(g => g !== gw)
+            : [...this.gateways, gw];
+        $wire.toggleGateway(gw);
+    },
+    isOn(gw) { return this.gateways.includes(gw); }
+}">
+    <!-- both toggles reference the same gateways array -->
+</div>
 ```
 
 ---
@@ -817,7 +989,9 @@ x-data="{ open: false }"
 <span>{{ $serverValue }}</span>  {{-- WILL GO STALE --}}
 ```
 
-**Apply this to:** dropdown trigger labels, status badges, any display text inside `x-data` that changes after `$wire.*` calls.
+**Apply this to:** dropdown trigger labels, status badges, billing cycle/gateway toggles, any display text inside `x-data` that changes after `$wire.*` calls.
+
+**Live calculators / previews that never need to hit the server at all** (e.g. the platform's Fee Absorption Calculator) should be built as PURE Alpine/JS with a `get result()` computed property — zero `$wire` calls, instant feedback, no Livewire round trip needed since it's just doing arithmetic on values already known client-side.
 
 ---
 
@@ -848,6 +1022,14 @@ x-data="{ open: false }"
     #xxx-mobile  { display: flex !important; }
 }
 </style>
+```
+
+Two-column admin layouts (settings + sidebar-tips pattern) also need a mobile breakpoint:
+```css
+@media (max-width: 768px) {
+    #two-column-grid   { grid-template-columns: 1fr !important; }
+    #sticky-right-col  { position: static !important; }
+}
 ```
 
 ---
@@ -934,6 +1116,22 @@ x-data="{ open: false }"
 - All emails queued via Jobs (tenant notification + guest confirmation)
 - `PublicHolidayHelper` — no external package, hardcoded per country, Easter calculation
 
+### Phase 9 — Billing & Subscriptions ✅
+- Full Paystack + Flutterwave integration via Laravel `Http` facade (no SDK packages) — tested end-to-end with a real Paystack test payment
+- Gateway fee absorption — platform sets NGN price, tenant is charged the calculated amount so platform receives the exact price after gateway fees; formula + rates fully configurable at `/platform/billing`
+- Multi-currency checkout via Frankfurter API (cached, configurable hours)
+- Monthly + Annual billing cycles, per-plan configurable (`allowed_cycles`), annual discount %
+- Featured-plan-first + auto-select-if-only-one-plan on registration and upgrade page
+- Upgrade page (`/billing/upgrade`) — plan grid, instant Alpine-owned cycle/gateway toggles, dark-mode-safe buttons (`krd-btn-primary`)
+- Billing callback — verifies payment server-side, activates subscription, creates invoice record
+- Billing dashboard (`/billing`) — current plan, status, invoice history
+- **Read-only lockout** — two-layer enforcement (`EnsureTenantActive` middleware for HTTP/GET, `SubscriptionLockHook` Livewire ComponentHook for write-action blocking) since Livewire v4 bypasses normal route middleware; toast + 1.5s redirect to upgrade page on any blocked write attempt
+- Trial banner — color-coded (violet trial / amber grace / red locked), always links to upgrade
+- Daily scheduled command `koordli:process-subscriptions` — expires subs, sends 14-day + 3-day reminders, sends expiry emails
+- One-time `koordli:backfill-subscriptions` command for pre-Phase-9 tenants with no subscription row
+- Platform Billing Config (`/platform/billing`, 3 tabs): Settings (with Billing Overview stats/revenue + live Fee Absorption Calculator), Gateway Charges (editable rates + formula explainer), API Keys (with where-to-find guide + webhook URLs)
+- Fixed critical migration bug: `subscriptions`, `subscription_invoices`, `plan_prices` all had `id` columns missing `auto_increment` — fixed via `ALTER TABLE ... MODIFY id BIGINT UNSIGNED AUTO_INCREMENT` migrations
+
 ---
 
 ## PENDING
@@ -944,12 +1142,9 @@ x-data="{ open: false }"
 - Vendor availability calendars
 - Vendor contracts + invoicing
 
-### Phase 9 — Billing & Subscriptions
-- Paystack + Flutterwave integration (Laravel HTTP client, no package)
-- Multi-currency display
-- Exchange rates via Frankfurter API (cached 24hrs)
-- Self-serve plan upgrades
-- Trial expiry notifications
+### Phase 9 — Remaining polish (optional)
+- Test Flutterwave checkout flow end-to-end (only Paystack tested so far)
+- Confirm daily `koordli:process-subscriptions` cron is actually registered on production server (Windows dev environment doesn't run cron automatically)
 
 ### Phase 10 — Public Facing & Infrastructure
 - Landing page (SEO optimized)
@@ -980,6 +1175,8 @@ barryvdh/laravel-debugbar (dev)
 ```
 
 Note: `yasumi/yasumi` was NOT installed (unavailable). Public holiday logic is handled by `App\Helpers\PublicHolidayHelper` — no package needed.
+
+Note: NO Paystack or Flutterwave SDK packages installed. All payment gateway calls use Laravel's built-in `Http` facade (Guzzle, bundled with Laravel core — nothing to `composer require`).
 
 ---
 
@@ -1012,6 +1209,7 @@ MAIL_FROM_NAME=Koordli
 - Storage link: `php artisan storage:link` — required for RSVP cover images + form hero images
 - `LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK=local` in `.env`
 - `SESSION_COOKIE=koordli_session` in `.env`
+- **Production TODO**: ensure the Laravel scheduler is actually running via a real cron entry (`* * * * * php artisan schedule:run`) since `koordli:process-subscriptions` depends on it — this doesn't run automatically on the Windows dev machine
 
 ---
 
@@ -1034,3 +1232,6 @@ MAIL_FROM_NAME=Koordli
 - Client login: `http://127.0.0.1:8000/client/login`
 - Vendor login: `http://127.0.0.1:8000/vendor/login`
 - Vendor runsheet: `http://127.0.0.1:8000/vendor/runsheet`
+- Tenant billing: `http://127.0.0.1:8000/billing`
+- Tenant upgrade: `http://127.0.0.1:8000/billing/upgrade`
+- Platform billing config: `http://127.0.0.1:8000/platform/billing`

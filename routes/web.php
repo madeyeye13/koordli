@@ -21,6 +21,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/plans', \App\Livewire\Platform\Plans\PlanList::class)->name('plans');
         Route::get('/plans/create', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.create');
         Route::get('/plans/{plan}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
+        Route::get('/billing', \App\Livewire\Platform\BillingConfig::class)->name('billing');
         Route::post('/logout', function () {
             Auth::guard('platform')->logout();
             return redirect()->route('platform.login');
@@ -124,7 +125,7 @@ Route::middleware(['tenant.resolve'])->group(function () {
         Route::get('/login', \App\Livewire\Tenant\Auth\Login::class)->name('tenant.login');
     });
 
-    Route::middleware(['auth.tenant', 'onboarding.check'])->group(function () {
+    Route::middleware(['auth.tenant', 'tenant.resolve', 'onboarding.check', 'tenant.active'])->group(function () {
         Route::get('/dashboard', \App\Livewire\Tenant\Dashboard::class)->name('tenant.dashboard');
         Route::get('/onboarding', \App\Livewire\Tenant\Onboarding::class)->name('tenant.onboarding');
 
@@ -162,10 +163,14 @@ Route::middleware(['tenant.resolve'])->group(function () {
         Route::get('/events/{slug}/runsheet', \App\Livewire\Tenant\Runsheet\RunsheetManager::class)->name('tenant.events.runsheet');
 
         // Forms & Bookings
-Route::get('/forms', \App\Livewire\Tenant\Forms\FormList::class)->name('tenant.forms');
-Route::get('/forms/create', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.create');
-Route::get('/forms/{id}/edit', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.edit');
-Route::get('/forms/{id}/submissions', \App\Livewire\Tenant\Forms\FormSubmissions::class)->name('tenant.forms.submissions');
+        Route::get('/forms', \App\Livewire\Tenant\Forms\FormList::class)->name('tenant.forms');
+        Route::get('/forms/create', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.create');
+        Route::get('/forms/{id}/edit', \App\Livewire\Tenant\Forms\CreateForm::class)->name('tenant.forms.edit');
+        Route::get('/forms/{id}/submissions', \App\Livewire\Tenant\Forms\FormSubmissions::class)->name('tenant.forms.submissions');
+
+        Route::get('/billing', \App\Livewire\Tenant\Billing\BillingDashboard::class)->name('tenant.billing');
+        Route::get('/billing/upgrade', \App\Livewire\Tenant\Billing\UpgradePage::class)->name('tenant.billing.upgrade');
+        Route::get('/billing/callback/{gateway}', \App\Livewire\Tenant\Billing\BillingCallback::class)->name('tenant.billing.callback');
 
         // RSVP Management
         Route::get('/events/{slug}/rsvp', \App\Livewire\Tenant\Rsvp\RsvpManager::class)->name('tenant.events.rsvp');

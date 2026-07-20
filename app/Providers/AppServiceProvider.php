@@ -2,11 +2,13 @@
 
 namespace App\Providers;
 
+use App\Livewire\Hooks\SubscriptionLockHook;
 use App\Services\AuthService;
 use App\Services\TenantContext;
 use App\Services\TenantService;
 use Illuminate\Support\ServiceProvider;
 use App\Services\FeatureGateService;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(FeatureGateService::class, function () {
             return new FeatureGateService();
         });
+
+        // Register Livewire component hook early — before LivewireServiceProvider::boot()
+        Livewire::componentHook(SubscriptionLockHook::class);
     }
 
     public function boot(): void

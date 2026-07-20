@@ -106,5 +106,16 @@
     </div>
 
     @livewireScripts
+
+    <script>
+        document.addEventListener('subscription-locked', function() {
+            if (window.showToast) {
+                window.showToast("This action requires an active plan. Redirecting to billing...", 'error');
+            }
+            setTimeout(function() {
+                window.location.href = '{{ route('tenant.billing.upgrade') }}';
+            }, 1500);
+        });
+    </script>
 </body>
 </html>
