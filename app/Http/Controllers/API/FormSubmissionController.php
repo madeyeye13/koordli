@@ -91,6 +91,8 @@ class FormSubmissionController extends Controller
                 $tenant?->name ?? 'The organiser',
                 $form->tenant_email ?? $plannerUser?->email ?? '',
                 $form->tenant_phone,
+                null, null, null, null, null,
+                $tenant ? app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label') : false,
             );
         }
 

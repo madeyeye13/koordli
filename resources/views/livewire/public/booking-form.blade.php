@@ -40,6 +40,10 @@
     }
 </style>
 
+@php
+    $__tenant = \App\Models\Central\Tenant::find($form->tenant_id);
+    $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+@endphp
 <div class="bf-shell">
 
     {{-- Left Panel --}}
@@ -51,7 +55,7 @@
         @endif
 
         <div class="bf-left-content">
-            <div class="bf-brand">Koordli</div>
+            <div class="bf-brand">{{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
 
             <div>
                 <h1 class="bf-title">{{ $form->name }}</h1>
@@ -87,7 +91,7 @@
                 @endif
             </div>
 
-            <div class="bf-footer">© {{ date('Y') }} Koordli</div>
+            <div class="bf-footer">© {{ date('Y') }} {{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
         </div>
     </div>
 
@@ -225,7 +229,9 @@
             </div>
             @endif
 
+            @if(!$__whiteLabel)
             <div class="bf-powered">Powered by <a href="/">Koordli</a></div>
+            @endif
         </div>
     </div>
 </div>

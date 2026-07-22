@@ -21,6 +21,7 @@ class OutstandingReminderMail extends Mailable
         public string $amountPaid,
         public string $outstanding,
         public string $currency,
+        public bool   $whiteLabel = false,
     ) {}
 
     public function envelope(): Envelope

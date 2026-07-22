@@ -25,6 +25,7 @@ class FormSubmissionConfirmationMail extends Mailable
         public readonly ?string $consultationType = null,
         public readonly ?string $location = null,
         public readonly ?string $meetingLink = null,
+        public readonly bool    $whiteLabel = false,
     ) {}
 
     public function envelope(): Envelope

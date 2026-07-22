@@ -151,6 +151,7 @@ class ContractDetail extends Component
             auth()->user()->tenant->name,
             $fileName,
             $signingUrl,
+            app(\App\Services\FeatureGateService::class)->canAccess(auth()->user()->tenant, 'white_label'),
         );
 
         $this->contract->changeStatus('sent', 'Contract emailed to vendor with e-signature link.');

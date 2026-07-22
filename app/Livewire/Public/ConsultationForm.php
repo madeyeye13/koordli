@@ -345,6 +345,7 @@ class ConsultationForm extends Component
                 $this->consultation_type,
                 $this->form->location,
                 $booking->meeting_link,
+                $tenant ? app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label') : false,
             );
         }
 

@@ -255,8 +255,9 @@ class EventBudget extends Component
             amountPaid:   number_format($this->budget->totalClientPaid(), 2),
             outstanding:  number_format($this->budget->clientOutstanding(), 2),
             currency:     $symbol,
+            whiteLabel:   app(\App\Services\FeatureGateService::class)->canAccess(auth()->user()->tenant, 'white_label'),
         );
-
+        
         $this->toastSuccess('Reminder sent to ' . $this->event->client_email);
     }
 

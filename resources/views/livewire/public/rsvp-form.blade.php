@@ -328,7 +328,11 @@
         @endif
 
         <div class="rsvp-left-content">
-            <div class="rsvp-brand">Koordli</div>
+            @php
+                $__tenant = \App\Models\Central\Tenant::find($rsvpForm->tenant_id);
+                $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+            @endphp
+            <div class="rsvp-brand">{{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
 
             <div>
                 <div class="rsvp-invited-label">You're Invited</div>
@@ -377,7 +381,7 @@
                 @endif
             </div>
 
-            <div class="rsvp-footer-text">© {{ date('Y') }} Koordli</div>
+            <div class="rsvp-footer-text">© {{ date('Y') }} {{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
         </div>
     </div>
 
@@ -604,7 +608,9 @@
             @endif
 
             <div class="rsvp-powered">
+                @if(!$__whiteLabel)
                 Powered by <a href="/">Koordli</a>
+                @endif
             </div>
 
         </div>

@@ -117,7 +117,11 @@
         @endif
 
         <div class="cf-left-content">
-            <div class="cf-brand">Koordli</div>
+            @php
+                $__tenant = \App\Models\Central\Tenant::find($form->tenant_id);
+                $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+            @endphp
+            <div class="cf-brand">{{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
             <div>
                 <h1 class="cf-title">{{ $form->name }}</h1>
                 @if($form->description)
@@ -157,7 +161,7 @@
                 </div>
                 @endif
             </div>
-            <div class="cf-footer">© {{ date('Y') }} Koordli</div>
+            <div class="cf-footer">© {{ date('Y') }} {{ $__whiteLabel ? $__tenant->name : 'Koordli' }}</div>
         </div>
     </div>
 
@@ -486,7 +490,9 @@
 
             @endif
 
+            @if(!$__whiteLabel)
             <div class="cf-powered">Powered by <a href="/">Koordli</a></div>
+            @endif
         </div>
     </div>
 </div>

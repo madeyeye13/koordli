@@ -120,34 +120,45 @@ class VendorDetail extends Component
             'notes'         => $this->assign_notes ?: null,
         ]);
 
-        // Auto-create a matching invoice if an amount was agreed
-        if ((float) $this->assign_amount > 0) {
-            $invoice = \App\Models\Tenant\VendorInvoice::create([
-                'tenant_id'                  => auth()->user()->tenant_id,
-                'vendor_id'                  => $this->vendor->id,
-                'event_id'                   => $this->assign_event_id,
-                'vendor_event_assignment_id' => $assignment->id,
-                'title'                      => 'Service Agreement',
-                'issue_date'                 => now()->format('Y-m-d'),
-                'amount'                     => $this->assign_amount,
-                'tax_amount'                 => 0,
-                'discount_amount'            => 0,
-                'total_amount'               => $this->assign_amount,
-                'status'                     => 'sent',
-                'notes'                      => 'Auto-created from vendor assignment.',
-            ]);
+        // Notify vendor of the new assignment (auto-create portal account if none exists yet)
+        if (!empty($this->vendor->email)) {
+            $tenant = auth()->user()->tenant;
+            $event  = Event::find($this->assign_event_id);
 
-            if ((float) $this->assign_amount_paid > 0) {
-                \App\Models\Tenant\VendorInvoicePayment::create([
-                    'tenant_id'         => auth()->user()->tenant_id,
-                    'vendor_invoice_id' => $invoice->id,
-                    'amount'            => $this->assign_amount_paid,
-                    'paid_on'           => now()->format('Y-m-d'),
-                    'payment_method'    => 'other',
-                    'notes'             => 'Recorded at time of vendor assignment.',
+            $existingAccount = \App\Models\Central\VendorAccount::where('tenant_id', $tenant->id)
+                ->where('email', $this->vendor->email)
+                ->first();
+
+            $isNewAccount = false;
+            $generatedPassword = '';
+
+            if (!$existingAccount) {
+                $generatedPassword = Str::random(10);
+                \App\Models\Central\VendorAccount::create([
+                    'tenant_id'        => $tenant->id,
+                    'vendor_id'        => $this->vendor->id,
+                    'name'             => $this->vendor->contact_name ?? $this->vendor->name,
+                    'email'            => $this->vendor->email,
+                    'password'         => Hash::make($generatedPassword),
+                    'phone'            => $this->vendor->phone,
+                    'business_name'    => $this->vendor->name,
+                    'is_active'        => true,
+                    'password_changed' => false,
                 ]);
-                $invoice->recalculateStatus();
+                $isNewAccount = true;
             }
+
+            \App\Jobs\SendVendorAssignedJob::dispatch(
+                $this->vendor->email,
+                $this->vendor->contact_name ?? $this->vendor->name,
+                $this->vendor->name,
+                $event->name,
+                $event->date?->format('D, d M Y') ?? 'TBC',
+                $tenant->name,
+                $isNewAccount,
+                $generatedPassword,
+                app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label'),
+            );
         }
 
     }
@@ -189,6 +200,7 @@ class VendorDetail extends Component
             $this->vendor->name,
             $password,
             $tenant->name,
+            app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label'),
         );
 
         $this->toastSuccess('Portal invite sent to ' . $this->vendor->email);

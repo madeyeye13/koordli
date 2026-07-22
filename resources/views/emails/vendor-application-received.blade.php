@@ -27,14 +27,16 @@
     <div class="wrapper">
         <div class="card">
             <div class="header">
-                <div class="logo">Koordli</div>
+                <div class="logo">{{ $whiteLabel ? $companyName : 'Koordli' }}</div>
+                @if(!$whiteLabel)
                 <div class="logo-tag">Event Operations Platform</div>
+                @endif
             </div>
             <div class="body">
                 <div class="greeting">Hi {{ $vendorName }},</div>
                 <p class="text">
-                    Thank you for applying to join the <strong>{{ $companyName }}</strong> vendor network
-                    on Koordli. We've received your application for <strong>{{ $businessName }}</strong>
+                    Thank you for applying to join the <strong>{{ $companyName }}</strong> vendor network.
+                    We've received your application for <strong>{{ $businessName }}</strong>
                     and it is currently under review.
                 </p>
                 <div class="info-box">
@@ -53,7 +55,7 @@
             <div class="footer">
                 <div class="footer-text">
                     This email was sent to {{ $vendorEmail }}.<br>
-                    © {{ date('Y') }} Koordli. All rights reserved.
+                    © {{ date('Y') }} {{ $whiteLabel ? $companyName : 'Koordli' }}. All rights reserved.
                 </div>
             </div>
         </div>

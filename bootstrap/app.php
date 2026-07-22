@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'vendor.password.check'  => EnsureVendorPasswordChanged::class,
             'client.password.check'  => EnsureClientPasswordChanged::class,
             'tenant.active' => \App\Http\Middleware\EnsureTenantActive::class,
+            'tenant.byDomain' => \App\Http\Middleware\ResolveTenantByDomain::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

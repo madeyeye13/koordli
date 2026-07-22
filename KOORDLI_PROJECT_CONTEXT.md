@@ -43,6 +43,11 @@
 35. **LIVEWIRE V4 WRITE-BLOCKING (E.G. FOR BILLING LOCKOUT) MUST USE COMPONENT HOOKS, NOT HTTP MIDDLEWARE** — Livewire v4 sends all component method calls to `/livewire/update` (or similar internal path) which is OUTSIDE named route groups, so normal route middleware (`Route::middleware([...])->group(...)`) never intercepts Livewire POST calls — only the initial page GET. To block specific Livewire actions (e.g. locked-tenant write prevention), register a `Livewire\ComponentHook` via `Livewire::componentHook(HookClass::class)` and override `call($method, $params, $returnEarly, $metadata, $componentContext)`. Call `$returnEarly(null)` to stop the method from executing. **Critical:** register the hook inside `AppServiceProvider::register()`, NOT `boot()` — `ComponentHookRegistry::boot()` runs during `LivewireServiceProvider::boot()`, and if your hook is registered in your own `boot()` it may run too late and be silently ignored, since Laravel calls `register()` on all providers before `boot()` on any.
 36. **NEVER PASS `{{ $phpString }}` DIRECTLY INTO A JS FUNCTION CALL INSIDE AN HTML ATTRIBUTE** — e.g. `x-on:click="select('{{ $vendor->name }}', {{ $vendor->id }})"`. Blade's `{{ }}` HTML-escapes the value (turning `&` into `&amp;`), and when that escaped string is later re-displayed via Alpine's `x-text`, it can end up double-escaped and show literal `&amp;` on screen instead of `&`. This bit names like "Chukwuemeka & Adaeze Wedding" across dropdown option click-handlers (Contracts, Invoices, Forms create pages, etc.). **Fix:** use Laravel's `@js()` Blade directive instead, which properly JSON-encodes the value for a JavaScript context: `x-on:click="select(@js($vendor->name), {{ $vendor->id }})"`. Apply this to every dropdown option's JS-string argument that could contain `&`, `'`, `"`, or other special characters (vendor names, event names, contract titles, etc.) — plain `'{{ }}'` interpolation into a JS string literal is never safe for user-entered text.
 37. **`x-ui.dropdown` COMPONENT ALREADY RENDERS ITS OWN PLACEHOLDER OPTION** — the shared `resources/views/components/ui/dropdown.blade.php` component auto-renders a `@if($placeholder)` option at the top of its menu that calls `clear()`. Never ALSO manually add your own "None" / "No contract" / "General (no event)" option inside the slot — this creates a duplicate entry in the dropdown. Only pass the desired text via the `placeholder` prop; don't repeat it in the slot content.
+38. **ROUTE PARAMETER NAME MUST MATCH `mount()` PARAMETER NAME EXACTLY** — Livewire binds route parameters to `mount()` by NAME, not position. A route defined as `Route::get('/plans/{plan}/edit', ...)` will NEVER populate a `mount(?int $planId = null)` parameter — Laravel silently passes `null` since `plan` ≠ `planId`, with no error thrown. This caused Plan edit to silently behave like Create (bug found and fixed in Phase 9/10 boundary). Whenever a Livewire full-page component's edit route "doesn't load existing data," check this FIRST before assuming the component's own logic is wrong.
+39. **ALWAYS VERIFY `$fillable` WHEN ADDING NEW COLUMNS TO AN EXISTING MODEL** — Laravel's mass-assignment silently DROPS any column not listed in `$fillable` during `create()`/`update()` — no error, no exception, just silent data loss. This caused a real bug: `Tenant.php`'s `$fillable` was missing `billing_currency`, `detected_country`, and ALL SIX new domain columns (`subdomain`, `custom_domain`, `domain_verification_token`, `domain_verified_at`, `domain_last_checked_at`, `domain_status`) added in Phase 11 — Domain Settings showed "Success" toasts but nothing actually persisted, and fields went blank on every page refresh. Whenever a migration adds columns to an existing table, ALWAYS check the model's `$fillable` array in the same pass — don't assume it auto-updates.
+40. **WHITE-LABEL / TENANT-BRANDING VALUES MUST BE PASSED AS EXPLICIT PARAMETERS THROUGH THE FULL Job → Mailable → Blade CHAIN** — Mailables/Jobs are constructed with plain primitives (strings, bools), not model instances, so there's no way to "look up" white-label status inside a blade template unless the boolean was computed at the ORIGINAL dispatch call site (where `auth()->user()->tenant` or an equivalent tenant model is actually available) and threaded through as a new constructor parameter on both the Job and the Mailable. Pattern used throughout Phase 11: add `public readonly bool $whiteLabel = false` as the LAST constructor parameter (default value keeps it 100% backward-compatible with any other dispatch site calling the same Job), pass it through `handle()` into the Mailable's constructor, then in the blade template swap `Koordli` text/logo for the tenant's own name based on `{{ $whiteLabel ? $companyName : 'Koordli' }}`. Compute the boolean at the dispatch site via `app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label')`.
+41. **SPLIT KOORDLI-TO-TENANT EMAILS FROM TENANT-TO-CUSTOMER EMAILS WHEN APPLYING WHITE LABEL** — Not every email should respect the `white_label` flag. Emails Koordli sends TO the tenant about their own account (welcome, subscription activated/expired/reminder, verification code, staff/company internal notifications like form-submission-notification or contract-signed-notification) should ALWAYS show Koordli branding — the tenant IS Koordli's customer here, same as a Shopify merchant always sees "Shopify" in their own admin regardless of their storefront's white-label status. Only emails going to the TENANT'S OWN clients/vendors/guests/applicants (client-invite, staff-invite, vendor-invite, vendor-approval, vendor-application-received, vendor-assigned, vendor-contract, form-submission-confirmation, rsvp-confirmation, outstanding-reminder) should swap to the tenant's branding when `white_label` is enabled.
+42. **DOMAIN-RESOLVED TENANT (PRE-LOGIN) vs SESSION-RESOLVED TENANT (POST-LOGIN) ARE TWO DIFFERENT MECHANISMS FOR THE SAME GOAL** — Before a client/vendor logs in, the ONLY way to know which tenant a visitor belongs to is the URL itself (subdomain or custom domain) via the `tenant.byDomain` middleware populating `app('resolvedTenant')`. On the plain shared `koordli.com/client/login` URL with no subdomain, there is no way to know the tenant — branding correctly stays generic Koordli in that case. AFTER login, the tenant is always known directly from the authenticated user's own relationship (`auth('client')->user()->tenant` / `auth('vendor')->user()->tenant`) regardless of which URL was used to log in — this session-based lookup should be used for the post-login dashboard/sidebar, NOT `resolvedTenant`, since a client could have logged in via the generic URL yet still needs their tenant's branding on their own dashboard afterward. The `<x-ui.portal-logo>` component encapsulates this: accepts an explicit `:tenant="..."` prop for the post-login case, and falls back to `app('resolvedTenant')` only when no explicit tenant is passed (the pre-login case).
 
 ---
 
@@ -201,13 +206,13 @@ All registered in `config/auth.php` and `bootstrap/app.php` middleware aliases:
 Overview:   Dashboard
 Operations: Events, Tasks, Vendors, Applications, Budget, Contracts, Vendor Invoices
 Experience: Clients, Guests & RSVP, Runsheet
-Business:   Forms & Bookings, Billing, Staff, Settings
+Business:   Forms & Bookings, Billing, Domain Settings, Staff, Settings
 ```
 
 ## SIDEBAR NAVIGATION (platform)
 ```
 Overview:   Dashboard
-Management: Companies, Plans, Billing Config
+Management: Companies, Plans, Billing Config, Site Settings
 System:     Settings
 ```
 
@@ -233,10 +238,12 @@ System:     Settings
 ### Central Tables
 ```
 platform_users
-tenants                         ← country (ISO2), billing_currency, branding JSON, slug
+tenants                         ← country (ISO2), billing_currency, branding JSON, slug,
+                                   subdomain, custom_domain, domain_verification_token,
+                                   domain_verified_at, domain_last_checked_at, domain_status
 plans                           ← is_featured bool, annual_discount_percent, allowed_cycles JSON
 plan_prices                     ← currency, amount, billing_cycle, amount_with_charges, annual_discount_percent
-feature_flags
+feature_flags                   ← includes custom_subdomain, custom_domain, white_label (Phase 11)
 plan_features
 tenant_feature_overrides
 subscriptions                   ← expires_at, grace_until, billing_cycle, reminder_14_sent, reminder_3_sent
@@ -244,6 +251,8 @@ subscription_invoices           ← uuid, amount_ngn, exchange_rate, billing_cyc
 currency_settings
 gateway_charges                 ← gateway, region, percentage, fixed_fee, cap, absorb, is_active, description
 billing_settings                ← key/value config store (grace period, reminder days, API keys, enabled gateways)
+platform_settings               ← key/value store (site_name, site_tagline, site_favicon) — landing page branding,
+                                   editable at /platform/site-settings, cached via PlatformSetting::get()/set()
 email_verification_codes
 clients                         ← password_changed bool
 vendor_accounts                 ← password_changed bool, vendor_id FK, vendor_application_id FK
@@ -402,6 +411,11 @@ app/Livewire/Tenant/Contracts/ContractDetail.php        ← send (emails branded
 app/Livewire/Tenant/Invoices/InvoiceList.php             ← stats (total invoiced/paid/outstanding/overdue), filters
 app/Livewire/Tenant/Invoices/CreateInvoice.php           ← vendor/event/contract linking, amount+tax+discount breakdown
 app/Livewire/Tenant/Invoices/InvoiceDetail.php           ← record payments (multiple, partial), cancel, attachment/receipt uploads
+app/Livewire/Tenant/DomainSettings.php                   ← subdomain, custom domain, DNS instructions, verify now,
+                                                            feature-gated per capability (custom_subdomain/custom_domain/white_label)
+app/Livewire/Platform/SiteSettings.php                   ← site_name, site_tagline, favicon upload (landing page branding)
+app/Livewire/Public/LandingPage.php                      ← hero, feature mockups, live pricing from plans table,
+                                                            dark mode + scroll animations, fully responsive
 app/Livewire/Public/RsvpFormPage.php                    ← NOT RsvpForm (model name collision)
 app/Livewire/Public/RsvpEdit.php
 app/Livewire/Public/VendorRegister.php
@@ -480,6 +494,15 @@ app/Services/BillingService.php                         ← getExchangeRate(), c
                                                            initializeFlutterwavePayment(), activateSubscription(),
                                                            verifyPaystackPayment(), verifyFlutterwavePayment(),
                                                            processExpiredSubscriptions()
+app/Services/DomainVerificationService.php              ← generateVerificationToken(), verify() — checks CNAME
+                                                           (via dns_get_record DNS_CNAME) + TXT ownership record
+                                                           (_koordli-verify.{domain}), sets tenants.domain_status
+app/Http/Middleware/ResolveTenantByDomain.php           ← aliased 'tenant.byDomain'. Resolves tenant from incoming
+                                                           Host header (subdomain of app host, or verified custom
+                                                           domain) and populates app('resolvedTenant') +
+                                                           TenantContext::set(). No-ops entirely on the main app
+                                                           domain — existing session-based tenant.resolve middleware
+                                                           is untouched and still runs alongside it.
 ```
 
 ### API Controllers
@@ -502,6 +525,9 @@ app/Console/Commands/BackfillVendorInvoicesFromAssignments.php ← koordli:backf
                                                            amount_paid into proper VendorInvoice + VendorInvoicePayment
                                                            records (Phase 8.4 migration). Re-runnable, skips already-
                                                            converted assignments via whereDoesntHave('invoices')
+app/Console/Commands/RecheckTenantDomains.php           ← koordli:recheck-domains — daily 7am cron. Re-verifies
+                                                           every tenant with a custom_domain set, catches DNS
+                                                           breakage/misconfiguration after initial verification
 ```
 
 ### PDF Generation (Phase 8.3)
@@ -524,26 +550,31 @@ storage/fonts/                                          ← Satoshi-Regular/Bold
 ```
 SendVerificationCodeJob
 SendWelcomeEmailJob
-SendStaffInviteJob
-SendClientInviteJob
-SendVendorInviteJob
-SendVendorApprovalJob
-SendVendorApplicationReceivedJob
-SendVendorAssignedJob
-SendOutstandingReminderJob
-SendRsvpConfirmationJob                                 ← sends QR code SVG inline in email
-SendRsvpNotificationJob                                 ← notifies planner + client on each response
-SendFormSubmissionNotificationJob                       ← notifies tenant on booking/consultation submission
-SendFormSubmissionConfirmationJob                       ← confirms to guest on booking/consultation submission
-SendSubscriptionReminderJob                             ← 14-day and 3-day renewal reminder email
-SendSubscriptionExpiredJob                              ← sent when subscription/trial fully expires
-SendSubscriptionActivatedJob                            ← sent to TENANT on successful payment (receipt-style email)
-SendPlatformPaymentNotificationJob                      ← sent to PLATFORM OWNER (config('mail.from.address')) on any
-                                                           successful subscription payment — revenue notification
-SendVendorContractJob                                   ← emails branded contract PDF + e-signature link to vendor
-SendContractSignedNotificationJob                       ← notifies planner (contract creator) when vendor signs;
-                                                           subject/wording differs if fully executed vs vendor-only
+SendStaffInviteJob                                       ← white-label aware (whiteLabel bool, last param)
+SendClientInviteJob                                      ← white-label aware
+SendVendorInviteJob                                      ← white-label aware
+SendVendorApprovalJob                                    ← white-label aware
+SendVendorApplicationReceivedJob                         ← white-label aware
+SendVendorAssignedJob                                    ← white-label aware. Was DEAD CODE (Job+Mailable+blade
+                                                            existed, zero dispatch sites anywhere) until Phase 11 —
+                                                            now dispatched from VendorDetail::assignToEvent(), which
+                                                            also auto-creates a VendorAccount portal login on first
+                                                            assignment (mirrors the logic in VendorDetail::inviteVendor())
+SendOutstandingReminderJob                               ← white-label aware
+SendRsvpConfirmationJob                                 ← sends QR code SVG inline in email; white-label aware,
+                                                           gained new `companyName` (default 'Koordli') param
+SendRsvpNotificationJob                                 ← notifies planner + client on each response (NOT white-label gated — internal notification)
+SendFormSubmissionNotificationJob                       ← notifies tenant on booking/consultation submission (NOT white-label gated)
+SendFormSubmissionConfirmationJob                       ← confirms to guest on booking/consultation submission — white-label aware
+SendSubscriptionReminderJob                             ← 14-day and 3-day renewal reminder email (NOT white-label gated — Koordli-to-tenant)
+SendSubscriptionExpiredJob                              ← sent when subscription/trial fully expires (NOT white-label gated)
+SendSubscriptionActivatedJob                            ← sent to TENANT on successful payment (NOT white-label gated — Koordli-to-tenant)
+SendPlatformPaymentNotificationJob                      ← sent to PLATFORM OWNER (NOT white-label gated)
+SendVendorContractJob                                   ← emails branded contract PDF + e-signature link to vendor — white-label aware
+SendContractSignedNotificationJob                       ← notifies planner when vendor signs (NOT white-label gated — Koordli-to-tenant)
 ```
+
+**White-label gating rule (Rule 41):** only emails going to the TENANT'S OWN clients/vendors/guests/applicants are white-label aware. Emails Koordli sends to the tenant about their own account always show Koordli branding.
 
 ### Email Views
 ```
@@ -643,6 +674,16 @@ resources/views/livewire/vendor/availability.blade.php ← vendor-facing, upcomi
 
 ## ROUTES (complete current state)
 
+### Root / Public Marketing
+```
+/                                     → Public\LandingPage  (hero, live pricing from plans table, dark mode,
+                                                              scroll animations, mockups of actual app screens)
+/sitemap.xml                          → route closure, plain PHP-built XML string (NOT a .blade.php view —
+                                                              raw <?xml tag inside a .blade.php file causes
+                                                              IDE/compiler conflicts)
+/robots.txt                           → static file in public/, disallows /dashboard /platform /vendor /client /billing
+```
+
 ### Public
 ```
 /rsvp/{slug}                          → Public\RsvpFormPage
@@ -705,21 +746,26 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /invoices                             → Tenant\Invoices\InvoiceList
 /invoices/create                      → Tenant\Invoices\CreateInvoice
 /invoices/{uuid}                      → Tenant\Invoices\InvoiceDetail
+/domain-settings                      → Tenant\DomainSettings
 ```
 
-### Client Portal
+### Client Portal (login route wrapped in `tenant.byDomain` middleware — Phase 11)
 ```
-/client/login                         → Client\Auth\Login
+/client/login                         → Client\Auth\Login       (shows tenant logo/name if resolved via
+                                                                    subdomain/custom domain AND white_label
+                                                                    enabled; else Koordli branding)
 /client/onboarding                    → Client\Onboarding
-/client/dashboard                     → Client\Dashboard
+/client/dashboard                     → Client\Dashboard        (post-login, uses auth('client')->user()->tenant
+                                                                    directly — NOT resolvedTenant — works regardless
+                                                                    of which URL was used to log in)
 /client/logout (POST)
 ```
 
-### Vendor Portal
+### Vendor Portal (login route wrapped in `tenant.byDomain` middleware — Phase 11)
 ```
-/vendor/login                         → Vendor\Auth\Login
+/vendor/login                         → Vendor\Auth\Login       (same resolvedTenant branding logic as client login)
 /vendor/onboarding                    → Vendor\Onboarding
-/vendor/dashboard                     → Vendor\Dashboard
+/vendor/dashboard                     → Vendor\Dashboard        (post-login, uses auth('vendor')->user()->tenant directly)
 /vendor/profile                       → Vendor\Profile
 /vendor/runsheet                      → Vendor\VendorRunsheet
 /vendor/availability                  → Vendor\Availability
@@ -735,8 +781,12 @@ POST /api/consult/{token}/submit      → Api\ConsultationSubmissionController@s
 /platform/tenants/{tenant}/edit       → Platform\Tenants\CreateTenant
 /platform/plans                       → Platform\Plans\PlanList
 /platform/plans/create                → Platform\Plans\CreatePlan
-/platform/plans/{plan}/edit           → Platform\Plans\CreatePlan
+/platform/plans/{planId}/edit         → Platform\Plans\CreatePlan   ← param MUST be named {planId}, NOT {plan} —
+                                                                       see Rule 38 (route param must match mount()
+                                                                       param name exactly, or edit silently behaves
+                                                                       like create with no error thrown)
 /platform/billing                     → Platform\BillingConfig
+/platform/site-settings               → Platform\SiteSettings
 /platform/logout (POST)
 ```
 
@@ -1112,6 +1162,17 @@ CurrencyHelper::formatForPdf(1500000, 'NGN')   // → 'NGN 1,500,000.00'
 - `WithToast` trait: `toastSuccess()`, `toastError()`, `toastWarning()`
 - On public pages (no Livewire layout): use `KrdToast.success('msg')` directly
 
+### Portal Logo (`resources/views/components/ui/portal-logo.blade.php`) — Phase 11
+- Props: `:tenant` (optional, explicit model), `color` (light|dark|auto, same as `<x-ui.logo>`)
+- Renders in priority order: (1) if no explicit `:tenant` passed, falls back to `app('resolvedTenant')` if bound (domain-resolved, pre-login case); (2) if the resolved tenant has `white_label` enabled AND has uploaded a logo (`tenants.branding.logo`) → shows that image; (3) if `white_label` enabled but NO logo uploaded → shows tenant name as styled text; (4) otherwise (no tenant resolved, or `white_label` off) → falls back to `<x-ui.logo :color="$color" />` (the Koordli logo)
+- Used in: Client Portal sidebar (`:tenant="auth('client')->user()?->tenant"`), Vendor Portal sidebar (`:tenant="auth('vendor')->user()?->tenant"`), Client/Vendor login pages (no `:tenant` prop — relies on `resolvedTenant` from `tenant.byDomain` middleware)
+- Tenant's OWN dashboard (tenant-sidebar.blade.php) intentionally still uses plain `<x-ui.logo>` — NEVER swapped to portal-logo — since the tenant is Koordli's own customer and always sees Koordli branding in their own workspace (see Rule 41)
+
+### Signature Pad (`resources/views/components/ui/signature-pad.blade.php`) — Phase 8.3
+- Props: `wireModel` (Livewire property name to bind to), `label`
+- Draw (canvas, mouse/touch) or Type (styled script-font text input) toggle
+- Shared identically between planner-side contract signing modal and public vendor e-signature page
+
 ### Alpine Stores
 ```javascript
 Alpine.store('theme')           // dark mode
@@ -1253,6 +1314,84 @@ Two-column admin layouts (settings + sidebar-tips pattern) also need a mobile br
 
 ---
 
+## LANDING PAGE & PUBLIC MARKETING (Phase 10 — complete)
+
+### Key Decisions
+- Root `/` route changed from an auto-redirect to `tenant.login` → now serves the actual landing page. Login remains reachable at `/login`.
+- **Documentation site and Public API v1 explicitly deferred** — user chose to wait until the platform is fully feature-complete/stable before writing docs (easier to write accurately once, rather than repeatedly updating as things change). Only the pre-existing Formspree-style form/consultation endpoints exist; no general public API.
+- Pricing section pulls LIVE data from `plans`/`plan_prices` tables (same pattern as `/billing/upgrade`) — never hardcoded, respects `is_featured`, `allowed_cycles`, `annual_discount_percent`, and converts to visitor's likely currency via `CurrencyHelper::fromCountry()` + `BillingService::convertAmount()`.
+- **Feature mockups are NOT generic icons/stock illustrations** — each of the 8 core feature sections (Event Management, Client Portal, Bookings & Consultations, Vendor Management, Task Management, Runsheets, RSVP & QR Check-In, Budgets & Payments) has a hand-built mini mockup styled identically to the real app UI (same `krd-` colors/fonts/patterns), showing a realistic-looking screenshot-style preview rather than marketing iconography. User's explicit reasoning: "event planners buy software they can picture themselves using."
+- Dashboard mockup in the hero section: mini sidebar + stat cards + upcoming events list, all using fixed light-mode colors (`#fff`, `#1C1917`, etc.) regardless of the landing page's own dark/light toggle — since it represents the ACTUAL always-light-themed app UI, not themed marketing chrome. This was a bug initially (stat card numbers were invisible in landing-page dark mode because they inherited CSS custom properties) — fixed by hardcoding those specific mockup colors instead of using `var(--lp-text)` etc.
+
+### Design System (landing page has its OWN scoped CSS, prefixed `lp-`, separate from `krd-`)
+- CSS custom properties (`--lp-bg`, `--lp-text`, `--lp-accent`, etc.) swap via a `.dark` class for landing-page-specific dark/light toggle — persisted to `localStorage` under the SAME `krd-dark` key the rest of the app uses, so the preference carries over if the visitor later logs in
+- Billing cycle toggle (Monthly/Annual) is 100% Alpine (`x-data="{ cycle: 'monthly' }"` on the outer page wrapper) — instant, zero server round trip; the Livewire component preloads BOTH monthly and annual pricing data upfront so both are available client-side immediately
+- Scroll animations: single `IntersectionObserver` in the root `x-data.init()`, adds `.lp-visible` class to any `.lp-animate`/`.lp-animate-left`/`.lp-animate-right` element once it enters viewport — fires once per element (no infinite/looping re-triggering)
+- Final CTA section is full-bleed (`.lp-final-cta-outer` spans 100% viewport width outside the `.lp-container` max-width wrapper) with inner content centered and max-width constrained — this was a specific fix requested (initially the black background was only as wide as the container, not the full page)
+- "How It Works" flow steps wrap onto multiple lines on narrow screens (`flex-wrap: wrap`) rather than horizontally scrolling — an earlier version used `overflow-x: auto` which produced an unwanted visible scrollbar, fixed on request
+- Fully responsive from header to footer: nav links hide on mobile (hamburger not built, just hidden — acceptable per user), hero CTAs stack full-width, all 8 feature blocks collapse to single column under 900px, dashboard mockup sidebar hides on narrow screens (main content only), pricing/problem grids collapse to single column under 420px
+
+### Site Settings (Platform-controlled, `/platform/site-settings`)
+- `PlatformSetting` model (key/value store, cached) — `site_name`, `site_tagline`, `site_favicon`
+- Favicon uploadable, falls back to `public/images/logoonwhite.png` if none set
+- `resources/views/partials/favicon.blade.php` — shared include used in `layouts/auth.blade.php`, `layouts/tenant.blade.php`, `layouts/landing.blade.php`
+
+### SEO (basic — no dedicated documentation/structured-data phase yet)
+- Meta tags (title, description, OG, Twitter card) on `layouts/landing.blade.php`
+- `robots.txt` — static file, disallows dashboard/platform/vendor/client/billing paths
+- `sitemap.xml` — built as a raw PHP string directly inside the route closure (`routes/web.php`), NOT a `.blade.php` view file — a literal `<?xml` tag inside a `.blade.php` file causes IDE/Blade-compiler red-squiggle conflicts; building the XML string in plain PHP inside the closure avoids the file-type conflict entirely
+
+---
+
+## DOMAIN MAPPING & WHITE LABEL ARCHITECTURE (Phase 11 — complete)
+
+### Product Direction (locked in)
+- **Feature gating integrates with the EXISTING feature flag system** — deliberately did NOT create dedicated `plans` table columns for domain/white-label capability. Three new feature flag keys added: `custom_subdomain` (new), `custom_domain` and `white_label` (both already existed in `feature_flags` from earlier seeding). All three managed through the pre-existing `feature_flags` / `plan_features` / `tenant_feature_overrides` / `FeatureGateService::canAccess()` — zero parallel/duplicate feature-management system.
+- **The three capabilities are fully independent** (Option A, not tiered/cumulative) — platform owner can enable ANY combination per plan (e.g. Plan A: subdomain only; Plan B: subdomain + custom domain, no white label; Plan C: all three). Nothing hardcodes which plan gets which capability.
+- **Every tenant gets an auto-assigned subdomain matching their slug at registration** (`TenantService::create()` sets `subdomain = $slug` and `domain_status = 'verified'` immediately — no DNS setup needed for subdomains since they're all under the app's own domain).
+- **Domain verification is BOTH manual + scheduled**: tenant clicks "Verify Now" for immediate feedback (`DomainVerificationService::verify()` checks a CNAME record AND a TXT ownership-verification record via `dns_get_record()`), AND `koordli:recheck-domains` runs daily to catch DNS breakage/misconfiguration after the fact.
+- **Tenant resolution architecture**: every incoming request determines the active tenant from EITHER the platform subdomain OR a verified custom domain — the rest of the app is unaware of HOW the tenant was identified. `ResolveTenantByDomain` middleware (aliased `tenant.byDomain`) populates `app('resolvedTenant')` + `TenantContext::set()`; no-ops entirely when the request is on the main app domain (existing session-based `tenant.resolve` middleware is completely untouched and still handles that case).
+
+### White Label — Scope Boundary (important nuance, decided mid-build)
+**The tenant ALWAYS sees Koordli branding in their own dashboard/sidebar/login — this was intentional and confirmed, not a limitation.** Reasoning (mirrors Shopify/Notion/Squarespace-style B2B SaaS): the tenant IS Koordli's customer. Just like a Shopify merchant always sees "Shopify" in their own admin panel even with a fully white-labeled storefront, a Koordli tenant seeing "Koordli" in their own workspace doesn't undermine anything and keeps Koordli's brand visible to the actual decision-maker.
+
+**White label ONLY applies to surfaces the tenant's OWN clients/vendors see:**
+1. Client Portal (post-login dashboard/sidebar)
+2. Vendor Portal (post-login dashboard/sidebar)
+3. Client/Vendor LOGIN pages — but ONLY when the visitor arrived via a resolved subdomain/custom domain (see below)
+4. Public pages: RSVP, booking form, consultation form, RSVP edit, RSVP ticket PDF
+5. 10 customer-facing emails (see Jobs section above for the full list + Rule 41's Group A/B split)
+
+**Pre-login vs post-login tenant resolution (Rule 42) — this is the key architectural insight of this phase:**
+- On the generic shared URL (`koordli.com/client/login`, no subdomain) → genuinely no way to know the tenant before authentication → Koordli branding shows, correctly, since there's no signal at all
+- On a domain-resolved URL (`haywhy.koordli.com/client/login` or `app.haywhyevents.com/client/login`) → `tenant.byDomain` middleware (now also wired onto the client/vendor login route groups, not just the main tenant routes) resolves the tenant BEFORE login even happens → tenant's own logo/name shows if `white_label` is enabled on their plan
+- AFTER login (regardless of which URL was used to arrive) → tenant is known directly from the authenticated user's own relationship (`auth('client')->user()->tenant` / `auth('vendor')->user()->tenant`) — this is DIFFERENT from `resolvedTenant` and is what the post-login dashboard/sidebar uses
+- This ties Phase 11's two halves together meaningfully: setting up a subdomain/custom domain isn't just cosmetic, it's what actually UNLOCKS white-labeled client/vendor login screens — giving tenants a concrete functional reason to configure their domain
+
+**Fallback chain when white_label is on but no logo has been uploaded:** tenant's own NAME shown as styled text (not blank, not broken layout) — e.g. "Haywhy Events" in place of a logo image. `<x-ui.portal-logo>` component encapsulates the entire priority chain (see Reusable UI Components section above).
+
+**Logos deliberately NOT added to transactional emails** — user explicitly decided this was unnecessary complexity/risk (email client image-blocking, inline CID attachment complexity) for the value gained; text-based branding swap (`{{ $whiteLabel ? $companyName : 'Koordli' }}`) was judged sufficient for emails.
+
+### Domain Settings Page (`/domain-settings`, tenant-facing)
+Three cards, each independently feature-gated:
+1. **Platform Subdomain** — always-on for tenants whose plan includes `custom_subdomain`; instant, no DNS/verification needed
+2. **Custom Domain** — input + Add/Update/Remove/Verify Now buttons; shows DNS Records Required box (CNAME + TXT ownership record) once a domain is added; shows `domain_status` badge (Verified/Pending/Failed), last-checked timestamp, verified-since date
+3. **White Label Branding** — read-only status card explaining what gets branded, "Upgrade to unlock" CTA if not on tenant's plan
+Two-column layout (form left, "How domains work" + Status Guide + conditional DNS-propagation-wait tip on the right) — matches the established `krd-` two-column admin pattern.
+
+### Known Bugs Fixed During This Phase (see Rules 38, 39)
+- **Plan edit route parameter mismatch** — `Route::get('/plans/{plan}/edit', ...)` vs `mount(?int $planId)` — Livewire silently passed `null`, causing Edit to behave exactly like Create with zero errors thrown. Fixed by renaming the route parameter to `{planId}`.
+- **`Tenant` model's incomplete `$fillable`** — was missing `billing_currency`, `detected_country`, AND all six new domain columns. Every `update()` silently dropped those fields — Domain Settings showed "Success" toasts but nothing persisted, fields went blank on refresh. This is a DIFFERENT and easy-to-miss failure mode from the route-param bug above (no error either way) — always double check `$fillable` immediately after any migration adds columns to an existing table.
+- **`SendVendorAssignedJob` was dead code** — Job, Mailable, and blade template all existed and were fully built, but had ZERO dispatch call sites anywhere in the codebase (confirmed via full-app grep). Wired up during this phase inside `VendorDetail::assignToEvent()`, which now also auto-creates a `VendorAccount` portal login on first assignment (mirroring the existing logic in `VendorDetail::inviteVendor()`), and correctly threads the `whiteLabel` boolean through.
+
+### Production Infrastructure (documented separately, not yet actioned — no server purchased yet)
+Full standalone guide delivered as `KOORDLI_PRODUCTION_TRAEFIK_SETUP.md` covering: Cloudflare DNS-01 wildcard SSL setup for `*.koordli.com`, a second HTTP-01 certificate resolver specifically for tenant custom domains (since Cloudflare's API only manages Koordli's own zone, not tenant-owned domains), complete `docker-compose.yml` with both Traefik routers (priority-ordered: exact `koordli.com`/`*.koordli.com` match first via wildcard cert, catch-all fallback for anything else via on-demand HTTP-01 cert), and a reminder that `koordli:process-subscriptions` AND `koordli:recheck-domains` both require a real production cron entry (`* * * * * php artisan schedule:run`) — neither runs automatically, including on the current Windows local dev machine.
+
+### Local Development Testing (optional, not required)
+Windows hosts file (`C:\Windows\System32\drivers\etc\hosts`) can simulate subdomains/custom domains for local testing: add fake `.test` domain entries pointing to `127.0.0.1`, set `APP_URL` accordingly, run `php artisan serve --host=koordli.test`. Custom domain DNS verification can't work against fake local domains (no real DNS), so `domain_status` can be force-set to `verified` via tinker for local testing purposes only. User opted to skip this and verify for real once a server is purchased instead.
+
+---
+
 ## WHAT HAS BEEN BUILT — COMPLETE
 
 ### Phase 1 — Foundation ✅
@@ -1370,6 +1509,28 @@ Two-column admin layouts (settings + sidebar-tips pattern) also need a mobile br
 - **8.5 Marketplace-ready schema**: dormant `is_public`/`slug`/`city`/`country`/`portfolio_images` fields on `vendors`,
   zero UI, zero behavior change — pure future-proofing
 
+### Phase 10 — Public Facing & Landing Page ✅
+- Root `/` serves a full landing page (was previously an auto-redirect to tenant login)
+- Live pricing pulled from `plans`/`plan_prices`, same conversion logic as `/billing/upgrade`
+- 8 feature sections each with a hand-built mockup styled to match the real app UI (not generic icons/stock art)
+- Dark mode toggle (own `lp-` prefixed CSS vars, separate from `krd-`), persists to same `localStorage` key as rest of app
+- Instant Alpine-only billing cycle toggle, scroll-triggered fade/slide animations (fire once, no looping), full mobile responsiveness header-to-footer
+- Platform-controlled Site Settings (`/platform/site-settings`): site name, tagline, favicon — used across landing page + shared favicon partial
+- Basic SEO: meta tags, `robots.txt`, `sitemap.xml` (built as raw PHP string in the route closure, not a Blade view)
+- **Explicitly deferred**: full documentation site, public API v1 — user chose to wait until the platform is fully feature-complete before writing docs
+
+### Phase 11 — Domain Mapping & White Labeling ✅
+- Three new/existing feature flags (`custom_subdomain` new, `custom_domain`/`white_label` pre-existing) wired through the EXISTING `feature_flags`/`plan_features`/`tenant_feature_overrides`/`FeatureGateService` system — zero duplicate feature-management logic
+- Fully independent per-plan toggles — platform owner can enable any combination for any plan
+- Every tenant auto-assigned a subdomain matching their slug at registration, instantly verified (no DNS needed)
+- Tenant-facing Domain Settings page (`/domain-settings`): subdomain, custom domain + DNS instructions (CNAME + TXT), manual "Verify Now" + daily scheduled re-verification (`koordli:recheck-domains`), white label status card
+- `ResolveTenantByDomain` middleware (`tenant.byDomain`) — resolves tenant from Host header (subdomain or verified custom domain), populates `app('resolvedTenant')`, no-ops on the main app domain, completely independent of existing session-based tenant resolution
+- White label scope: tenant ALWAYS sees Koordli branding in their own dashboard (deliberate, matches Shopify/Notion-style SaaS convention); only client/vendor-facing surfaces respect `white_label` — Client/Vendor portals (post-login, via `auth()->user()->tenant`), Client/Vendor login pages (pre-login, via domain-resolved `resolvedTenant` — ONLY works when arriving via subdomain/custom domain, generic shared URL stays Koordli-branded), 5 public pages (RSVP, booking, consultation, RSVP edit, ticket PDF), and 10 customer-facing emails
+- `<x-ui.portal-logo>` reusable component encapsulates the full fallback chain: explicit tenant → resolvedTenant → tenant's uploaded logo → tenant's name as text → Koordli logo
+- Logos deliberately NOT added to emails (text-only branding swap) — explicit user decision to avoid email client image-blocking complexity for the value gained
+- Production Traefik/SSL setup fully documented in a separate reference file (`KOORDLI_PRODUCTION_TRAEFIK_SETUP.md`) — Cloudflare wildcard DNS-01 + on-demand HTTP-01 for tenant custom domains, complete docker-compose config, troubleshooting table — not yet actioned since no server purchased
+- 3 real bugs found and fixed during this phase: Plan edit route parameter mismatch (Rule 38), `Tenant` model's incomplete `$fillable` silently dropping several columns (Rule 39), and a previously-dead `SendVendorAssignedJob` with zero dispatch sites, now wired into `VendorDetail::assignToEvent()`
+
 ---
 
 ## PENDING
@@ -1378,17 +1539,16 @@ Two-column admin layouts (settings + sidebar-tips pattern) also need a mobile br
 - Test Flutterwave checkout flow end-to-end (only Paystack tested so far)
 - Confirm daily `koordli:process-subscriptions` cron is actually registered on production server (Windows dev environment doesn't run cron automatically)
 
-### Phase 10 — Public Facing & Infrastructure
-- Landing page (SEO optimized)
-- API v1 (public)
-- SEO: meta tags, sitemap, structured data
+### Future — Documentation & Public API (deferred by choice)
+- Full documentation site (Tailwind/Laravel-docs-style: sidebar nav, search, "on this page" TOC) — deliberately deferred until the platform is fully feature-complete, to avoid writing docs that immediately go stale
+- Public API v1 — no work started; only the pre-existing Formspree-style form/consultation submission endpoints exist today
 
-### Phase 11 — Custom Domains & White Labeling
-- Custom domain per tenant (CNAME → app.koordli.com)
-- DNS verification + auto SSL via Let's Encrypt
-- White label tiers: Starter (koordli subdomain), Pro (custom domain + tenant logo), Enterprise (full white label)
-- `tenants.subdomain`, `tenants.domain`, `tenants.white_label_enabled` columns needed
-- Logo/branding shown conditionally based on plan
+### Production Deployment (infrastructure, not code — see `KOORDLI_PRODUCTION_TRAEFIK_SETUP.md`)
+- Purchase VPS + `koordli.com` domain
+- Cloudflare DNS setup for wildcard SSL (DNS-01 challenge)
+- Deploy Docker + Traefik per the documented config
+- Set up production cron for `php artisan schedule:run` (required for BOTH `koordli:process-subscriptions` and `koordli:recheck-domains` — neither runs without it)
+- Update `.env` `APP_URL` to the real production domain
 
 ---
 
@@ -1435,14 +1595,16 @@ MAIL_FROM_NAME=Koordli
 ---
 
 ## INFRASTRUCTURE
-- Hostinger VPS
-- Docker + Traefik for SSL
+- Hostinger VPS (not yet purchased — still in local development)
+- Docker + Traefik for SSL — full production config documented separately in `KOORDLI_PRODUCTION_TRAEFIK_SETUP.md`
+  (Cloudflare DNS-01 wildcard cert for `*.koordli.com` + on-demand HTTP-01 cert resolver for tenant custom domains)
 - n8n_default bridge network
 - Self-hosted n8n at bezalelkoncept.site
-- Storage link: `php artisan storage:link` — required for RSVP cover images + form hero images
+- Storage link: `php artisan storage:link` — required for RSVP cover images, form hero images, contract signed uploads/attachments, invoice attachments/receipts, platform favicon
 - `LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK=local` in `.env`
 - `SESSION_COOKIE=koordli_session` in `.env`
-- **Production TODO**: ensure the Laravel scheduler is actually running via a real cron entry (`* * * * * php artisan schedule:run`) since `koordli:process-subscriptions` depends on it — this doesn't run automatically on the Windows dev machine
+- **Production TODO**: ensure the Laravel scheduler is actually running via a real cron entry (`* * * * * php artisan schedule:run`) — required for BOTH `koordli:process-subscriptions` AND `koordli:recheck-domains`; neither runs automatically, including on the current Windows dev machine
+- **Local domain testing (optional, not required)**: Windows hosts file entries + `php artisan serve --host=koordli.test` can simulate subdomains; custom domain DNS verification can't work against fake local domains, so `domain_status` can be force-set via tinker for local-only testing. User opted to skip this and verify for real once a server is purchased.
 
 ---
 
@@ -1455,6 +1617,7 @@ MAIL_FROM_NAME=Koordli
 5. Always give complete ready-to-paste files
 
 **Key URLs:**
+- Landing page: `http://127.0.0.1:8000/`
 - Registration: `http://127.0.0.1:8000/register`
 - Tenant login: `http://127.0.0.1:8000/login`
 - Platform login: `http://127.0.0.1:8000/platform/login`
@@ -1462,9 +1625,17 @@ MAIL_FROM_NAME=Koordli
 - RSVP (public): `http://127.0.0.1:8000/rsvp/{slug}`
 - Booking form (public): `http://127.0.0.1:8000/book/{slug}`
 - Consultation form (public): `http://127.0.0.1:8000/consult/{slug}`
+- Contract e-signature (public): `http://127.0.0.1:8000/contracts/sign/{token}`
 - Client login: `http://127.0.0.1:8000/client/login`
 - Vendor login: `http://127.0.0.1:8000/vendor/login`
 - Vendor runsheet: `http://127.0.0.1:8000/vendor/runsheet`
+- Vendor availability: `http://127.0.0.1:8000/vendor/availability`
 - Tenant billing: `http://127.0.0.1:8000/billing`
 - Tenant upgrade: `http://127.0.0.1:8000/billing/upgrade`
+- Tenant contracts: `http://127.0.0.1:8000/contracts`
+- Tenant invoices: `http://127.0.0.1:8000/invoices`
+- Tenant domain settings: `http://127.0.0.1:8000/domain-settings`
 - Platform billing config: `http://127.0.0.1:8000/platform/billing`
+- Platform site settings: `http://127.0.0.1:8000/platform/site-settings`
+
+**Separate reference document:** `KOORDLI_PRODUCTION_TRAEFIK_SETUP.md` — full production domain/SSL deployment guide, save for when a VPS is purchased.

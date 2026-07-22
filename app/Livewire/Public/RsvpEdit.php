@@ -132,6 +132,7 @@ class RsvpEdit extends Component
 
         // Send updated confirmation to guest
         if ($this->respondent_email) {
+            $__tenant = \App\Models\Central\Tenant::find($this->response->tenant_id);
             SendRsvpConfirmationJob::dispatch(
                 $this->respondent_email,
                 $this->respondent_name,
@@ -142,6 +143,8 @@ class RsvpEdit extends Component
                 $qrToken ?? '',
                 $this->response->editUrl(),
                 $newStatus === 'confirmed' ? $this->plus_one_count : 0,
+                $__tenant?->name ?? 'Koordli',
+                $__tenant ? app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label') : false,
             );
         }
 

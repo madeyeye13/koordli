@@ -20,9 +20,12 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/tenants/{tenant}/edit', \App\Livewire\Platform\Tenants\CreateTenant::class)->name('tenants.edit');
         Route::get('/plans', \App\Livewire\Platform\Plans\PlanList::class)->name('plans');
         Route::get('/plans/create', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.create');
-        Route::get('/plans/{plan}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
+        Route::get('/plans/{planId}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
         Route::get('/billing', \App\Livewire\Platform\BillingConfig::class)->name('billing');
         Route::get('/site-settings', \App\Livewire\Platform\SiteSettings::class)->name('site-settings');
+        Route::get('/support/faqs', \App\Livewire\Platform\Support\FaqList::class)->name('support.faqs');
+        Route::get('/support/tickets', \App\Livewire\Platform\Support\TicketInbox::class)->name('support.tickets');
+        Route::get('/support/tickets/{uuid}', \App\Livewire\Platform\Support\PlatformTicketDetail::class)->name('support.tickets.show');
         Route::post('/logout', function () {
             Auth::guard('platform')->logout();
             return redirect()->route('platform.login');
@@ -38,7 +41,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
 */
 Route::prefix('client')->name('client.')->group(function () {
 
-    Route::middleware('guest:client')->group(function () {
+    Route::middleware(['tenant.byDomain', 'guest:client'])->group(function () {
         Route::get('/login', \App\Livewire\Client\Auth\Login::class)->name('login');
     });
 
@@ -64,7 +67,7 @@ Route::prefix('client')->name('client.')->group(function () {
 */
 Route::prefix('vendor')->name('vendor.')->group(function () {
 
-    Route::middleware('guest:vendor')->group(function () {
+    Route::middleware(['tenant.byDomain', 'guest:vendor'])->group(function () {
         Route::get('/login', \App\Livewire\Vendor\Auth\Login::class)->name('login');
     });
 
@@ -124,7 +127,7 @@ Route::get('/contracts/sign/{token}', \App\Livewire\Public\VendorContractSign::c
 | Tenant Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['tenant.resolve'])->group(function () {
+Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
 
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', \App\Livewire\Tenant\Auth\Login::class)->name('tenant.login');
@@ -190,6 +193,15 @@ Route::middleware(['tenant.resolve'])->group(function () {
         Route::get('/invoices', \App\Livewire\Tenant\Invoices\InvoiceList::class)->name('tenant.invoices');
         Route::get('/invoices/create', \App\Livewire\Tenant\Invoices\CreateInvoice::class)->name('tenant.invoices.create');
         Route::get('/invoices/{uuid}', \App\Livewire\Tenant\Invoices\InvoiceDetail::class)->name('tenant.invoices.show');
+
+        Route::get('/domain-settings', \App\Livewire\Tenant\DomainSettings::class)->name('tenant.domain-settings');
+
+        // Support
+        Route::get('/support/tickets', \App\Livewire\Tenant\Support\TicketList::class)->name('tenant.support.tickets');
+        Route::get('/support/tickets/create', \App\Livewire\Tenant\Support\CreateTicket::class)->name('tenant.support.tickets.create');
+        Route::get('/support/tickets/{uuid}', \App\Livewire\Tenant\Support\TicketDetail::class)->name('tenant.support.tickets.show');
+
+        Route::get('/support/chat', \App\Livewire\Tenant\Support\ChatBot::class)->name('tenant.support.chat');
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');
@@ -201,4 +213,8 @@ Route::middleware(['tenant.resolve'])->group(function () {
 | Root
 |--------------------------------------------------------------------------
 */
-// Route::get('/', \App\Livewire\Public\LandingPage::class)->name('landing');
+Route::get('/', \App\Livewire\Public\LandingPage::class)->name('landing');
+
+Route::get('/sitemap.xml', function () {
+    return response()->view('sitemap')->header('Content-Type', 'text/xml');
+});

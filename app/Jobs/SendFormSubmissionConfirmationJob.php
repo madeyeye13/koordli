@@ -29,6 +29,7 @@ class SendFormSubmissionConfirmationJob implements ShouldQueue
         public readonly ?string $consultationType = null,
         public readonly ?string $location = null,
         public readonly ?string $meetingLink = null,
+        public readonly bool    $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -47,6 +48,7 @@ class SendFormSubmissionConfirmationJob implements ShouldQueue
                 $this->consultationType,
                 $this->location,
                 $this->meetingLink,
+                $this->whiteLabel,
             )
         );
     }

@@ -64,6 +64,26 @@
         </div>
 
         <div class="krd-nav-section">
+            <div class="krd-nav-label">Support</div>
+            <a href="{{ route('platform.support.tickets') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.support.tickets*') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                Support Tickets
+            </a>
+            <a href="{{ route('platform.support.faqs') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.support.faqs') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                FAQ Knowledge Base
+            </a>
+        </div>
+
+        <div class="krd-nav-section">
             <div class="krd-nav-label">System</div>
             <a href="#" class="krd-nav-item">
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

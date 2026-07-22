@@ -110,6 +110,8 @@ class BookingForm extends Component
                 $tenant?->name ?? 'The organiser',
                 $this->form->tenant_email ?? $plannerUser?->email ?? '',
                 $this->form->tenant_phone,
+                null, null, null, null, null,
+                $tenant ? app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label') : false,
             );
         }
 

@@ -1,7 +1,7 @@
 <div style="display: flex; flex-direction: column; height: 100%;">
 
     <div style="padding: 20px 16px; border-bottom: 1px solid #E7E5E4; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
-        <x-ui.logo color="auto" />
+        <x-ui.portal-logo :tenant="auth('vendor')->user()?->tenant" color="auto" />
         <button class="krd-mobile-only" x-on:click="sidebarOpen = false"
             style="background:none;border:none;cursor:pointer;color:#78716C;padding:4px;display:flex;align-items:center;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

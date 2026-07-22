@@ -20,6 +20,7 @@ class SendStaffInviteJob implements ShouldQueue
         public string $tempPassword,
         public string $companyName,
         public string $inviterName,
+        public bool   $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -30,6 +31,7 @@ class SendStaffInviteJob implements ShouldQueue
             tempPassword: $this->tempPassword,
             companyName:  $this->companyName,
             inviterName:  $this->inviterName,
+            whiteLabel:   $this->whiteLabel,
         ));
     }
 }

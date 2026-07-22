@@ -21,6 +21,7 @@ class SendVendorApplicationReceivedJob implements ShouldQueue
         public readonly string $vendorName,
         public readonly string $businessName,
         public readonly string $companyName,
+        public readonly bool   $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -31,6 +32,7 @@ class SendVendorApplicationReceivedJob implements ShouldQueue
                 $this->vendorName,
                 $this->businessName,
                 $this->companyName,
+                $this->whiteLabel,
             )
         );
     }

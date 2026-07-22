@@ -42,7 +42,13 @@
     <div class="card">
         <div class="header">
             <div class="header-circle"></div>
-            <div class="logo">Koord<span>li</span></div>
+            <div class="logo">
+                @if($whiteLabel)
+                    {{ $companyName }}
+                @else
+                    Koord<span>li</span>
+                @endif
+            </div>
         </div>
 
         <div class="alert-banner">
@@ -84,14 +90,14 @@
             </p>
 
             <div class="note">
-                This reminder was sent by <strong>{{ $companyName }}</strong> via Koordli.
+                This reminder was sent by <strong>{{ $companyName }}</strong>{{ $whiteLabel ? '' : ' via Koordli' }}.
                 If you believe this was sent in error, please contact {{ $companyName }} directly.
             </div>
         </div>
 
         <div class="footer">
             <div class="footer-text">
-                © {{ date('Y') }} Koordli · Event Operations Platform<br>
+                © {{ date('Y') }} {{ $whiteLabel ? $companyName : 'Koordli · Event Operations Platform' }}<br>
                 Sent on behalf of {{ $companyName }}
             </div>
         </div>

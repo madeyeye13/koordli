@@ -2,7 +2,7 @@
 
     {{-- Logo + Close --}}
     <div style="padding: 20px 16px; border-bottom: 1px solid #E7E5E4; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
-        <x-ui.logo color="auto" />
+        <x-ui.portal-logo :tenant="auth('client')->user()?->tenant" color="auto" />
         <button
             class="krd-mobile-only"
             x-on:click="sidebarOpen = false"

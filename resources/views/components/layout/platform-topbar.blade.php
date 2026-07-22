@@ -25,6 +25,7 @@
 
     {{-- Right --}}
     <div style="display: flex; align-items: center; gap: 12px;">
+        <livewire:platform.support.agent-status />
         {{-- Dark mode toggle --}}
         <button
             x-on:click="$store.theme.toggle()"

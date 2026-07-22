@@ -200,8 +200,14 @@
         </div>
         @endif
 
+        @php
+            $__tenant = \App\Models\Central\Tenant::find($response->rsvpForm->tenant_id);
+            $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+        @endphp
+        @if(!$__whiteLabel)
         <div style="text-align:center;margin-top:32px;font-size:12px;color:#A8A29E;font-family:'Spline Sans',sans-serif;">
             Powered by <a href="/" style="color:#7C3AED;text-decoration:none;">Koordli</a>
         </div>
+        @endif
     </div>
 </div>

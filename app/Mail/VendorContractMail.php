@@ -20,6 +20,7 @@ class VendorContractMail extends Mailable
         public readonly string $companyName,
         public readonly string $pdfPath,
         public readonly string $viewUrl,
+        public readonly bool   $whiteLabel = false,
     ) {}
 
     public function envelope(): Envelope

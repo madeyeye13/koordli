@@ -74,8 +74,12 @@
             </div>
         </div>
 
+        @php
+            $__tenant = \App\Models\Central\Tenant::find($event->tenant_id);
+            $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+        @endphp
         <div class="ticket-footer">
-            Present this QR code at the event entrance · Powered by Koordli
+            Present this QR code at the event entrance{{ !$__whiteLabel ? ' · Powered by Koordli' : '' }}
         </div>
     </div>
 

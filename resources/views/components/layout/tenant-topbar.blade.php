@@ -20,8 +20,9 @@
         </div>
     </div>
 
-    {{-- Right --}}
     <div style="display: flex; align-items: center; gap: 12px;">
+
+        <livewire:tenant.support.help-widget />
 
         {{-- Dark mode toggle --}}
         <button

@@ -18,8 +18,9 @@ class ClientInviteMail extends Mailable
         public readonly string $password,
         public readonly string $companyName,
         public readonly string $eventName,
+        public readonly bool   $whiteLabel = false,
     ) {}
-
+    
     public function envelope(): Envelope
     {
         return new Envelope(

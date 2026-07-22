@@ -78,7 +78,7 @@
                 <div class="invite-icon">🎉</div>
                 <div class="invite-text">
                     <div class="invite-text-title">You've been invited to join a workspace</div>
-                    <div class="invite-text-sub">{{ $inviterName }} is waiting for you on Koordli</div>
+                    <div class="invite-text-sub">{{ $inviterName }} is waiting for you on {{ $whiteLabel ? $companyName : 'Koordli' }}</div>
                 </div>
             </div>
 
@@ -87,7 +87,7 @@
                 <div class="greeting">Welcome, {{ $staffName }}!</div>
                 <p class="text">
                     <strong>{{ $inviterName }}</strong> has added you to the
-                    <strong>{{ $companyName }}</strong> workspace on Koordli.
+                    <strong>{{ $companyName }}</strong> workspace{{ $whiteLabel ? '' : ' on Koordli' }}.
                     Use the credentials below to log in and get started.
                 </p>
 
@@ -157,10 +157,10 @@
 
             {{-- Footer --}}
             <div class="footer">
-                <div class="footer-brand">Koordli</div>
+                <div class="footer-brand">{{ $whiteLabel ? $companyName : 'Koordli' }}</div>
                 <div class="footer-text">
                     This email was sent to {{ $staffEmail }}.<br>
-                    © {{ date('Y') }} Koordli. All rights reserved.
+                    © {{ date('Y') }} {{ $whiteLabel ? $companyName : 'Koordli' }}. All rights reserved.
                 </div>
             </div>
 

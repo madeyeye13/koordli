@@ -34,8 +34,10 @@
     <div class="wrapper">
         <div class="card">
             <div class="header">
-                <div class="logo">Koordli</div>
+                <div class="logo">{{ $whiteLabel ? $companyName : 'Koordli' }}</div>
+                @if(!$whiteLabel)
                 <div class="logo-tag">Event Operations Platform</div>
+                @endif
             </div>
             <div class="approved-banner">
                 <span style="font-size:18px;">✅</span>
@@ -72,7 +74,7 @@
             <div class="footer">
                 <div class="footer-text">
                     This email was sent to {{ $vendorEmail }}.<br>
-                    © {{ date('Y') }} Koordli. All rights reserved.
+                    © {{ date('Y') }} {{ $whiteLabel ? $companyName : 'Koordli' }}. All rights reserved.
                 </div>
             </div>
         </div>

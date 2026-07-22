@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('koordli:process-subscriptions')->dailyAt('06:00');
+Schedule::command('koordli:recheck-domains')->dailyAt('07:00');

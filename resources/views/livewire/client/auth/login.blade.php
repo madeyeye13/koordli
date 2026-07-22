@@ -4,7 +4,7 @@
     <div class="krd-auth-panel">
 
         <div>
-            <x-ui.logo color="light" />
+            <x-ui.portal-logo color="light" />
         </div>
 
         <div style="max-width: 360px;">
@@ -45,7 +45,7 @@
 
             {{-- Mobile logo --}}
             <div class="krd-mobile-only" style="margin-bottom: 28px;">
-                <x-ui.logo color="dark" />
+                <x-ui.portal-logo color="dark" />
             </div>
 
             <div style="margin-bottom: 32px;">

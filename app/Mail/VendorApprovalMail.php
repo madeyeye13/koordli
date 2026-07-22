@@ -18,8 +18,9 @@ class VendorApprovalMail extends Mailable
         public readonly string $businessName,
         public readonly string $password,
         public readonly string $companyName,
+        public readonly bool   $whiteLabel = false,
     ) {}
-
+    
     public function envelope(): Envelope
     {
         return new Envelope(subject: "Your vendor application has been approved — {$this->companyName}");

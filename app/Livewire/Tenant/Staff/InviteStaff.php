@@ -92,8 +92,9 @@ class InviteStaff extends Component
             tempPassword: $this->password,
             companyName:  auth()->user()->tenant->name,
             inviterName:  auth()->user()->name,
+            whiteLabel:   app(\App\Services\FeatureGateService::class)->canAccess(auth()->user()->tenant, 'white_label'),
         );
-
+        
         $this->toastSuccess("{$this->name} has been invited. Login credentials sent to {$this->email}.");
         $this->redirect(route('tenant.staff'), navigate: true);
     }

@@ -1,7 +1,7 @@
 <div class="krd-auth-split">
 
     <div class="krd-auth-panel">
-        <div><x-ui.logo color="light" /></div>
+        <div><x-ui.portal-logo color="light" /></div>
         <div style="max-width: 360px;">
             <h1 style="font-size: 40px; font-weight: 700; color: #FAFAF9; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 16px;">
                 Your work,<br>
@@ -31,7 +31,7 @@
         <div style="width: 100%; max-width: 380px; padding: 32px 0;">
 
             <div class="krd-mobile-only" style="margin-bottom: 28px;">
-                <x-ui.logo color="dark" />
+                <x-ui.portal-logo color="dark" />
             </div>
 
             <div style="margin-bottom: 32px;">

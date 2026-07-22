@@ -28,4 +28,14 @@ class PlatformUser extends Authenticatable
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
     ];
+
+    public function supportAgent(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SupportAgent::class, 'platform_user_id');
+    }
+
+    public function isSupportAgent(): bool
+    {
+        return $this->supportAgent()->exists();
+    }
 }

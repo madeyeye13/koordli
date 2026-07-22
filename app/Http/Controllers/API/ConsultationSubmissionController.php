@@ -132,6 +132,7 @@ class ConsultationSubmissionController extends Controller
                 $consultationType,
                 $form->location,
                 $booking->meeting_link,
+                $tenant ? app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label') : false,
             );
         }
 

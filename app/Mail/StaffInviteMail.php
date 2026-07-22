@@ -18,6 +18,7 @@ class StaffInviteMail extends Mailable
         public string $tempPassword,
         public string $companyName,
         public string $inviterName,
+        public bool   $whiteLabel = false,
     ) {}
 
     public function envelope(): Envelope

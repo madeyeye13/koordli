@@ -124,6 +124,7 @@ class RsvpFormPage extends Component
         $eventDate = $event->date?->format('D, d M Y') ?? 'TBC';
 
         if ($this->respondent_email && $qrToken) {
+            $__tenant = \App\Models\Central\Tenant::find($this->rsvpForm->tenant_id);
             SendRsvpConfirmationJob::dispatch(
                 $this->respondent_email,
                 $this->respondent_name,
@@ -134,6 +135,8 @@ class RsvpFormPage extends Component
                 $qrToken,
                 $this->response->editUrl(),
                 $this->status === 'confirmed' ? $this->plus_one_count : 0,
+                $__tenant?->name ?? 'Koordli',
+                $__tenant ? app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label') : false,
             );
         }
 

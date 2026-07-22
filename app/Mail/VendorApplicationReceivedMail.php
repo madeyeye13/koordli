@@ -17,8 +17,9 @@ class VendorApplicationReceivedMail extends Mailable
         public readonly string $vendorName,
         public readonly string $businessName,
         public readonly string $companyName,
+        public readonly bool   $whiteLabel = false,
     ) {}
-
+    
     public function envelope(): Envelope
     {
         return new Envelope(subject: "Application received — {$this->companyName} vendor portal");

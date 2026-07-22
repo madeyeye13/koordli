@@ -26,6 +26,8 @@ class SendRsvpConfirmationJob implements ShouldQueue
         public readonly string $qrToken,
         public readonly string $editUrl,
         public readonly int    $plusOneCount,
+        public readonly string $companyName = 'Koordli',
+        public readonly bool   $whiteLabel  = false,
     ) {}
 
     public function handle(): void
@@ -41,6 +43,8 @@ class SendRsvpConfirmationJob implements ShouldQueue
                 $this->qrToken,
                 $this->editUrl,
                 $this->plusOneCount,
+                $this->companyName,
+                $this->whiteLabel,
             )
         );
     }

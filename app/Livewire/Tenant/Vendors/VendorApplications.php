@@ -96,6 +96,7 @@ class VendorApplications extends Component
             $application->business_name,
             $password,
             auth()->user()->tenant->name,
+            app(\App\Services\FeatureGateService::class)->canAccess(auth()->user()->tenant, 'white_label'),
         );
 
         $this->toastSuccess("{$application->business_name} approved and added to your vendor directory.");

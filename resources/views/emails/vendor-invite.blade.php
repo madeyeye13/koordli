@@ -32,14 +32,16 @@
     <div class="wrapper">
         <div class="card">
             <div class="header">
-                <div class="logo">Koordli</div>
+                <div class="logo">{{ $whiteLabel ? $companyName : 'Koordli' }}</div>
+                @if(!$whiteLabel)
                 <div class="logo-tag">Event Operations Platform</div>
+                @endif
             </div>
             <div class="body">
                 <div class="greeting">Hi {{ $vendorName }},</div>
                 <p class="text">
                     <strong>{{ $companyName }}</strong> has invited <strong>{{ $businessName }}</strong>
-                    to join their vendor portal on Koordli. Use the credentials below to log in and
+                    to join their vendor portal. Use the credentials below to log in and
                     view your assigned events, tasks, and payment status.
                 </p>
                 <div class="creds">
@@ -69,7 +71,7 @@
             <div class="footer">
                 <div class="footer-text">
                     This email was sent to {{ $vendorEmail }}.<br>
-                    © {{ date('Y') }} Koordli. All rights reserved.
+                    © {{ date('Y') }} {{ $whiteLabel ? $companyName : 'Koordli' }}. All rights reserved.
                 </div>
             </div>
         </div>

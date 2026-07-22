@@ -117,7 +117,9 @@ class VendorRegister extends Component
             $this->contact_name,
             $this->business_name,
             $this->tenant->name,
+            app(\App\Services\FeatureGateService::class)->canAccess($this->tenant, 'white_label'),
         );
+        
 
         $this->submitted = true;
         $this->error     = '';

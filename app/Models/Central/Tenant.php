@@ -17,10 +17,20 @@ class Tenant extends Model
         'plan_id',
         'branding',
         'country',
+        'billing_currency',
+        'detected_country',
+        'subdomain',
+        'custom_domain',
+        'domain_verification_token',
+        'domain_verified_at',
+        'domain_last_checked_at',
+        'domain_status',
     ];
 
     protected $casts = [
-        'branding' => 'array',
+        'branding'                => 'array',
+        'domain_verified_at'      => 'datetime',
+        'domain_last_checked_at'  => 'datetime',
     ];
 
     public function plan(): BelongsTo

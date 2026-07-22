@@ -73,6 +73,7 @@ class EventDetail extends Component
             $password,
             $tenant->name,
             $this->event->name,
+            app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label'),
         );
 
         $this->toastSuccess('Client invited successfully. Login credentials sent to ' . $this->event->client_email);

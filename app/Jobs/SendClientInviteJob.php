@@ -22,6 +22,7 @@ class SendClientInviteJob implements ShouldQueue
         public readonly string $password,
         public readonly string $companyName,
         public readonly string $eventName,
+        public readonly bool   $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -33,6 +34,7 @@ class SendClientInviteJob implements ShouldQueue
                 $this->password,
                 $this->companyName,
                 $this->eventName,
+                $this->whiteLabel,
             )
         );
     }

@@ -23,6 +23,7 @@ class SendOutstandingReminderJob implements ShouldQueue
         public string $amountPaid,
         public string $outstanding,
         public string $currency,
+        public bool   $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -36,6 +37,7 @@ class SendOutstandingReminderJob implements ShouldQueue
             amountPaid:   $this->amountPaid,
             outstanding:  $this->outstanding,
             currency:     $this->currency,
+            whiteLabel:   $this->whiteLabel,
         ));
     }
 }

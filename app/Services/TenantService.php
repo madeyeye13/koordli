@@ -22,14 +22,18 @@ class TenantService
             $plan = Plan::first();
 
             // 2. Create tenant
+            $slug = $this->generateSlug($data['name']);
+
             $tenant = Tenant::create([
                 'uuid'             => Str::uuid(),
                 'name'             => $data['name'],
-                'slug'             => $this->generateSlug($data['name']),
+                'slug'             => $slug,
+                'subdomain'        => $slug, // default subdomain matches slug; tenant can change later if allowed
                 'status'           => 'trial',
                 'plan_id'          => $data['plan_id'] ?? null,
                 'billing_currency' => $data['billing_currency'] ?? 'NGN',
                 'country'          => $data['country'] ?? null,
+                'domain_status'    => 'verified', // subdomains under koordli.com are auto-verified, no DNS needed
                 'branding'         => [
                     'primary_color' => '#7C3AED',
                     'accent_color'  => '#F59E0B',

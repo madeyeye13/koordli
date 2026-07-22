@@ -23,6 +23,7 @@ class SendVendorContractJob implements ShouldQueue
         public readonly string $companyName,
         public readonly string $pdfPath,
         public readonly string $viewUrl,
+        public readonly bool   $whiteLabel = false,
     ) {}
 
     public function handle(): void
@@ -35,6 +36,7 @@ class SendVendorContractJob implements ShouldQueue
                 $this->companyName,
                 $this->pdfPath,
                 $this->viewUrl,
+                $this->whiteLabel,
             )
         );
     }
