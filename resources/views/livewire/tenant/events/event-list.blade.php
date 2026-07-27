@@ -4,10 +4,10 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <div class="krd-label" style="margin-bottom:4px;">Operations</div>
-            <h2 class="krd-heading-3" style="color:#1C1917;">Events</h2>
+            <h2 class="krd-heading-3" style="color:#1C1917;">{{ term_title('event_plural', 'Events') }}</h2>
         </div>
         <a href="{{ route('tenant.events.create') }}" wire:navigate class="krd-btn krd-btn-primary">
-            + New Event
+            + New {{ term_title('event', 'Event') }}
         </a>
     </div>
 
@@ -18,7 +18,7 @@
                 wire:model.live.debounce.300ms="search"
                 type="text"
                 class="krd-input"
-                placeholder="Search events..."
+                placeholder="Search {{ term('event_plural', 'events') }}..."
                 style="max-width:240px;"
             />
 
@@ -154,8 +154,8 @@
                             <td colspan="6">
                                 <div class="krd-empty-state">
                                     <div class="krd-empty-state-icon">📋</div>
-                                    <div class="krd-empty-state-title">No events found</div>
-                                    <div class="krd-empty-state-desc">{{ $search ? 'Try a different search term.' : 'Create your first event to get started.' }}</div>
+                                    <div class="krd-empty-state-title">No {{ term('event_plural', 'events') }} found</div>
+                                    <div class="krd-empty-state-desc">{{ $search ? 'Try a different search term.' : 'Create your first ' . term('event', 'event') . ' to get started.' }}</div>
                                 </div>
                             </td>
                         </tr>
@@ -227,8 +227,8 @@
         <div class="krd-card">
             <div class="krd-empty-state">
                 <div class="krd-empty-state-icon">📋</div>
-                <div class="krd-empty-state-title">No events found</div>
-                <div class="krd-empty-state-desc">Create your first event to get started.</div>
+                <div class="krd-empty-state-title">No {{ term('event_plural', 'events') }} found</div>
+                <div class="krd-empty-state-desc">Create your first {{ term('event', 'event') }} to get started.</div>
             </div>
         </div>
         @else

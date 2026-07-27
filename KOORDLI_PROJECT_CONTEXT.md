@@ -1726,6 +1726,234 @@ Reverb chosen over Pusher/Ably specifically because it was already installed by 
 FAQ bot uses simple keyword-intersection scoring, deliberately NOT an AI API call — chosen for zero marginal cost per conversation and simplicity, at the cost of being less flexible than a true LLM-backed assistant; revisit if conversation volume/quality demands it later
 The 3-minute countdown shown to waiting tenants is a fixed UX device, not a real computed estimate — there is no dynamic "average wait time" calculation anywhere in the system yet
 
+##### NEW EXPANSION
+
+# ADDENDUM — INDUSTRY EXPANSION (Production Management Support), Complete
+
+*Append this section to KOORDLI_PROJECT_CONTEXT.md. Insert the new numbered rules into the CRITICAL RULES list (continuing the existing numbering), and the rest as a new top-level section, e.g. right after the Support System addendum.*
+
+---
+
+## STRATEGIC CONTEXT (why this exists)
+
+Koordli was originally built for event planners. This phase deliberately extended the SAME platform to also serve Production Companies (film, TV, concert, church, theatre, conference, entertainment, exhibition) **without forking the codebase, redesigning the architecture, or turning Koordli into a generic project-management/ERP tool.**
+
+Core principle agreed with the user: **this is a terminology + feature-flag + seed-data exercise, not an architectural rebuild.** Every single thing built in this phase is additive — new tables, nullable columns on existing tables, or new optional JSON keys — nothing existing was modified in a breaking way. Event planners remain the primary target audience; production support is a configuration layer on top of the same foundation.
+
+---
+
+## NEW CRITICAL RULES TO ADD
+
+48. **TENANT PROVISIONING MUST GO THROUGH A SINGLE CENTRALIZED SERVICE, NEVER CALLED DIRECTLY FROM MULTIPLE ENTRY POINTS.** A tenant can be created via self-registration, platform-owner manual creation, or (future) API/import — all three MUST produce byte-for-byte identical provisioning behavior. `App\Services\TenantProvisioningService::provision(array $data)` is the ONLY correct way to create a tenant going forward; it wraps `TenantService::create()` (unchanged, still does account/user creation) plus applies the selected `IndustryProfile`'s seed data, recommended feature flags, and default roles, all inside one DB transaction. Any new tenant-creation entry point (future API, import tool, etc.) MUST call this service, never call `TenantService::create()` directly and duplicate the seeding logic inline.
+49. **INDUSTRY PROFILES ARE TEMPLATES READ ONCE AT PROVISIONING TIME, THEN FULLY FORKED INTO THE TENANT'S OWN DATA — NEVER A LIVE DEPENDENCY (with one deliberate exception: terminology).** Once `DefaultTenantSeeder::run($tenantId, $profile)` seeds a tenant's `event_types`/`vendor_categories`/`task_categories`/`asset_categories`, that data belongs entirely to the tenant from that point forward — editing, deactivating, or even deleting the source `industry_profiles` row has zero effect on any already-provisioned tenant. **Terminology is the sole exception**: `term()`/`term_title()` resolve the industry profile's terminology JSON live, every time, specifically because the user wants terminology to always be adjustable/inheritable, unlike the one-time seed data. Don't conflate these two different "profile data" behaviors when extending this system later.
+50. **NEVER PASS RAW EMOJI CHARACTERS INTO DOMPDF-RENDERED CONTENT.** Even with a properly registered custom font (Satoshi, per Rule about Phase 8.3), emoji glyphs (🏢, 👤, 📍, etc.) are frequently NOT present in that font's glyph table and render as a visible broken-glyph/placeholder box (can look like a "pause" or "mute" icon) rather than failing loudly. This is the same class of bug as the ₦ Naira symbol issue from Phase 8.3 — DomPDF font rendering has much narrower Unicode coverage than a browser. **Fix pattern:** never use emoji in any `.blade.php` file under `resources/views/pdf/` — use plain text labels, or if a visual icon is truly needed, use small inline SVG icons or CSS-drawn shapes instead. This applies to ALL current and future PDF templates (contracts, call sheets, tickets, etc.), not just the one that broke.
+51. **TERMINOLOGY OVERRIDES LIVE INSIDE THE EXISTING `tenants.branding` JSON COLUMN (key: `terminology_overrides`), NOT A NEW COLUMN.** This mirrors the existing pattern where `branding` already holds `primary_color`/`accent_color`/`logo` — terminology is just another optional key in that same JSON blob, resolved by `TerminologyHelper::term()` in this priority order: (1) tenant's own override in `branding.terminology_overrides`, (2) the tenant's `industry_profile.terminology` JSON, (3) the hardcoded English default the calling code passes in. Every `term()`/`term_title()` call site MUST always pass a sensible hardcoded English default as the second argument — never assume a profile or override exists.
+52. **NEW OPTIONAL MODULES (Assets, Multi-Location, etc.) MUST DEGRADE INVISIBLY TO ZERO UI FOOTPRINT WHEN UNUSED.** The Runsheet's Location dropdown only renders at all when `$locations->isNotEmpty()` for that specific event — a tenant who never adds a location sees literally no change to their Runsheet experience, not even an empty/disabled dropdown. This is the deliberate pattern for every "lightweight optional feature" added in this phase: check for the presence of related data, not a feature flag alone, before showing any related UI, so single-location/no-asset tenants (the majority) see zero added complexity.
+53. **BACKWARD COMPATIBILITY FOR NEW FEATURES ON EXISTING TENANTS REQUIRES AN EXPLICIT ONE-TIME BACKFILL COMMAND** — new seed data (like Asset Categories) introduced via `DefaultTenantSeeder` only runs automatically for tenants created AFTER the feature ships; tenants created before it exist get nothing retroactively unless a dedicated backfill command is run once (e.g. `koordli:backfill-asset-categories`, which checks `if already has data, skip` per tenant so it's safely re-runnable). This is the same category of "new feature needs manual backfill for existing rows" pattern already established with `koordli:backfill-vendor-invoices` in Phase 8.4 — whenever seed data changes, always ask whether existing tenants need a backfill command too.
+
+---
+
+## DATABASE — NEW CENTRAL & TENANT TABLES
+
+### Central
+```
+industry_profiles     ← key (wedding_events|corporate|production|church|conference|entertainment|exhibition|other),
+                         name, icon, description, terminology (JSON: event→Production, client→Producer,
+                         guest→Audience, vendor→Supplier + _plural variants), default_event_types (JSON array of
+                         {name,icon,color}), default_vendor_categories (JSON array), default_task_categories
+                         (JSON array), default_roles (JSON array of role name strings), recommended_feature_flags
+                         (JSON array of feature_flags.key values), is_active, sort_order.
+                         Seeded once via IndustryProfileSeeder — 8 profiles pre-populated with realistic defaults
+                         for each named industry.
+```
+
+### On existing `tenants` table (new nullable column)
+```
+tenants.industry_profile_id  ← FK to industry_profiles, nullOnDelete(), fully nullable — every tenant created
+                                before this phase has NULL here and behaves exactly as before
+```
+
+### Tenant-scoped (Assets module)
+```
+asset_categories        ← tenant_id, name, icon, sort_order (same shape as vendor_categories)
+assets                  ← tenant_id, asset_category_id (nullable FK), name, status (available|reserved|maintenance),
+                           notes
+asset_event_assignments ← tenant_id, asset_id, event_id, date_from (nullable), date_to (nullable), notes.
+                           unique(['asset_id','event_id']) — same pivot pattern as vendor_event_assignments.
+                           Asset status auto-flips to 'reserved' on assignment, back to 'available' when its
+                           last assignment is removed (handled in AssetDetail::assignToEvent()/deleteAssign())
+```
+
+### Tenant-scoped (Multi-Location support)
+```
+event_locations   ← tenant_id, event_id, name (e.g. "Studio A"), address (nullable), date (nullable — which day
+                     this location applies to for multi-day events), notes, sort_order
+```
+
+### On existing `runsheet_items` table (new nullable column)
+```
+runsheet_items.event_location_id  ← FK to event_locations, nullOnDelete(), fully nullable. Every existing
+                                     runsheet item has NULL here; the Location dropdown in the item form only
+                                     appears at all if the parent event has ≥1 row in event_locations (see Rule 52)
+```
+
+**Note:** `events.venue`/`events.location` fields were deliberately left completely untouched — they remain the single default location for the ~95% of events that only ever have one. `event_locations` is purely additive for the multi-day/multi-site minority case.
+
+---
+
+## KEY FILE LOCATIONS — INDUSTRY EXPANSION
+
+### Services
+```
+app/Services/TenantProvisioningService.php  ← THE single centralized entry point for all tenant creation
+                                                (see Rule 48). provision(array $data): Tenant — wraps
+                                                TenantService::create() in a DB transaction, then applies
+                                                IndustryProfile seed data (event types/vendor categories/
+                                                task categories/asset categories via DefaultTenantSeeder),
+                                                enables recommended_feature_flags via TenantFeatureOverride,
+                                                and seeds default_roles via Spatie Role::firstOrCreate()
+                                                scoped by tenant_id (team_foreign_key)
+```
+
+### Helpers
+```
+app/Helpers/TerminologyHelper.php  ← term($key, $default), termTitle($key, $default) — the 3-tier resolution
+                                      chain (tenant override → industry profile → hardcoded default)
+app/helpers.php                    ← global term() / term_title() functions, registered via composer.json's
+                                      autoload.files array (required `composer dump-autoload` after adding)
+```
+
+### Models (new)
+```
+App\Models\Central\IndustryProfile         ← term($key, $default) instance helper, tenants() HasMany
+App\Models\Tenant\AssetCategory            ← assets() HasMany
+App\Models\Tenant\Asset                    ← category(), eventAssignments(), events() BelongsToMany,
+                                              statusLabel(), statusColor()
+App\Models\Tenant\AssetEventAssignment     ← asset(), event()
+App\Models\Tenant\EventLocation            ← event(), runsheetItems()
+```
+
+### Models (modified — relations added, nothing removed)
+```
+App\Models\Central\Tenant       ← industryProfile() BelongsTo (new)
+App\Models\Tenant\Event         ← assetAssignments() HasMany, locations() HasMany (orderBy sort_order),
+                                   hasMultipleLocations() bool helper (all new)
+App\Models\Tenant\RunsheetItem  ← event_location_id added to $fillable, location() BelongsTo (new)
+```
+
+### Livewire Components (Assets module)
+```
+app/Livewire/Tenant/Assets/AssetList.php     ← search + status + category filters, delete confirmation
+app/Livewire/Tenant/Assets/CreateAsset.php   ← create/edit form (shared component via ?Asset $asset param,
+                                                same pattern as CreateEvent/CreateVendor elsewhere in the app)
+app/Livewire/Tenant/Assets/AssetDetail.php   ← assign/unassign to events, status quick-change buttons
+```
+
+### Console Commands
+```
+app/Console/Commands/BackfillAssetCategories.php  ← koordli:backfill-asset-categories — ONE-TIME command,
+                                                      seeds default asset categories for tenants created before
+                                                      the Assets module existed. Skips any tenant that already
+                                                      has asset_categories rows — safe to re-run.
+```
+
+### Routes (tenant, authenticated group)
+```
+/assets              → Tenant\Assets\AssetList
+/assets/create        → Tenant\Assets\CreateAsset
+/assets/{id}/edit    → Tenant\Assets\CreateAsset
+/assets/{id}         → Tenant\Assets\AssetDetail
+```
+
+### PDF Templates
+```
+resources/views/pdf/call-sheet-pdf.blade.php  ← branded PDF export of a Runsheet, styled as an industry-standard
+                                                  call sheet — SAME underlying Runsheet/RunsheetItem data as the
+                                                  in-app Timeline view, just a different presentation (per Rule
+                                                  "no separate module" — this is a view/export, not new data).
+                                                  Shows locations grid (if any), schedule table with optional
+                                                  location column, crew/suppliers lists, runsheet notes.
+                                                  Uses the SAME Satoshi/Spline Sans font registration + tenant
+                                                  branding pattern established for vendor-contract-pdf.blade.php
+                                                  in Phase 8.3. NO EMOJI anywhere in this file (see Rule 50) —
+                                                  an earlier version used 🏢/👤/📍 which rendered as broken glyph
+                                                  boxes in DomPDF output; fixed by using plain text labels only.
+```
+Download triggered via `RunsheetManager::downloadCallSheet()` — reuses the exact branded-PDF-building pattern
+(logo as base64 data URI, tenant's primary_color/accent_color from `branding` JSON) already established for
+vendor contracts.
+
+---
+
+## SEEDED INDUSTRY PROFILES (via `IndustryProfileSeeder`)
+
+8 profiles seeded: **Wedding & Events** (the original/default terminology, zero overrides — matches pre-existing
+hardcoded behavior exactly), **Corporate** (guest→Attendee), **Production** (event→Production, client→Producer,
+guest→Audience, vendor→Supplier — the flagship profile for this phase), **Church** (guest→Congregation Member,
+client→Ministry Lead), **Conference** (guest→Delegate), **Entertainment** (guest→Audience, vendor→Supplier),
+**Exhibition** (guest→Visitor, vendor→Exhibitor), **Other** (a blank-slate fallback, minimal single generic
+event type, for anyone who doesn't fit the other 7).
+
+Each profile also carries industry-appropriate default event types (e.g. Production profile seeds "Film Shoot,"
+"TV Production," "Concert," "Commercial Shoot," "Theatre Production" instead of "Wedding," "Engagement,"
+"Birthday"), vendor categories (e.g. "Equipment Rental," "Crew" instead of "Photography," "Beauty"), task
+categories (e.g. "Pre-Production," "Shoot Day," "Post-Production" instead of "Pre-Event," "Logistics,"
+"On The Day"), and suggested default role names (e.g. "Line Producer," "1st AD," "Unit Manager" instead of
+"Coordinator," "Finance," "Operations").
+
+**Re-running `IndustryProfileSeeder` is always safe** — it uses `updateOrCreate` keyed on the profile's unique
+`key` column, so re-seeding (e.g. after adding new terminology keys) only refreshes the 8 existing rows, never
+duplicates them, and has zero effect on any tenant's already-provisioned data (per Rule 49).
+
+---
+
+## TERMINOLOGY ROLLOUT — WHAT'S DONE, WHAT'S DEFERRED (Phase A only, by design)
+
+Deliberately limited to the highest-traffic, highest-visibility spots rather than an exhaustive sweep across
+~150+ Blade views (judged too risky/low-value to attempt in one pass — see original strategy discussion).
+
+**Applied (`term()`/`term_title()` wired in):**
+- `tenant-sidebar.blade.php` — Events/Vendors/Vendor Invoices/Clients/Guests & RSVP nav labels
+- `dashboard.blade.php` — Total Events/Active Vendors/Guests KPI card labels, Recent Events heading, +New Event
+  button, empty-state text
+- `event-list.blade.php` — page heading, +New Event button, search placeholder, all 3 empty-state occurrences
+- `vendor-directory.blade.php` — page heading ("Vendor Directory" → "{Vendor} Directory"), vendor count text,
+  +Add Vendor button, all 3 empty-state occurrences
+- New Assets module views — built terminology-aware from day one (`term_title('asset_plural', 'Assets')` etc.)
+
+**Explicitly deferred** (not yet touched — revisit only if a real production-industry customer surfaces specific
+wording friction in practice): Task Center, Budget page, Client Portal headings, Vendor Portal headings, Forms &
+Bookings, all remaining page titles/empty-states throughout the app. These all currently show plain English
+("Events," "Vendors," "Clients," "Guests") regardless of the tenant's industry profile — this is intentional,
+not an oversight, per the deliberately narrow Phase A scope agreed with the user.
+
+---
+
+## STRATEGIC ANALYSIS SUMMARY (for future reference — the "why" behind this whole phase)
+
+When asked to evaluate extending Koordli to serve Production Companies without losing its identity as an event
+platform, the conclusion reached (and executed) was:
+
+- **Already worked perfectly, zero changes needed:** Task Management, Vendor/Contract/Invoice lifecycle (arguably
+  Koordli's strongest asset for production companies — equipment rental, freelance crew, e-signature contracts
+  map directly), Staff Management (Spatie roles already support arbitrary tenant-defined role names), Budget
+  tracking, Client Portal, multi-tenancy/domain/white-label/billing architecture, Support System.
+- **Needed only relabeling, not redesign:** Runsheet (already IS a call sheet, just needed a specialized PDF
+  presentation — built), Vendor→Supplier (pure label), Guest→Audience/Attendee/Delegate/etc. (pure label,
+  RSVP already optional via existing feature flag).
+- **Only two genuine new capabilities added, deliberately staying disciplined against scope creep:** lightweight
+  Assets (explicitly NOT a full inventory/warehouse system), Multi-Location support (explicitly NOT a redesign
+  of the Event model — purely additive, existing single-venue fields untouched).
+- **Explicitly avoided** (flagged as genuine ERP/PM scope creep risk, not built): asset barcode/depreciation
+  tracking, script/rundown document management, complex crew scheduling engines, ticketing system, seating
+  plans, event website builder — all reserved as *future* feature-flag names if ever needed, but zero
+  implementation work done on any of them in this phase.
+- **Net effort classification confirmed correct in practice:** this entire phase was genuinely a terminology +
+  feature-flag + seed-data + two small additive-schema exercise, exactly as predicted before building anything —
+  no existing table, model relationship, or working Blade view was modified in a breaking way anywhere in this
+  phase.
+
+
 ## PENDING
 
 ### Phase 9 — Remaining polish (optional)

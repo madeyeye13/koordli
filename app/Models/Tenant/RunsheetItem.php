@@ -20,6 +20,7 @@ class RunsheetItem extends Model
         'end_time',
         'assigned_to',
         'vendor_id',
+        'event_location_id',
         'status',
         'notes',
         'sort_order',
@@ -45,6 +46,11 @@ class RunsheetItem extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(EventLocation::class, 'event_location_id');
     }
 
     public function dependency(): BelongsTo

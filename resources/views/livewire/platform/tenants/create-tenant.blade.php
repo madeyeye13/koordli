@@ -170,6 +170,38 @@
                     </div>
                 </div>
 
+                {{-- Industry Profile --}}
+                <div class="krd-input-group"
+                    x-data="{
+                        open: false,
+                        label: '{{ $industry_profile_id ? ($industryProfiles->firstWhere('id', $industry_profile_id)?->name ?? 'No profile') : 'No profile' }}',
+                        pick(val, label) { this.label = label; this.open = false; $wire.set('industry_profile_id', val); }
+                    }"
+                    x-on:click.outside="open = false"
+                    style="position:relative;">
+                    <label class="krd-label-text">Industry Profile <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                    <button type="button"
+                        x-on:click="open = !open"
+                        x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                        style="width:100%;">
+                        <span x-text="label"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak class="krd-dropdown-menu">
+                        <div class="krd-dropdown-option {{ !$industry_profile_id ? 'selected' : '' }}"
+                            x-on:click="pick(null, 'No profile')">
+                            No profile
+                        </div>
+                        @foreach($industryProfiles as $profile)
+                        <div class="krd-dropdown-option {{ $industry_profile_id == $profile->id ? 'selected' : '' }}"
+                            x-on:click="pick({{ $profile->id }}, '{{ $profile->icon }} {{ $profile->name }}')">
+                            {{ $profile->icon }} {{ $profile->name }}
+                        </div>
+                        @endforeach
+                    </div>
+                    <span class="krd-input-hint">Sets up default event types, vendor categories, and roles for this tenant.</span>
+                </div>
+
                 {{-- Plan --}}
                 <div class="krd-input-group" style="margin-bottom:0;"
                     x-data="{

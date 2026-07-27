@@ -25,6 +25,7 @@ class CreateTenant extends Component
     public string $billing_currency = 'NGN';
     public string $country          = 'NG';
     public ?int   $plan_id          = null;
+    public ?int   $industry_profile_id = null;
     public string $status           = 'trial';
     public bool   $success          = false;
     public string $error            = '';
@@ -38,6 +39,7 @@ class CreateTenant extends Component
             $this->billing_currency = $tenant->billing_currency ?? 'NGN';
             $this->country          = $tenant->country ?? 'NG';
             $this->plan_id          = $tenant->plan_id ?? null;
+            $this->industry_profile_id = $tenant->industry_profile_id ?? null;
             $this->status           = $tenant->status ?? 'trial';
 
             // Load owner info from first user
@@ -53,32 +55,34 @@ class CreateTenant extends Component
         }
     }
 
-    public function create(TenantService $tenantService): void
+    public function create(\App\Services\TenantProvisioningService $provisioningService): void
     {
         $this->validate([
-            'name'             => 'required|string|min:2|max:100',
-            'owner_name'       => 'required|string|min:2|max:100',
-            'owner_email'      => 'required|email|unique:users,email',
-            'owner_password'   => 'required|min:8',
-            'billing_currency' => 'required|string',
-            'country'          => 'required|string|size:2',
-            'plan_id'          => 'nullable|exists:plans,id',
+            'name'                => 'required|string|min:2|max:100',
+            'owner_name'          => 'required|string|min:2|max:100',
+            'owner_email'         => 'required|email|unique:users,email',
+            'owner_password'      => 'required|min:8',
+            'billing_currency'    => 'required|string',
+            'country'             => 'required|string|size:2',
+            'plan_id'             => 'nullable|exists:plans,id',
+            'industry_profile_id' => 'nullable|exists:industry_profiles,id',
         ]);
 
         try {
-            $tenantService->create([
-                'name'               => $this->name,
-                'owner_name'         => $this->owner_name,
-                'owner_email'        => $this->owner_email,
-                'owner_password'     => $this->owner_password,
-                'billing_currency'   => $this->billing_currency,
-                'country'            => $this->country,
-                'plan_id'            => $this->plan_id,
-                'is_self_registered' => false,
+            $provisioningService->provision([
+                'name'                => $this->name,
+                'owner_name'          => $this->owner_name,
+                'owner_email'         => $this->owner_email,
+                'owner_password'      => $this->owner_password,
+                'billing_currency'    => $this->billing_currency,
+                'country'             => $this->country,
+                'plan_id'             => $this->plan_id,
+                'industry_profile_id' => $this->industry_profile_id,
+                'is_self_registered'  => false,
             ]);
 
             $this->success = true;
-            $this->reset(['name', 'owner_name', 'owner_email', 'owner_password', 'plan_id']);
+            $this->reset(['name', 'owner_name', 'owner_email', 'owner_password', 'plan_id', 'industry_profile_id']);
             $this->toastSuccess('Company created. Welcome email sent to owner.');
             $this->js("setTimeout(() => { \$wire.success = false; }, 4000)");
 
@@ -128,8 +132,9 @@ class CreateTenant extends Component
     public function render()
     {
         return view('livewire.platform.tenants.create-tenant', [
-            'plans'     => Plan::where('is_active', true)->get(),
-            'countries' => CurrencyHelper::countries(),
+            'plans'            => Plan::where('is_active', true)->get(),
+            'countries'        => CurrencyHelper::countries(),
+            'industryProfiles' => \App\Models\Central\IndustryProfile::where('is_active', true)->orderBy('sort_order')->get(),
         ]);
     }
 }

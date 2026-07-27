@@ -117,5 +117,18 @@ class Event extends Model
         return $this->hasMany(VendorEventAssignment::class);
     }
 
-    
+    public function assetAssignments(): HasMany
+    {
+        return $this->hasMany(AssetEventAssignment::class);
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(EventLocation::class)->orderBy('sort_order');
+    }
+
+    public function hasMultipleLocations(): bool
+    {
+        return $this->locations()->count() > 0;
+    }
 }

@@ -40,7 +40,7 @@
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
                 </svg>
-                Events
+                {{ term_title('event_plural', 'Events') }}
             </a>
             <a href="{{ route('tenant.tasks') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.tasks*') ? 'active' : '' }}"
@@ -56,7 +56,7 @@
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
                 </svg>
-                Vendors
+                {{ term_title('vendor_plural', 'Vendors') }}
             </a>
             <a href="{{ route('tenant.vendor.applications') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.vendor.applications') ? 'active' : '' }}"
@@ -89,7 +89,7 @@
                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                     <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
                 </svg>
-                Vendor Invoices
+                {{ term_title('vendor', 'Vendor') }} Invoices
             </a>
 
             <a href="{{ route('tenant.budget') }}"
@@ -100,6 +100,17 @@
                 </svg>
                 Budget
             </a>
+
+            <a href="{{ route('tenant.assets') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.assets*') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/>
+                </svg>
+                {{ term_title('asset_plural', 'Assets') }}
+            </a>
+
+
         </div>
 
         <div class="krd-nav-section">
@@ -108,7 +119,7 @@
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
-                Clients
+                {{ term_title('client_plural', 'Clients') }}
             </a>
             <a href="{{ route('tenant.events') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.events.guests') ? 'active' : '' }}"
@@ -116,7 +127,7 @@
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
                 </svg>
-                Guests & RSVP
+                {{ term_title('guest_plural', 'Guests') }} & RSVP
             </a>
             <a href="{{ route('tenant.events') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.events.runsheet') ? 'active' : '' }}"

@@ -13,7 +13,7 @@
     {{-- KPI Cards --}}
     <div class="krd-grid-4" style="margin-bottom:24px;">
         <div class="krd-card" style="text-align:center;">
-            <div class="krd-label" style="margin-bottom:8px;">Total Events</div>
+            <div class="krd-label" style="margin-bottom:8px;">Total {{ term_title('event_plural', 'Events') }}</div>
             <div class="krd-stat-number" style="font-size:36px;font-weight:700;color:#7C3AED;line-height:1;">{{ $totalEvents }}</div>
         </div>
         <div class="krd-card" style="text-align:center;">
@@ -24,11 +24,11 @@
             @endif
         </div>
         <div class="krd-card" style="text-align:center;">
-            <div class="krd-label" style="margin-bottom:8px;">Active Vendors</div>
+            <div class="krd-label" style="margin-bottom:8px;">Active {{ term_title('vendor_plural', 'Vendors') }}</div>
             <div class="krd-stat-number" style="font-size:36px;font-weight:700;color:#F59E0B;line-height:1;">{{ $totalVendors }}</div>
         </div>
         <div class="krd-card" style="text-align:center;">
-            <div class="krd-label" style="margin-bottom:8px;">Guests</div>
+            <div class="krd-label" style="margin-bottom:8px;">{{ term_title('guest_plural', 'Guests') }}</div>
             <div class="krd-stat-number" style="font-size:36px;font-weight:700;color:#10B981;line-height:1;">{{ $totalGuests }}</div>
         </div>
     </div>
@@ -39,14 +39,14 @@
         {{-- Recent Events --}}
         <div class="krd-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-                <div class="krd-label">Recent Events</div>
-                <a href="{{ route('tenant.events.create') }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">+ New Event</a>
+                <div class="krd-label">Recent {{ term_title('event_plural', 'Events') }}</div>
+                <a href="{{ route('tenant.events.create') }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">+ New {{ term_title('event', 'Event') }}</a>
             </div>
             @if($recentEvents->isEmpty())
             <div class="krd-empty-state">
                 <div class="krd-empty-state-icon">📋</div>
-                <div class="krd-empty-state-title">No events yet</div>
-                <div class="krd-empty-state-desc">Create your first event to get started.</div>
+                <div class="krd-empty-state-title">No {{ term('event_plural', 'events') }} yet</div>
+                <div class="krd-empty-state-desc">Create your first {{ term('event', 'event') }} to get started.</div>
             </div>
             @else
             <div style="display:flex;flex-direction:column;gap:2px;">

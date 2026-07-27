@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Central\IndustryProfile;
+use App\Models\Tenant\AssetCategory;
 use App\Models\Tenant\EventType;
 use App\Models\Tenant\TenantEventStatus;
 use App\Models\Tenant\TenantTaskCategory;
@@ -11,18 +13,39 @@ use Illuminate\Database\Seeder;
 
 class DefaultTenantSeeder extends Seeder
 {
-    public function run(int $tenantId): void
+    public function run(int $tenantId, ?IndustryProfile $profile = null): void
     {
-        $this->seedEventTypes($tenantId);
+        $this->seedEventTypes($tenantId, $profile);
         $this->seedEventStatuses($tenantId);
-        $this->seedTaskCategories($tenantId);
-        $this->seedVendorCategories($tenantId);
+        $this->seedTaskCategories($tenantId, $profile);
+        $this->seedVendorCategories($tenantId, $profile);
         $this->seedLabels($tenantId);
+        $this->seedAssetCategories($tenantId);
     }
 
-    private function seedEventTypes(int $tenantId): void
+    private function seedAssetCategories(int $tenantId): void
     {
-        $types = [
+        $categories = [
+            ['name' => 'Cameras',      'icon' => 'camera',   'sort_order' => 0],
+            ['name' => 'Audio',        'icon' => 'mic',      'sort_order' => 1],
+            ['name' => 'Lighting',     'icon' => 'zap',      'sort_order' => 2],
+            ['name' => 'LED Screens',  'icon' => 'tv',       'sort_order' => 3],
+            ['name' => 'Furniture',    'icon' => 'chair',    'sort_order' => 4],
+            ['name' => 'Decor',       'icon' => 'flower',   'sort_order' => 5],
+            ['name' => 'Other',        'icon' => 'more',     'sort_order' => 6],
+        ];
+
+        foreach ($categories as $category) {
+            \App\Models\Tenant\AssetCategory::firstOrCreate(
+                ['tenant_id' => $tenantId, 'name' => $category['name']],
+                [...$category, 'tenant_id' => $tenantId]
+            );
+        }
+    }
+
+    private function seedEventTypes(int $tenantId, ?IndustryProfile $profile): void
+    {
+        $types = $profile?->default_event_types ?: [
             ['name' => 'Wedding',          'icon' => 'rings',      'color' => '#7C3AED'],
             ['name' => 'Birthday',         'icon' => 'cake',       'color' => '#F59E0B'],
             ['name' => 'Corporate Event',  'icon' => 'briefcase',  'color' => '#3B82F6'],
@@ -42,6 +65,9 @@ class DefaultTenantSeeder extends Seeder
 
     private function seedEventStatuses(int $tenantId): void
     {
+        // Statuses stay universal regardless of industry — a pipeline shape
+        // (inquiry → planning → confirmed → in progress → completed → archived)
+        // works identically for a wedding and a film shoot.
         $statuses = [
             ['name' => 'Inquiry',     'color' => '#F59E0B', 'is_default' => true,  'sort_order' => 0],
             ['name' => 'Planning',    'color' => '#3B82F6', 'is_default' => false, 'sort_order' => 1],
@@ -59,9 +85,9 @@ class DefaultTenantSeeder extends Seeder
         }
     }
 
-    private function seedTaskCategories(int $tenantId): void
+    private function seedTaskCategories(int $tenantId, ?IndustryProfile $profile): void
     {
-        $categories = [
+        $categories = $profile?->default_task_categories ?: [
             ['name' => 'Pre-Event',    'color' => '#3B82F6', 'icon' => 'calendar',  'sort_order' => 0],
             ['name' => 'Logistics',    'color' => '#F59E0B', 'icon' => 'truck',      'sort_order' => 1],
             ['name' => 'On The Day',   'color' => '#10B981', 'icon' => 'clock',      'sort_order' => 2],
@@ -70,17 +96,17 @@ class DefaultTenantSeeder extends Seeder
             ['name' => 'Admin',        'color' => '#EF4444', 'icon' => 'folder',     'sort_order' => 5],
         ];
 
-        foreach ($categories as $category) {
+        foreach ($categories as $i => $category) {
             TenantTaskCategory::firstOrCreate(
                 ['tenant_id' => $tenantId, 'name' => $category['name']],
-                [...$category, 'tenant_id' => $tenantId]
+                [...$category, 'tenant_id' => $tenantId, 'sort_order' => $category['sort_order'] ?? $i, 'icon' => $category['icon'] ?? 'folder']
             );
         }
     }
 
-    private function seedVendorCategories(int $tenantId): void
+    private function seedVendorCategories(int $tenantId, ?IndustryProfile $profile): void
     {
-        $categories = [
+        $categories = $profile?->default_vendor_categories ?: [
             ['name' => 'Venue',           'icon' => 'building',   'sort_order' => 0],
             ['name' => 'Catering',        'icon' => 'utensils',   'sort_order' => 1],
             ['name' => 'Photography',     'icon' => 'camera',     'sort_order' => 2],
@@ -95,10 +121,10 @@ class DefaultTenantSeeder extends Seeder
             ['name' => 'Other',           'icon' => 'more',       'sort_order' => 11],
         ];
 
-        foreach ($categories as $category) {
+        foreach ($categories as $i => $category) {
             VendorCategory::firstOrCreate(
                 ['tenant_id' => $tenantId, 'name' => $category['name']],
-                [...$category, 'tenant_id' => $tenantId]
+                [...$category, 'tenant_id' => $tenantId, 'sort_order' => $category['sort_order'] ?? $i]
             );
         }
     }

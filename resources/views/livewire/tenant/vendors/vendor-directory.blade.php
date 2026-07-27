@@ -4,8 +4,8 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <div class="krd-label" style="margin-bottom:4px;">Operations</div>
-            <h2 class="krd-heading-3" style="color:#1C1917;">Vendor Directory</h2>
-            <div style="font-size:12px;color:#A8A29E;margin-top:3px;">{{ $totalCount }} {{ Str::plural('vendor', $totalCount) }} in your directory</div>
+            <h2 class="krd-heading-3" style="color:#1C1917;">{{ term_title('vendor', 'Vendor') }} Directory</h2>
+            <div style="font-size:12px;color:#A8A29E;margin-top:3px;">{{ $totalCount }} {{ $totalCount === 1 ? term('vendor', 'vendor') : term('vendor_plural', 'vendors') }} in your directory</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
             {{-- Copy vendor registration URL --}}
@@ -31,7 +31,7 @@
                 </button>
             </div>
             <a href="{{ route('tenant.vendors.create') }}" wire:navigate class="krd-btn krd-btn-primary">
-                + Add Vendor
+                + Add {{ term_title('vendor', 'Vendor') }}
             </a>
         </div>
     </div>
@@ -96,8 +96,8 @@
         <div class="krd-card">
             <div class="krd-empty-state">
                 <div class="krd-empty-state-icon">🏢</div>
-                <div class="krd-empty-state-title">No vendors found</div>
-                <div class="krd-empty-state-desc">Add your first vendor to build your company directory.</div>
+                <div class="krd-empty-state-title">No {{ term('vendor_plural', 'vendors') }} found</div>
+                <div class="krd-empty-state-desc">Add your first {{ term('vendor', 'vendor') }} to build your directory.</div>
             </div>
         </div>
         @else

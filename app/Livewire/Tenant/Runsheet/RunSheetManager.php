@@ -9,6 +9,7 @@ use App\Models\Tenant\RunsheetItem;
 use App\Models\Tenant\User;
 use App\Models\Tenant\Vendor;
 use App\Traits\WithToast;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Renderless;
@@ -42,10 +43,22 @@ class RunsheetManager extends Component
     public string $item_notes     = '';
     public ?int   $item_assigned_to = null;
     public ?int   $item_vendor_id   = null;
+    public ?int   $item_location_id = null;
+
+    // Locations (multi-location support)
+    public bool   $showLocationForm = false;
+    public ?int   $editLocationId   = null;
+    public string $location_name    = '';
+    public string $location_address = '';
+    public string $location_date    = '';
+    public string $location_notes   = '';
 
     // Delete
     public bool $showDeleteModal = false;
     public ?int $deleteItemId    = null;
+
+    public bool $showDeleteLocationModal = false;
+    public ?int $deleteLocationId        = null;
 
     public function mount(string $slug): void
     {
@@ -112,7 +125,7 @@ class RunsheetManager extends Component
             $this->toastError('Save the runsheet first.');
             return;
         }
-        $this->reset(['item_title', 'item_desc', 'item_start', 'item_end', 'item_notes', 'item_assigned_to', 'item_vendor_id', 'editItemId']);
+        $this->reset(['item_title', 'item_desc', 'item_start', 'item_end', 'item_notes', 'item_assigned_to', 'item_vendor_id', 'item_location_id', 'editItemId']);
         $this->item_status  = 'pending';
         $this->showItemForm = true;
     }
@@ -126,41 +139,44 @@ class RunsheetManager extends Component
             'item_status'      => 'required|in:pending,in_progress,done,delayed',
             'item_assigned_to' => 'nullable|exists:users,id',
             'item_vendor_id'   => 'nullable|exists:vendors,id',
+            'item_location_id' => 'nullable|exists:event_locations,id',
         ]);
 
         $sortOrder = RunsheetItem::where('runsheet_id', $this->runsheet->id)->max('sort_order') + 1;
 
         if ($this->editItemId) {
             RunsheetItem::find($this->editItemId)?->update([
-                'title'       => $this->item_title,
-                'description' => $this->item_desc ?: null,
-                'start_time'  => $this->item_start ?: null,
-                'end_time'    => $this->item_end ?: null,
-                'status'      => $this->item_status,
-                'notes'       => $this->item_notes ?: null,
-                'assigned_to' => $this->item_assigned_to,
-                'vendor_id'   => $this->item_vendor_id,
+                'title'             => $this->item_title,
+                'description'       => $this->item_desc ?: null,
+                'start_time'        => $this->item_start ?: null,
+                'end_time'          => $this->item_end ?: null,
+                'status'            => $this->item_status,
+                'notes'             => $this->item_notes ?: null,
+                'assigned_to'       => $this->item_assigned_to,
+                'vendor_id'         => $this->item_vendor_id,
+                'event_location_id' => $this->item_location_id,
             ]);
             $this->toastSuccess('Item updated.');
         } else {
             RunsheetItem::create([
-                'tenant_id'   => auth()->user()->tenant_id,
-                'runsheet_id' => $this->runsheet->id,
-                'title'       => $this->item_title,
-                'description' => $this->item_desc ?: null,
-                'start_time'  => $this->item_start ?: null,
-                'end_time'    => $this->item_end ?: null,
-                'status'      => $this->item_status,
-                'notes'       => $this->item_notes ?: null,
-                'assigned_to' => $this->item_assigned_to,
-                'vendor_id'   => $this->item_vendor_id,
-                'sort_order'  => $sortOrder,
+                'tenant_id'         => auth()->user()->tenant_id,
+                'runsheet_id'       => $this->runsheet->id,
+                'title'             => $this->item_title,
+                'description'       => $this->item_desc ?: null,
+                'start_time'        => $this->item_start ?: null,
+                'end_time'          => $this->item_end ?: null,
+                'status'            => $this->item_status,
+                'notes'             => $this->item_notes ?: null,
+                'assigned_to'       => $this->item_assigned_to,
+                'vendor_id'         => $this->item_vendor_id,
+                'event_location_id' => $this->item_location_id,
+                'sort_order'        => $sortOrder,
             ]);
             $this->toastSuccess('Item added.');
         }
 
         $this->showItemForm = false;
-        $this->reset(['item_title', 'item_desc', 'item_start', 'item_end', 'item_notes', 'item_assigned_to', 'item_vendor_id', 'editItemId']);
+        $this->reset(['item_title', 'item_desc', 'item_start', 'item_end', 'item_notes', 'item_assigned_to', 'item_vendor_id', 'item_location_id', 'editItemId']);
         $this->refreshRunsheet();
     }
 
@@ -178,6 +194,7 @@ class RunsheetManager extends Component
         $this->item_notes      = $item->notes ?? '';
         $this->item_assigned_to = $item->assigned_to;
         $this->item_vendor_id  = $item->vendor_id;
+        $this->item_location_id = $item->event_location_id;
         $this->showItemForm    = true;
     }
 
@@ -231,6 +248,104 @@ class RunsheetManager extends Component
         $this->toastSuccess('Item removed.');
     }
 
+    public function showAddLocation(): void
+    {
+        $this->reset(['location_name', 'location_address', 'location_date', 'location_notes', 'editLocationId']);
+        $this->showLocationForm = true;
+    }
+
+    public function editLocation(int $id): void
+    {
+        $location = \App\Models\Tenant\EventLocation::find($id);
+        if (!$location) return;
+
+        $this->editLocationId   = $id;
+        $this->location_name    = $location->name;
+        $this->location_address = $location->address ?? '';
+        $this->location_date    = $location->date?->format('Y-m-d') ?? '';
+        $this->location_notes   = $location->notes ?? '';
+        $this->showLocationForm = true;
+    }
+
+    public function saveLocation(): void
+    {
+        $this->validate([
+            'location_name' => 'required|string|min:2|max:150',
+            'location_date' => 'nullable|date',
+        ]);
+
+        $data = [
+            'tenant_id' => auth()->user()->tenant_id,
+            'event_id'  => $this->event->id,
+            'name'      => $this->location_name,
+            'address'   => $this->location_address ?: null,
+            'date'      => $this->location_date ?: null,
+            'notes'     => $this->location_notes ?: null,
+        ];
+
+        if ($this->editLocationId) {
+            \App\Models\Tenant\EventLocation::find($this->editLocationId)?->update($data);
+            $this->toastSuccess('Location updated.');
+        } else {
+            $data['sort_order'] = \App\Models\Tenant\EventLocation::where('event_id', $this->event->id)->max('sort_order') + 1;
+            \App\Models\Tenant\EventLocation::create($data);
+            $this->toastSuccess('Location added.');
+        }
+
+        $this->showLocationForm = false;
+        $this->event->refresh();
+    }
+
+    public function confirmDeleteLocation(int $id): void
+    {
+        $this->deleteLocationId       = $id;
+        $this->showDeleteLocationModal = true;
+    }
+
+    public function deleteLocation(): void
+    {
+        \App\Models\Tenant\EventLocation::find($this->deleteLocationId)?->delete();
+        $this->showDeleteLocationModal = false;
+        $this->deleteLocationId        = null;
+        $this->event->refresh();
+        $this->refreshRunsheet();
+        $this->toastSuccess('Location removed.');
+    }
+
+    public function downloadCallSheet()
+    {
+        $tenant   = auth()->user()->tenant;
+        $branding = $tenant->branding ?? [];
+
+        $logoUrl = null;
+        if (!empty($branding['logo'])) {
+            $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($branding['logo']);
+            if (file_exists($logoPath)) {
+                $logoUrl = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath));
+            }
+        }
+
+        $assignedStaff   = $this->runsheet->items->filter(fn($i) => $i->assigned_to)->pluck('assignedTo.name')->filter()->unique()->values();
+        $assignedVendors = $this->runsheet->items->filter(fn($i) => $i->vendor_id)->pluck('vendor.name')->filter()->unique()->values();
+
+        $pdf = Pdf::loadView('pdf.call-sheet-pdf', [
+            'event'           => $this->event,
+            'runsheet'        => $this->runsheet,
+            'locations'       => $this->event->locations()->get(),
+            'assignedStaff'   => $assignedStaff,
+            'assignedVendors' => $assignedVendors,
+            'companyName'     => $tenant->name,
+            'primaryColor'    => $branding['primary_color'] ?? '#7C3AED',
+            'accentColor'     => $branding['accent_color'] ?? '#F59E0B',
+            'logoUrl'         => $logoUrl,
+        ])->setPaper('a4');
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            'Call-Sheet-' . Str::slug($this->event->name) . '.pdf'
+        );
+    }
+
     private function refreshRunsheet(): void
     {
         $this->runsheet = Runsheet::where('event_id', $this->event->id)
@@ -251,6 +366,8 @@ class RunsheetManager extends Component
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('livewire.tenant.runsheet.runsheet-manager', compact('staff', 'vendors'));
+        $locations = $this->event->locations()->get();
+
+        return view('livewire.tenant.runsheet.runsheet-manager', compact('staff', 'vendors', 'locations'));
     }
 }

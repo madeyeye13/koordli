@@ -22,6 +22,7 @@ class Register extends Component
 
     // ── Step 1 ────────────────────────────────────────────────
     public string $company_name          = '';
+    public ?int   $industry_profile_id   = null;
     public string $country               = '';
     public string $name                  = '';
     public string $email                 = '';
@@ -49,6 +50,11 @@ class Register extends Component
     public ?int   $tenant_id = null;
     public string $error     = '';
     public string $success   = '';
+
+    public function selectIndustryProfile(int $profileId): void
+    {
+        $this->industry_profile_id = $profileId;
+    }
 
     public function mount(): void
     {
@@ -92,8 +98,9 @@ class Register extends Component
         RateLimiter::hit($key, 3600);
 
         $this->validate([
-            'company_name'    => 'required|string|min:2|max:100',
-            'country'         => 'required|string|size:2',
+            'company_name'        => 'required|string|min:2|max:100',
+            'industry_profile_id' => 'required|exists:industry_profiles,id',
+            'country'             => 'required|string|size:2',
             'name'            => 'required|string|min:2|max:100',
             'email'           => 'required|email|unique:users,email',
             'password'        => [
@@ -193,18 +200,17 @@ class Register extends Component
         RateLimiter::clear($key);
 
         try {
-            $result = DB::transaction(function () {
-                $tenantService = app(TenantService::class);
-                return $tenantService->create([
-                    'name'               => $this->company_name,
-                    'owner_name'        => $this->name,
-                    'owner_email'       => $this->email,
-                    'owner_password'    => $this->password,
-                    'billing_currency'  => $this->getCurrency(),
-                    'country'           => $this->country,
-                    'is_self_registered' => true,
-                ]);
-            });
+            $provisioningService = app(\App\Services\TenantProvisioningService::class);
+            $result = $provisioningService->provision([
+                'name'                => $this->company_name,
+                'owner_name'          => $this->name,
+                'owner_email'         => $this->email,
+                'owner_password'      => $this->password,
+                'billing_currency'    => $this->getCurrency(),
+                'country'             => $this->country,
+                'is_self_registered'  => true,
+                'industry_profile_id' => $this->industry_profile_id,
+            ]);
 
             $this->tenant_id    = $result->id;
             $this->codeVerified = true;
@@ -276,10 +282,15 @@ class Register extends Component
             $this->selected_plan_id = $plans->first()->id;
         }
 
+        $industryProfiles = \App\Models\Central\IndustryProfile::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
         return view('livewire.auth.register', [
-            'plans'     => $plans,
-            'countries' => CurrencyHelper::countries(),
-            'currency'  => $this->getCurrency(),
+            'plans'             => $plans,
+            'countries'         => CurrencyHelper::countries(),
+            'currency'          => $this->getCurrency(),
+            'industryProfiles'  => $industryProfiles,
         ]);
     }
 }

@@ -29,9 +29,14 @@
                 @endif
             </div>
             @if($runsheet)
-            <button wire:click="showAddItem" class="krd-btn krd-btn-primary">
-                + Add Item
-            </button>
+            <div style="display:flex;gap:8px;">
+                @if($runsheet->items->isNotEmpty())
+                <button wire:click="downloadCallSheet" class="krd-btn krd-btn-secondary">⬇ Call Sheet</button>
+                @endif
+                <button wire:click="showAddItem" class="krd-btn krd-btn-primary">
+                    + Add Item
+                </button>
+            </div>
             @endif
         </div>
     </div>
@@ -213,6 +218,37 @@
                         </div>
                     </div>
 
+                    {{-- Location — only shown if this event has locations added --}}
+                    @if($locations->isNotEmpty())
+                    <div class="krd-input-group"
+                        x-data="{
+                            open: false,
+                            label: '{{ $item_location_id ? ($locations->firstWhere('id', $item_location_id)?->name ?? 'No location') : 'No location' }}',
+                            pick(val, label) { this.label = label; this.open = false; $wire.set('item_location_id', val); }
+                        }"
+                        x-on:click.outside="open = false"
+                        style="position:relative;">
+                        <label class="krd-label-text">Location</label>
+                        <button type="button"
+                            x-on:click="open = !open"
+                            x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                            style="width:100%;">
+                            <span x-text="label"></span>
+                            <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak class="krd-dropdown-menu">
+                            <div class="krd-dropdown-option {{ !$item_location_id ? 'selected' : '' }}"
+                                x-on:click="pick(null, 'No location')">— No location —</div>
+                            @foreach($locations as $loc)
+                            <div class="krd-dropdown-option {{ $item_location_id === $loc->id ? 'selected' : '' }}"
+                                x-on:click="pick({{ $loc->id }}, '{{ $loc->name }}')">
+                                {{ $loc->name }}@if($loc->date) <span style="color:#A8A29E;">· {{ $loc->date->format('M d') }}</span>@endif
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Notes</label>
                         <input wire:model="item_notes" type="text" class="krd-input"
@@ -293,9 +329,9 @@
                                                 Until {{ $item->end_time->format('g:i A') }}
                                             </span>
                                             @endif
-                                            @if($item->assignedTo)
-                                            <span style="font-size:11px;color:#7C3AED;background:#F5F3FF;padding:2px 6px;border-radius:4px;">
-                                                👤 {{ $item->assignedTo->name }}
+                                            @if($item->location)
+                                            <span style="font-size:11px;color:#3B82F6;background:#EFF6FF;padding:2px 6px;border-radius:4px;">
+                                                📍 {{ $item->location->name }}
                                             </span>
                                             @endif
                                             @if($item->vendor)
@@ -415,6 +451,58 @@
                         </button>
                     </div>
                 </div>
+
+                {{-- Locations (multi-location support — optional, only for multi-day/multi-site events) --}}
+                <div class="krd-card" style="padding:20px;margin-top:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <div class="krd-label" style="margin-bottom:0;">Locations</div>
+                        <button wire:click="showAddLocation" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add Location</button>
+                    </div>
+                    <p style="font-size:11px;color:#A8A29E;margin-bottom:14px;">Only needed for events spanning multiple sites or days — e.g. "Studio A" on Day 1, "Outdoor Location" on Day 2.</p>
+
+                    @if($showLocationForm)
+                    <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:6px;padding:14px;margin-bottom:14px;">
+                        <div class="krd-input-group">
+                            <label class="krd-label-text">Name <span style="color:#EF4444;">*</span></label>
+                            <input wire:model="location_name" type="text" class="krd-input" placeholder="e.g. Studio A" />
+                            @error('location_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="krd-grid-2" style="gap:12px;">
+                            <div class="krd-input-group">
+                                <label class="krd-label-text">Date <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                                <input wire:model="location_date" type="date" class="krd-input" />
+                            </div>
+                            <div class="krd-input-group">
+                                <label class="krd-label-text">Address <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                                <input wire:model="location_address" type="text" class="krd-input" />
+                            </div>
+                        </div>
+                        <div class="krd-input-group" style="margin-bottom:0;">
+                            <label class="krd-label-text">Notes</label>
+                            <input wire:model="location_notes" type="text" class="krd-input" />
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button wire:click="saveLocation" class="krd-btn krd-btn-primary krd-btn-sm">{{ $editLocationId ? 'Update' : 'Add' }}</button>
+                            <button wire:click="$set('showLocationForm', false)" class="krd-btn krd-btn-ghost krd-btn-sm">Cancel</button>
+                        </div>
+                    </div>
+                    @endif
+
+                    @forelse($locations as $loc)
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F5F5F4;gap:8px;flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:13px;font-weight:500;color:#1C1917;">📍 {{ $loc->name }}</div>
+                            @if($loc->date)<div style="font-size:11px;color:#A8A29E;">{{ $loc->date->format('D, d M Y') }}</div>@endif
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button wire:click="editLocation({{ $loc->id }})" class="krd-btn krd-btn-secondary krd-btn-sm">Edit</button>
+                            <button wire:click="confirmDeleteLocation({{ $loc->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">✕</button>
+                        </div>
+                    </div>
+                    @empty
+                    <div style="font-size:12px;color:#A8A29E;text-align:center;padding:10px 0;">No additional locations added — this event uses its single default venue.</div>
+                    @endforelse
+                </div>
             </div>
         </div>
 
@@ -492,6 +580,20 @@
             @endif
         </div>
     </div>
+
+    {{-- Delete Location Modal --}}
+    @if($showDeleteLocationModal)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Remove Location?</h3>
+            <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">Runsheet items using this location will keep their other details, just lose the location tag.</p>
+            <div style="display:flex;gap:10px;">
+                <button wire:click="deleteLocation" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
+                <button wire:click="$set('showDeleteLocationModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    @endif
 
     {{-- Delete Modal --}}
     @if($showDeleteModal)

@@ -156,6 +156,31 @@
                 @error('company_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
             </div>
 
+            <div class="krd-input-group">
+                <label class="krd-label-text">What best describes your business?</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    @foreach($industryProfiles as $profile)
+                    <div wire:click="selectIndustryProfile({{ $profile->id }})"
+                        style="
+                            border: 1.5px solid {{ $industry_profile_id === $profile->id ? '#7C3AED' : '#E7E5E4' }};
+                            background: {{ $industry_profile_id === $profile->id ? '#F5F3FF' : '#fff' }};
+                            border-radius: 8px;
+                            padding: 10px 12px;
+                            cursor: pointer;
+                            transition: all 150ms ease;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                        ">
+                        <span style="font-size:16px;">{{ $profile->icon }}</span>
+                        <span style="font-size:12.5px;font-weight:500;color:#1C1917;">{{ $profile->name }}</span>
+                    </div>
+                    @endforeach
+                </div>
+                @error('industry_profile_id') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                <span class="krd-input-hint">This sets up sensible defaults for your workspace — you can customize everything later.</span>
+            </div>
+
             {{-- Country + Currency --}}
             <div
                 x-data="{

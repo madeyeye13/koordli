@@ -33,6 +33,11 @@ class Tenant extends Model
         'domain_last_checked_at'  => 'datetime',
     ];
 
+    public function industryProfile(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(IndustryProfile::class);
+    }
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);

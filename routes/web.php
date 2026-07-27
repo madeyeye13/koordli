@@ -202,6 +202,12 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/support/tickets/{uuid}', \App\Livewire\Tenant\Support\TicketDetail::class)->name('tenant.support.tickets.show');
 
         Route::get('/support/chat', \App\Livewire\Tenant\Support\ChatBot::class)->name('tenant.support.chat');
+
+
+        Route::get('/assets', \App\Livewire\Tenant\Assets\AssetList::class)->name('tenant.assets');
+        Route::get('/assets/create', \App\Livewire\Tenant\Assets\CreateAsset::class)->name('tenant.assets.create');
+        Route::get('/assets/{id}/edit', \App\Livewire\Tenant\Assets\CreateAsset::class)->name('tenant.assets.edit');
+        Route::get('/assets/{id}', \App\Livewire\Tenant\Assets\AssetDetail::class)->name('tenant.assets.show');
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');
