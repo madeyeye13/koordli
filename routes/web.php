@@ -218,3 +218,19 @@ Route::get('/', \App\Livewire\Public\LandingPage::class)->name('landing');
 Route::get('/sitemap.xml', function () {
     return response()->view('sitemap')->header('Content-Type', 'text/xml');
 });
+
+Route::post('/broadcasting/multi-auth', function (\Illuminate\Http\Request $request) {
+    if (auth('platform')->check()) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request->setUserResolver(fn() => auth('platform')->user()));
+    }
+    if (auth('web')->check()) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request->setUserResolver(fn() => auth('web')->user()));
+    }
+    if (auth('client')->check()) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request->setUserResolver(fn() => auth('client')->user()));
+    }
+    if (auth('vendor')->check()) {
+        return \Illuminate\Support\Facades\Broadcast::auth($request->setUserResolver(fn() => auth('vendor')->user()));
+    }
+    abort(403);
+})->middleware('web');

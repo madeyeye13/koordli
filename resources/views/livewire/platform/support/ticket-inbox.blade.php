@@ -1,4 +1,15 @@
-<div>
+<div wire:ignore.self x-data="{
+        init() {
+            window.Echo.private('support-queue').listen('.chat.waiting', (e) => {
+                $wire.call('refreshList');
+                if (window.showToast) {
+                    window.showToast(`New live chat waiting: ${e.tenant_name}`, 'info');
+                }
+            }).listen('.chat.accepted', (e) => {
+                $wire.call('refreshList');
+            });
+        }
+    }">
     <div style="margin-bottom:24px;">
         <div class="krd-label" style="margin-bottom:4px;">Support</div>
         <h2 class="krd-heading-3" style="color:#1C1917;">Ticket Inbox</h2>

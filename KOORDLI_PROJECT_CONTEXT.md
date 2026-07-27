@@ -1533,6 +1533,199 @@ Windows hosts file (`C:\Windows\System32\drivers\etc\hosts`) can simulate subdom
 
 ---
 
+### NEW CRITICAL RULES TO NOTE
+- 43 NEVER USE BACKSLASH-ESCAPED QUOTES (\") INSIDE AN x-data="..." HTML ATTRIBUTE, EVEN INSIDE A JS TEMPLATE LITERAL. Browsers parse HTML attribute boundaries before JS syntax — the moment a \" appears inside a double-quoted x-data="..." attribute, the browser treats the attribute as closed right there, and everything after it renders as literal visible page text instead of executing as JS. This is not an Alpine or Livewire bug — it's fundamental HTML attribute parsing. Fix pattern: any time real-time/dynamic HTML needs to be built client-side (e.g. appending new chat messages via Echo), do NOT build it inline inside an x-data="{...}" attribute string. Instead: (a) use Alpine.data('componentName', (...) => ({...})) registered inside a real <script> block via document.addEventListener('alpine:init', ...), and reference it with x-data="componentName(@js($phpValue))", or (b) build DOM nodes programmatically with document.createElement() + .textContent/.style.cssText (plain string concatenation with +, never template literals with embedded HTML attributes) rather than injecting raw HTML strings with quotes.
+- 44 wire:ignore.self DOES NOT PROTECT AN ELEMENT'S CHILDREN FROM LIVEWIRE'S MORPH ENGINE — only wire:ignore (without .self) fully excludes an element AND its descendants from Livewire's DOM morphing. Using wire:ignore.self on a container that has x-data state referenced by descendants (e.g. a typing boolean shown via x-show on a child span) can cause Livewire to re-morph those children on every re-render, silently corrupting Alpine's reactive scope for that subtree — symptoms include "Alpine Expression Error: X is not defined" console errors and previously-working reactive bindings suddenly breaking after a Livewire round-trip. Rule of thumb for real-time chat UIs: once a page enters a "live"/real-time state, that entire message container should be wire:ignore (full, not .self) and ALL further updates to it must happen via direct DOM manipulation in JS (Echo listeners), never via $wire.call() + Livewire re-render — mixing the two in the same subtree is what caused this bug.
+- 45 LARAVEL ECHO'S .join() METHOD AUTO-PREPENDS THE presence- PREFIX — never include presence- yourself in the channel name string passed to .join(). Passing 'presence-support-ticket.{uuid}' results in Echo/Reverb actually subscribing to presence-presence-support-ticket.{uuid} (double-prefixed), which won't match your routes/channels.php registration and silently fails all presence detection (no errors thrown — it just never triggers .here()/.joining() callbacks). Always pass the bare logical channel name (e.g. 'support-ticket.{uuid}') to both .join() (presence) and .private() (private) — Echo appends the correct prefix automatically depending on which method you call. One Broadcast::channel('support-ticket.{uuid}', ...) registration in routes/channels.php correctly authorizes BOTH the private and presence channel of that same logical name — no need for two separate route registrations.
+- (RULe 46---)APPS WITH MULTIPLE AUTH GUARDS (e.g. web/platform/client/vendor) NEED A CUSTOM BROADCASTING AUTH ENDPOINT — Laravel's auto-registered /broadcasting/auth route only checks the app's single default guard (config('auth.defaults.guard')), so any guard other than the default (e.g. platform) will always fail private/presence channel authorization with a silent 403, even if routes/channels.php is written correctly. Fix: register a custom POST route (e.g. /broadcasting/multi-auth) that checks each relevant guard in priority order and calls Broadcast::auth($request->setUserResolver(fn() => auth($guard)->user())) for whichever guard is actually authenticated, then point Laravel Echo's client config at this custom endpoint via the authEndpoint option instead of the default.
+- 47 BROADCAST EVENT PAYLOADS SHOULD PRE-COMPUTE ANY DISPLAY-CONTEXT-DEPENDENT VALUES SERVER-SIDE — e.g. link color inside a rendered chat message differs depending on whether it's shown on a light or dark/colored bubble background. Rather than trying to re-derive that context client-side from the raw broadcast payload, pass a boolean/context flag into the model method that renders the value (renderedMessage(bool $onDarkBubble = false)) and call it correctly both in the initial page-load Blade loop AND inside the broadcastWith() method of the corresponding ShouldBroadcast event — both code paths must agree, or the initial page load and live-appended messages will visually differ.
+
+### DATABASE — NEW CENTRAL TABLES (Support System)
+
+support_faqs                       ← question, answer (plain text, linkified at render), keywords (JSON array,
+                                      used for simple keyword-match scoring), category, is_active, sort_order.
+                                      Searched by SupportFaq::searchByMessage() — scores by keyword intersection
+                                      count against the tenant's typed message, no external AI/API call (rule-based,
+                                      Option A was chosen over an AI-powered bot for cost/complexity reasons)
+support_agents                     ← platform_user_id (unique, one agent record per platform user), is_available
+                                      (bool toggle agent controls themselves), status (online|away|offline),
+                                      max_concurrent_chats, active_chat_count, last_seen_at.
+                                      SupportAgent::nextAvailable() picks the least-busy available+online agent
+                                      (load-balances via orderBy('active_chat_count'))
+support_tickets                    ← uuid, tenant_id, created_by_user_id (tenant User id, not FK — cross-schema
+                                      pattern used elsewhere in the app), subject, description, priority
+                                      (low|medium|high|urgent), category, status (open|in_progress|resolved|closed),
+                                      source (ticket|chat|email — email exists as a status value but no email-to-
+                                      ticket ingestion was built, it's just the enum slot for a future feature),
+                                      assigned_agent_id, rating (1-5 nullable), rating_comment, rated_at,
+                                      resolved_at, tenant_last_read_at, agent_last_read_at (added in Stage 5 for
+                                      the unread-badge feature)
+support_ticket_messages            ← ticket_id, sender_type (tenant|agent|bot|system — 'system' added in Stage 5
+                                      polish for auto-close warnings), sender_id (nullable — null for bot/system),
+                                      message (ALWAYS plain text, never HTML — see renderedMessage() below)
+support_ticket_attachments         ← ticket_id, message_id (nullable), file_path, file_name, file_size, mime_type,
+                                      uploaded_by_type, uploaded_by_id
+support_ticket_assignment_history  ← ticket_id, from_agent_id (nullable), to_agent_id, reason, changed_by
+                                      (platform_user_id) — full audit trail for every claim/handoff
+support_chat_sessions              ← ticket_id (unique — one session per ticket), status (bot|waiting|active|ended),
+                                      bot_engaged_at, escalated_at, agent_joined_at, ended_at, ended_by
+                                      (tenant|agent|system)
+
+
+- Note: support_ticket_assignment_history's table name is genuinely plural-irregular for Eloquent's auto-pluralizer — the model explicitly sets protected $table = 'support_ticket_assignment_history' to avoid the same auto-pluralization bug documented earlier for VendorContractStatusHistory (Eloquent would otherwise guess support_ticket_assignment_histories).
+
+### KEY FILE LOCATIONS — SUPPORT SYSTEM
+
+SupportFaq.php                      ← searchByMessage() static keyword-scoring search
+SupportAgent.php                    ← canAcceptMoreChats(), nextAvailable() (load-balanced pick)
+SupportTicket.php                   ← priorityColor(), statusColor(), statusLabel(), assignTo() (writes
+                                        assignment history + increments/decrements agent chat counts),
+                                        unreadForTenant(), markReadByTenant() (Stage 5)
+SupportTicketMessage.php            ← senderName(), renderedMessage(bool $onDarkBubble = false) — the ONLY
+                                        place plain-text messages become linkified HTML; escapes first via e(),
+                                        then regex-replaces http(s):// URLs into <a> tags with context-aware link color
+SupportTicketAttachment.php         ← isImage(), humanSize()
+SupportTicketAssignmentHistory.php  ← protected $table set explicitly (see rule above)
+SupportChatSession.php              ← isLive() (status in [waiting, active])
+
+### Livewire Components
+
+app/Livewire/Platform/Support/AgentStatus.php        ← topbar availability toggle, auto-creates SupportAgent
+                                                          row on first toggle-on
+app/Livewire/Platform/Support/FaqList.php             ← FAQ CRUD, keyword comma-string ↔ array conversion
+app/Livewire/Platform/Support/TicketInbox.php         ← 3-way view filter (mine/unassigned/all) + status filter,
+                                                          refreshList() no-op method exists purely so JS Echo
+                                                          listeners can force a re-render via $wire.call()
+app/Livewire/Platform/Support/PlatformTicketDetail.php ← claim/handoff/reply/status/archive/delete, dispatches
+                                                          SendSupportTicketReplyJob for async tickets, broadcasts
+                                                          SupportChatMessageSent directly for live chat tickets
+                                                          (no email in that case — tenant is watching live)
+app/Livewire/Tenant/Support/HelpWidget.php            ← topbar "Help"/"Live Chat" button, unread badge, jumps
+                                                          straight into an active chat instead of showing the
+                                                          3-way modal if one already exists (Stage 5)
+app/Livewire/Tenant/Support/CreateTicket.php          ← async ticket creation form, first message = description
+app/Livewire/Tenant/Support/TicketList.php            ← "My Tickets", instant status filter (wire:ignore + Alpine
+                                                          local state pattern, see Rule 44's sibling issue below)
+app/Livewire/Tenant/Support/TicketDetail.php          ← async ticket conversation view, reopens ticket to
+                                                          in_progress if tenant replies after "resolved", rating flow
+app/Livewire/Tenant/Support/ChatBot.php                ← the whole bot conversation state machine (see Bot Logic
+                                                          section below) — resumes an existing open chat session
+                                                          on mount() instead of always creating a new ticket
+                                                          (critical fix — was creating duplicate tickets on every
+                                                          page refresh before this was added)
+
+### Events (all App\Events, all ShouldBroadcast)
+
+SupportChatMessageSent   ← broadcasts on private-channel 'support-ticket.{uuid}', broadcastAs 'message.sent',
+                            broadcastWith() includes pre-rendered HTML (see Rule 47)
+SupportChatWaiting       ← broadcasts on private-channel 'support-queue' when bot escalates to human,
+                            broadcastAs 'chat.waiting' — platform TicketInbox listens for this to show a
+                            live toast + refresh without polling
+SupportChatAccepted      ← broadcasts on BOTH 'support-ticket.{uuid}' and 'support-queue' when an agent claims
+                            a chat — the queue broadcast lets OTHER agents' inbox views remove it live too
+
+
+### Routes 
+routes/channels.php  — see below, this is the most important file for the whole real-time layer
+
+// ONE registration serves both private-support-ticket.{uuid} AND presence-support-ticket.{uuid}
+Broadcast::channel('support-ticket.{uuid}', function ($user, string $uuid) {
+    $ticket = SupportTicket::where('uuid', $uuid)->first();
+    if (!$ticket) return false;
+    if (auth('web')->check() && auth('web')->id() === $ticket->created_by_user_id) {
+        return ['id' => 'tenant-' . auth('web')->id(), 'name' => auth('web')->user()->name, 'type' => 'tenant'];
+    }
+    if (auth('platform')->check()) {
+        $agent = SupportAgent::where('platform_user_id', auth('platform')->id())->first();
+        if ($agent && $ticket->assigned_agent_id === $agent->id) {
+            return ['id' => 'agent-' . $agent->id, 'name' => auth('platform')->user()->name, 'type' => 'agent'];
+        }
+    }
+    return false; // this is the "no mix-up" guarantee — an unassigned/wrong agent is rejected here, not just hidden in UI
+});
+
+Broadcast::channel('support-queue', function ($user) {
+    if (!auth('platform')->check()) return false;
+    $agent = SupportAgent::where('platform_user_id', auth('platform')->id())->first();
+    return $agent ? ['id' => $agent->id, 'name' => auth('platform')->user()->name] : false;
+});
+
+Route::post('/broadcasting/multi-auth', ...) ← custom multi-guard broadcasting auth (see Rule 46), registered
+                                                 OUTSIDE any guard-specific group, checks platform → web → client
+                                                 → vendor in that priority order
+
+Tenant (authenticated group):
+/support/tickets                  → Tenant\Support\TicketList
+/support/tickets/create           → Tenant\Support\CreateTicket
+/support/tickets/{uuid}           → Tenant\Support\TicketDetail
+/support/chat                     → Tenant\Support\ChatBot
+
+Platform (auth.platform group):
+/platform/support/tickets         → Platform\Support\TicketInbox
+/platform/support/tickets/{uuid}  → Platform\Support\PlatformTicketDetail
+/platform/support/faqs            → Platform\Support\FaqList
+
+### Console Commands (new one added)
+
+app/Console/Commands/CloseInactiveChatSessions.php   ← koordli:close-inactive-chats, scheduled everyFiveMinutes().
+                                                          Two-stage: warns via a 'system' sender_type message after
+                                                          5 min of tenant inactivity on an active chat, then closes
+                                                          (sets chat_session status=ended, ticket status=resolved)
+                                                          after 10 min total if still no reply. Both the warning and
+                                                          the close message broadcast live via SupportChatMessageSent
+                                                          so the tenant sees them in real time even if the page is
+                                                          still open.
+
+Schedule::command('koordli:close-inactive-chats')->everyFiveMinutes();
+
+### SUPPORT SYSTEM — FULL ARCHITECTURE (Stages 1–5, complete)
+- Scope & Access Model (decided up front)
+Agents = platform staff only, but WHICH platform staff can act as agents is itself controlled by the platform (each platform_user opts in via their own SupportAgent row + is_available toggle) — not every platform user is automatically an agent.
+Every live chat auto-creates a lightweight support_ticket behind the scenes (source='chat') the moment the tenant opens the chat widget, even before any human is involved — so there's always a permanent record, never a chat that "just disappears."
+Strict no-mix-up guarantee: an agent can NEVER see or subscribe to a chat/ticket they aren't assigned to — enforced at the routes/channels.php authorization layer itself (returns false, hard rejection), not just hidden in the UI. Multi-agent handoff is fully supported via SupportTicket::assignTo() + support_ticket_assignment_history audit trail.
+Post-conversation rating: 1-5 stars + optional comment, shown to the tenant once a ticket/chat reaches resolved or closed status, visible to the platform agent in the ticket detail sidebar.
+
+### Three-Way Tenant Entry Point
+
+Tenant clicks the "Help" button (topbar, not a floating bubble — deliberately moved off floating-bubble-in-corner per user preference) → sees three choices:
+
+📋 Open a Ticket — async, full form (subject/priority/category/description/attachments)
+💬 Live Support — goes to the bot first (see below)
+✉️ Email Koordli — plain mailto: link, no ticket created
+
+### Bot Conversation Flow (rule-based, NOT AI/API-powered — Option A was explicitly chosen)
+- Bot greets tenant, offers 4 quick-reply buttons: Billing/Plan Question, How do I...?, Something's broken, Talk to a human
+- Billing/Plan Question — bot pulls LIVE data directly from the tenant's own Subscription/Plan/FeatureGateService state (not from the FAQ table): plan name, trial/active/grace status, days remaining, next renewal date, and which features are enabled (custom_subdomain, custom_domain, white_label, rsvp, vendor_portal, client_portal, api_access, etc.) — genuinely answers "am I on a plan that supports X?" without any human involvement
+- How do I...? / Something's broken — free-text input, matched against support_faqs.keywords via simple word-intersection scoring (SupportFaq::searchByMessage()), shows best match(es); if nothing matches confidently, bot proactively offers to escalate
+- Talk to a human — calls SupportAgent::nextAvailable() (least-busy online+available agent). If one exists: session status → waiting, ticket becomes visible in the platform queue, tenant sees a live JS countdown (starts at 3:00, purely client-side setInterval, NOT tied to any real "average wait time" calculation — it's a UX/psychological device, not a guarantee). If NO agent available: friendly fallback message ("Our agents are currently busy... leave a message and we'll follow up by email"), tenant's next message becomes the ticket description, ticket stays as a normal async ticket for later reply.
+- Typewriter effect on the most recent bot message only (older messages render instantly) — pure Alpine setInterval slicing the string, no backend involvement.
+- Chat resume on refresh: ChatBot::mount() checks for an existing ticket+session in bot|waiting|active status for that tenant user before creating a new one — critical fix, without this every page refresh created a brand new duplicate ticket.
+
+### Real-Time Layer (Laravel Reverb)
+- Presence channel (support-ticket.{uuid}, joined via .join()) — used for (a) detecting when the assigned agent has actually entered the room (.here()/.joining() callbacks check user.type === 'agent', then call $wire.call('agentJoined') which flips the tenant's chat stage from waiting → active), and (b) typing indicators via .whisper() — whisper event names are direction-specific (tenant-typing vs agent-typing) to avoid ambiguity about who's typing.
+- Private channel (same logical name, subscribed via .private()) — carries the actual message.sent broadcast for every new chat message, consumed by BOTH the tenant's ChatBot view and the platform's PlatformTicketDetail view.
+- Private queue channel (support-queue) — every available agent subscribes; SupportChatWaiting broadcasts here when the bot escalates, so the Ticket Inbox shows a live toast + updates without polling; SupportChatAccepted also broadcasts here so OTHER agents' inbox views remove the now-claimed chat live too.
+- Everything real-time is rendered via plain JS DOM manipulation inside Alpine.data() components declared in <script> tags — NOT inside x-data="..." HTML attributes, and NOT mixed with Livewire's morph engine on the same subtree (wire:ignore, full not .self, on any container once it enters "live" mode). See Rules 43 and 44 for why this matters — earlier attempts using template literals inside HTML attributes and wire:ignore.self both produced real, hard-to-diagnose bugs (literal JS text rendering as page content; "Alpine Expression Error: X is not defined" from morphing-corrupted reactive scope).
+- Minimizable Chat + Unread Notification (Stage 5)
+- HelpWidget (topbar, present on every tenant page) checks on every load whether an active/waiting chat session exists for the current user; if so, the button relabels to "Live Chat" and shows a red unread-count badge
+- A hidden wire:ignore Alpine component silently joins that ticket's private channel in the background from ANY page (not just the chat page itself) — new agent messages trigger a toast notification + badge increment even while the tenant is elsewhere in the app
+- Clicking the Help button while a chat is active navigates straight to /support/chat (skipping the 3-way choice modal) and resumes exactly where the conversation left off
+- SupportTicket::markReadByTenant() / unreadForTenant() track read state via tenant_last_read_at timestamp compared against message created_at — called both on chat page mount and whenever a live message arrives while the chat page itself is already open (so the badge never falsely shows unread for a conversation currently being viewed)
+- Auto-Close on Inactivity (Stage 5 polish)
+
+Two-stage scheduled check (koordli:close-inactive-chats, every 5 min): warns via a system-sender-type message at 5 minutes of tenant inactivity ("this chat will close in 5 minutes..."), then actually closes (session→ended, ticket→resolved) at 10 minutes total if still no reply — both messages broadcast live so an open tenant tab sees them appear in real time, not just on next page load.
+
+### Platform Ticket Management
+Claim — any available agent can claim an unassigned ticket from the inbox; writes to support_ticket_assignment_history, increments active_chat_count
+Hand off — reassign to a different agent with an optional reason note; full audit trail preserved, decrements old agent's count / increments new agent's
+Archive — sets status = 'closed' (no separate archived flag/column — reuses the existing status enum, consistent with the app's "hard delete only, no soft deletes" convention elsewhere, except tickets specifically also support permanent deletion as a distinct, separate, confirmed-via-modal action)
+Delete — genuinely permanent, cascades to messages/attachments/assignment history/chat session via FK cascadeOnDelete()
+
+### Known Product Decisions Worth Remembering
+Reverb chosen over Pusher/Ably specifically because it was already installed by the user before this feature was scoped — confirmed working end-to-end with a custom multi-guard auth endpoint (Rule 46)
+FAQ bot uses simple keyword-intersection scoring, deliberately NOT an AI API call — chosen for zero marginal cost per conversation and simplicity, at the cost of being less flexible than a true LLM-backed assistant; revisit if conversation volume/quality demands it later
+The 3-minute countdown shown to waiting tenants is a fixed UX device, not a real computed estimate — there is no dynamic "average wait time" calculation anywhere in the system yet
+
 ## PENDING
 
 ### Phase 9 — Remaining polish (optional)

@@ -24,6 +24,26 @@ class ChatBot extends Component
     {
         $tenant = auth()->user()->tenant;
 
+        // Resume an existing, still-open chat session for this user instead of starting fresh
+        $existingTicket = SupportTicket::where('tenant_id', $tenant->id)
+            ->where('created_by_user_id', auth()->id())
+            ->where('source', 'chat')
+            ->whereHas('chatSession', fn($q) => $q->whereIn('status', ['bot', 'waiting', 'active']))
+            ->latest()
+            ->first();
+
+        if ($existingTicket) {
+            $this->ticket  = $existingTicket;
+            $this->session = $existingTicket->chatSession;
+            $this->stage   = match($this->session->status) {
+                'waiting' => 'waiting',
+                'active'  => 'active',
+                default   => 'menu',
+            };
+            $this->ticket->markReadByTenant();
+            return;
+        }
+
         $this->ticket = SupportTicket::create([
             'tenant_id'          => $tenant->id,
             'created_by_user_id' => auth()->id(),
@@ -46,12 +66,16 @@ class ChatBot extends Component
 
     private function botSay(string $text): void
     {
-        SupportTicketMessage::create([
+        $message = SupportTicketMessage::create([
             'ticket_id'   => $this->ticket->id,
             'sender_type' => 'bot',
             'sender_id'   => null,
             'message'     => $text,
         ]);
+
+        if ($this->stage === 'active' || $this->stage === 'waiting') {
+            broadcast(new \App\Events\SupportChatMessageSent($message, $this->ticket->uuid));
+        }
     }
 
     private function tenantSay(string $text): void
@@ -170,8 +194,65 @@ class ChatBot extends Component
         $this->botSay("Great, connecting you with an available agent now. Please hold on...");
         $this->stage = 'waiting';
 
-        // Stage 4 will wire real-time queue broadcast + presence here.
-        // For now, ticket + session correctly reflect "waiting" state for an agent to pick up from the inbox.
+        broadcast(new \App\Events\SupportChatWaiting($this->ticket->fresh(['tenant', 'chatSession'])));
+    }
+
+    /**
+     * Called by JS the moment the presence channel confirms an agent has joined the room.
+     */
+    public function agentJoined(): void
+    {
+        if ($this->stage === 'waiting') {
+            $this->session->update(['status' => 'active', 'agent_joined_at' => now()]);
+            $this->stage = 'active';
+            $this->botSay("You're now connected with " . ($this->ticket->fresh('assignedAgent.platformUser')->assignedAgent?->platformUser?->name ?? 'an agent') . ". Say hello!");
+        }
+        $this->ticket->markReadByTenant();
+    }
+
+    /**
+     * Called from JS whenever a live message arrives WHILE this page is open —
+     * keeps read status current so the topbar badge never falsely shows unread
+     * for a conversation the tenant is actively looking at.
+     */
+    public function markCurrentChatRead(): void
+    {
+        $this->ticket->markReadByTenant();
+    }
+
+    /**
+     * Sends a real live-chat message once connected to an agent (stage = active).
+     */
+    public function sendLiveMessage(): void
+    {
+        if (empty(trim($this->userInput))) return;
+
+        $text = $this->userInput;
+        $this->userInput = '';
+
+        $message = \App\Models\Central\SupportTicketMessage::create([
+            'ticket_id'   => $this->ticket->id,
+            'sender_type' => 'tenant',
+            'sender_id'   => auth()->id(),
+            'message'     => $text,
+        ]);
+
+        broadcast(new \App\Events\SupportChatMessageSent($message, $this->ticket->uuid));
+    }
+
+    /**
+     * Called by JS whenever a broadcast event signals a new message exists — pulls fresh from DB.
+     */
+    public function refreshMessages(): void
+    {
+        $this->ticket->load('messages');
+    }
+
+    public function endChatByTenant(): void
+    {
+        $this->session->update(['status' => 'ended', 'ended_by' => 'tenant', 'ended_at' => now()]);
+        $this->ticket->update(['status' => 'resolved', 'resolved_at' => now()]);
+        $this->stage = 'ended';
     }
 
     public function leaveMessage(): void

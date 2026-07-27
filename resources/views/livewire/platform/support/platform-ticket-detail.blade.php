@@ -20,31 +20,47 @@
     <div style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;" id="platform-ticket-grid">
         <div>
             {{-- Conversation --}}
-            <div class="krd-card" style="padding:24px;margin-bottom:16px;max-height:480px;overflow-y:auto;">
+            <div class="krd-card" id="platform-chat-scroll" style="padding:24px;margin-bottom:16px;max-height:480px;overflow-y:auto;background:#fff !important;"
+                @if($ticket->source === 'chat')
+                wire:ignore
+                x-data="platformChatWidget(@js($ticket->uuid))"
+                @endif
+            >
                 @foreach($ticket->messages as $msg)
-                <div style="display:flex;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}margin-bottom:16px;">
-                    <div style="max-width:75%;">
-                        <div style="font-size:11px;color:#A8A29E;margin-bottom:4px;{{ $msg->sender_type === 'agent' ? 'text-align:right;' : '' }}">
-                            {{ $msg->senderName() }} · {{ $msg->created_at->format('d M, g:i A') }}
-                        </div>
-                        <div style="padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;{{ $msg->sender_type === 'agent' ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;' }}">
-                            {!! $msg->renderedMessage() !!}
-                        </div>
-                        @if($msg->attachments->isNotEmpty())
-                        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}">
-                            @foreach($msg->attachments as $att)
-                            <a href="{{ Storage::url($att->file_path) }}" target="_blank" style="font-size:11px;background:#F5F5F4;padding:4px 10px;border-radius:6px;color:#57534E;text-decoration:none;">📎 {{ $att->file_name }}</a>
-                            @endforeach
-                        </div>
-                        @endif
+                    @if($msg->sender_type === 'system')
+                    <div style="text-align:center;margin:8px 0;">
+                        <span style="font-size:11px;color:#78716C !important;background:#F5F5F4 !important;padding:4px 12px;border-radius:12px;display:inline-block;">{{ $msg->message }}</span>
                     </div>
-                </div>
+                    @else
+                    <div style="display:flex;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}margin-bottom:16px;">
+                        <div style="max-width:75%;">
+                            <div style="font-size:11px;color:#A8A29E !important;margin-bottom:4px;{{ $msg->sender_type === 'agent' ? 'text-align:right;' : '' }}">
+                                {{ $msg->senderName() }} · {{ $msg->created_at->format('d M, g:i A') }}
+                            </div>
+                            <div style="padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;{{ $msg->sender_type === 'agent' ? 'background:#7C3AED !important;color:#fff !important;' : 'background:#F5F5F4 !important;color:#1C1917 !important;' }}">
+                                {!! $msg->renderedMessage($msg->sender_type === 'agent') !!}
+                            </div>
+                            @if($msg->attachments->isNotEmpty())
+                            <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}">
+                                @foreach($msg->attachments as $att)
+                                <a href="{{ Storage::url($att->file_path) }}" target="_blank" style="font-size:11px;background:#F5F5F4;padding:4px 10px;border-radius:6px;color:#57534E;text-decoration:none;">📎 {{ $att->file_name }}</a>
+                                @endforeach
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
                 @endforeach
             </div>
 
             @if($ticket->status !== 'closed')
             <div class="krd-card" style="padding:20px;">
-                <textarea wire:model="reply" class="krd-input @error('reply') krd-input-error @enderror" rows="3" placeholder="Type your reply..."></textarea>
+               @if($ticket->source === 'chat')
+                <div style="height:16px;margin-bottom:4px;">
+                    <span id="platform-typing-indicator" style="display:none;font-size:11px;color:#A8A29E;font-style:italic;">Tenant is typing...</span>
+                </div>
+                @endif
+                <textarea wire:model="reply" onkeyup="if(window.__platformPresenceChannel) window.__platformPresenceChannel.whisper('agent-typing', {})" class="krd-input @error('reply') krd-input-error @enderror" rows="3" placeholder="Type your reply..."></textarea>
                 @error('reply') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:10px;">
                     <input wire:model="attachments" type="file" multiple style="font-size:12px;" />
@@ -81,6 +97,14 @@
                 </div>
             </div>
 
+            <div class="krd-card" style="padding:20px;">
+                <div class="krd-label" style="margin-bottom:10px;">Danger Zone</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button wire:click="archiveTicket" class="krd-btn krd-btn-secondary krd-btn-sm" style="width:100%;">Archive (Close) Ticket</button>
+                    <button wire:click="confirmDelete" class="krd-btn krd-btn-sm" style="width:100%;background:#FEE2E2;color:#DC2626;">Delete Ticket Permanently</button>
+                </div>
+            </div>
+
             @if($ticket->rated_at)
             <div class="krd-card" style="padding:20px;">
                 <div class="krd-label" style="margin-bottom:8px;">Customer Rating</div>
@@ -102,6 +126,19 @@
             @endif
         </div>
     </div>
+
+    @if($showDeleteModal)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete This Ticket?</h3>
+            <p style="font-size:13px;color:#78716C;margin-bottom:24px;">This permanently deletes the ticket and its entire conversation history. This cannot be undone.</p>
+            <div style="display:flex;gap:10px;">
+                <button wire:click="deleteTicket" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete Forever</button>
+                <button wire:click="$set('showDeleteModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    @endif
 
     @if($showHandoffModal)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
@@ -133,3 +170,60 @@
 <style>
 @media (max-width: 768px) { #platform-ticket-grid { grid-template-columns: 1fr !important; } #platform-ticket-actions { position: static !important; } }
 </style>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('platformChatWidget', (ticketUuid) => ({
+        init() {
+            this.$el.scrollTop = this.$el.scrollHeight;
+
+            window.Echo.private('support-ticket.' + ticketUuid).listen('.message.sent', (e) => {
+                const wrap = document.createElement('div');
+
+                if (e.sender_type === 'system') {
+                    wrap.style.textAlign = 'center';
+                    wrap.style.margin = '8px 0';
+                    const span = document.createElement('span');
+                    span.style.cssText = 'font-size:11px;color:#78716C;background:#F5F5F4;padding:4px 12px;border-radius:12px;display:inline-block;';
+                    span.textContent = e.message;
+                    wrap.appendChild(span);
+                    this.$el.appendChild(wrap);
+                    this.$el.scrollTop = this.$el.scrollHeight;
+                    return;
+                }
+
+                const isAgent = e.sender_type === 'agent';
+                wrap.style.cssText = 'display:flex;margin-bottom:16px;' + (isAgent ? 'justify-content:flex-end;' : '');
+
+                const inner = document.createElement('div');
+                inner.style.maxWidth = '75%';
+
+                const label = document.createElement('div');
+                label.style.cssText = 'font-size:11px;color:#A8A29E;margin-bottom:4px;' + (isAgent ? 'text-align:right;' : '');
+                label.textContent = e.sender_name + ' \u00B7 ' + e.created_at;
+
+                const bubble = document.createElement('div');
+                bubble.style.cssText = 'padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;' +
+                    (isAgent ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');
+                bubble.innerHTML = e.rendered;
+
+                inner.appendChild(label);
+                inner.appendChild(bubble);
+                wrap.appendChild(inner);
+                this.$el.appendChild(wrap);
+                this.$el.scrollTop = this.$el.scrollHeight;
+            });
+
+            window.__platformPresenceChannel = window.Echo.join('support-ticket.' + ticketUuid)
+                .listenForWhisper('tenant-typing', () => {
+                    const el = document.getElementById('platform-typing-indicator');
+                    if (el) el.style.display = 'block';
+                    clearTimeout(window.__platformTypingTimeout);
+                    window.__platformTypingTimeout = setTimeout(() => {
+                        if (el) el.style.display = 'none';
+                    }, 2500);
+                });
+        }
+    }));
+});
+</script>

@@ -14,12 +14,16 @@ class SupportTicket extends Model
         'uuid', 'tenant_id', 'created_by_user_id', 'subject', 'description',
         'priority', 'category', 'status', 'source', 'assigned_agent_id',
         'rating', 'rating_comment', 'rated_at', 'resolved_at',
+        'tenant_last_read_at', 'agent_last_read_at',
     ];
 
     protected $casts = [
-        'rated_at'     => 'datetime',
-        'resolved_at'  => 'datetime',
+        'rated_at'             => 'datetime',
+        'resolved_at'          => 'datetime',
+        'tenant_last_read_at'  => 'datetime',
+        'agent_last_read_at'   => 'datetime',
     ];
+    
 
     protected static function booted(): void
     {
@@ -83,6 +87,19 @@ class SupportTicket extends Model
             'closed'      => '#78716C',
             default       => '#F59E0B', // open
         };
+    }
+
+    public function unreadForTenant(): int
+    {
+        return $this->messages()
+            ->whereIn('sender_type', ['agent', 'bot'])
+            ->when($this->tenant_last_read_at, fn($q) => $q->where('created_at', '>', $this->tenant_last_read_at))
+            ->count();
+    }
+
+    public function markReadByTenant(): void
+    {
+        $this->update(['tenant_last_read_at' => now()]);
     }
 
     public function statusLabel(): string

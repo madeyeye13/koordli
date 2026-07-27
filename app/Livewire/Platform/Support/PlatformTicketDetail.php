@@ -25,6 +25,8 @@ class PlatformTicketDetail extends Component
     public ?int $handoffAgentId   = null;
     public string $handoffReason  = '';
 
+    public bool $showDeleteModal = false;
+
     public function mount(string $uuid): void
     {
         $this->ticket = SupportTicket::where('uuid', $uuid)
@@ -43,8 +45,19 @@ class PlatformTicketDetail extends Component
 
         $this->ticket->assignTo($agent, $this->ticket->assignedAgent, 'Claimed from inbox', auth('platform')->id());
         $this->ticket->refresh();
+
+        if ($this->ticket->source === 'chat' && $this->ticket->chatSession) {
+            broadcast(new \App\Events\SupportChatAccepted($this->ticket->uuid, $agent));
+        }
+
         $this->toastSuccess('Ticket assigned to you.');
     }
+
+    public function refreshMessages(): void
+    {
+        $this->ticket->load('messages.attachments');
+    }
+
 
     public function sendReply(): void
     {
@@ -85,16 +98,21 @@ class PlatformTicketDetail extends Component
             $this->ticket->update(['status' => 'in_progress']);
         }
 
-        // Notify tenant by email
-        $tenantUser = \App\Models\Tenant\User::withoutGlobalScopes()->find($this->ticket->created_by_user_id);
-        if ($tenantUser?->email) {
-            SendSupportTicketReplyJob::dispatch(
-                $tenantUser->email,
-                $tenantUser->name,
-                $this->ticket->subject,
-                $this->reply ?: 'You have a new attachment on your support ticket.',
-                route('tenant.support.tickets.show', $this->ticket->uuid),
-            );
+        // Live chat: broadcast instantly, skip the email (tenant is right there watching)
+        if ($this->ticket->source === 'chat' && $this->ticket->chatSession?->status === 'active') {
+            broadcast(new \App\Events\SupportChatMessageSent($message, $this->ticket->uuid));
+        } else {
+            // Async ticket: notify tenant by email
+            $tenantUser = \App\Models\Tenant\User::withoutGlobalScopes()->find($this->ticket->created_by_user_id);
+            if ($tenantUser?->email) {
+                SendSupportTicketReplyJob::dispatch(
+                    $tenantUser->email,
+                    $tenantUser->name,
+                    $this->ticket->subject,
+                    $this->reply ?: 'You have a new attachment on your support ticket.',
+                    route('tenant.support.tickets.show', $this->ticket->uuid),
+                );
+            }
         }
 
         $this->reply = '';
@@ -111,6 +129,26 @@ class PlatformTicketDetail extends Component
         ]);
         $this->ticket->refresh();
         $this->toastSuccess('Status updated to ' . $this->ticket->statusLabel() . '.');
+    }
+
+
+    public function confirmDelete(): void
+    {
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteTicket(): void
+    {
+        $this->ticket->delete(); // cascades to messages/attachments/history/chat session via FK constraints
+        $this->toastSuccess('Ticket permanently deleted.');
+        $this->redirect(route('platform.support.tickets'), navigate: true);
+    }
+
+    public function archiveTicket(): void
+    {
+        $this->ticket->update(['status' => 'closed']);
+        $this->ticket->refresh();
+        $this->toastSuccess('Ticket archived (closed).');
     }
 
     public function openHandoff(): void

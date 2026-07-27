@@ -1,15 +1,30 @@
 <div>
-    {{-- Topbar Help Button (not floating — sits inline in the header) --}}
+    {{-- Topbar Help Button --}}
     <button wire:click="openChoices"
-        style="display:flex;align-items:center;gap:6px;background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background 150ms;"
+        style="position:relative;display:flex;align-items:center;gap:6px;background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background 150ms;"
         onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
         </svg>
-        Help
+        @if($activeTicketUuid)
+            Live Chat
+        @else
+            Help
+        @endif
+
+        @if($unreadCount > 0)
+        <span style="position:absolute;top:-6px;right:-6px;background:#EF4444;color:#fff;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+            {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+        </span>
+        @endif
     </button>
 
-    {{-- Choice Modal --}}
+    {{-- Background listener — keeps the badge live even while the tenant is on any other page --}}
+    @if($activeTicketUuid)
+    <div wire:ignore x-data="helpWidgetListener(@js($activeTicketUuid))"></div>
+    @endif
+
+    {{-- Choice Modal (only shown when there's no active chat already) --}}
     @if($showChoiceModal)
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="$set('showChoiceModal', false)">
         <div style="background:#fff;border-radius:12px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
@@ -62,3 +77,20 @@
     </div>
     @endif
 </div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('helpWidgetListener', (ticketUuid) => ({
+        init() {
+            window.Echo.private('support-ticket.' + ticketUuid).listen('.message.sent', (e) => {
+                if (e.sender_type !== 'tenant') {
+                    this.$wire.call('refreshActiveChat');
+                    if (window.showToast) {
+                        window.showToast('New message from ' + e.sender_name, 'info');
+                    }
+                }
+            });
+        }
+    }));
+});
+</script>

@@ -37,14 +37,15 @@ class SupportTicketMessage extends Model
      * Linkify plain-text URLs for safe display. Message is stored as plain text;
      * this is the ONLY place raw URLs become clickable <a> tags.
      */
-    public function renderedMessage(): string
+    public function renderedMessage(bool $onDarkBubble = false): string
     {
         $escaped = e($this->message);
         $pattern = '/(https?:\/\/[^\s<]+)/i';
+        $linkColor = $onDarkBubble ? '#DDD6FE' : '#7C3AED';
 
-        return preg_replace_callback($pattern, function ($matches) {
+        return preg_replace_callback($pattern, function ($matches) use ($linkColor) {
             $url = $matches[1];
-            return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer" style="color:#7C3AED;text-decoration:underline;">' . $url . '</a>';
+            return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer" style="color:' . $linkColor . ';text-decoration:underline;">' . $url . '</a>';
         }, $escaped);
     }
 }
