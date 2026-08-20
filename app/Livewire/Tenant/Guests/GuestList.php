@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Guests;
 
 use App\Models\Tenant\Event;
 use App\Models\Tenant\Guest;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Renderless;
@@ -47,12 +48,23 @@ class GuestList extends Component
 
     public function mount(string $slug): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'guests.view.basic')
+                || app(PermissionService::class)->userCan(auth()->user(), 'guests.view'),
+            403
+        );
+
         $this->event = Event::where('slug', $slug)->firstOrFail();
         $this->expectedGuests = $this->event->max_guests ?? '';
     }
 
     public function toggleAddForm(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.create')) {
+            $this->toastError('You do not have permission to add guests.');
+            return;
+        }
+
         $this->showAddForm = !$this->showAddForm;
         if (!$this->showAddForm) {
             $this->reset(['name', 'email', 'phone', 'category', 'notes']);
@@ -61,6 +73,11 @@ class GuestList extends Component
 
     public function addGuest(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.create')) {
+            $this->toastError('You do not have permission to add guests.');
+            return;
+        }
+
         $this->validate([
             'name'     => 'required|string|min:2|max:100',
             'email'    => 'nullable|email|max:150',
@@ -87,6 +104,11 @@ class GuestList extends Component
 
     public function startEdit(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.edit')) {
+            $this->toastError('You do not have permission to edit guests.');
+            return;
+        }
+
         $guest = Guest::find($id);
         if (!$guest) return;
         $this->editId       = $id;
@@ -99,6 +121,11 @@ class GuestList extends Component
 
     public function saveEdit(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.edit')) {
+            $this->toastError('You do not have permission to edit guests.');
+            return;
+        }
+
         $this->validate([
             'editName'  => 'required|string|min:2|max:100',
             'editEmail' => 'nullable|email|max:150',
@@ -125,6 +152,11 @@ class GuestList extends Component
     
     public function updateRsvpStatus(int $id, string $status): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.edit')) {
+            $this->toastError('You do not have permission to edit guests.');
+            return;
+        }
+
         Guest::find($id)?->update(['rsvp_status' => $status]);
         $this->toastSuccess('RSVP status updated.');
     }
@@ -132,6 +164,11 @@ class GuestList extends Component
     
     public function checkIn(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.checkin')) {
+            $this->toastError('You do not have permission to check in guests.');
+            return;
+        }
+
         $guest = Guest::find($id);
         if (!$guest) return;
         $guest->update([
@@ -143,12 +180,23 @@ class GuestList extends Component
 
     public function confirmDelete(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.delete')) {
+            $this->toastError('You do not have permission to delete guests.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function deleteGuest(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.delete')) {
+            $this->toastError('You do not have permission to delete guests.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         Guest::find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
@@ -163,6 +211,11 @@ class GuestList extends Component
 
     public function saveGuestCount(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.edit')) {
+            $this->toastError('You do not have permission to edit guests.');
+            return;
+        }
+
         $this->validate([
             'expectedGuests' => 'nullable|integer|min:0|max:999999',
         ]);
@@ -202,6 +255,12 @@ class GuestList extends Component
             'checked_in'=> $guests->where('checked_in', true)->count(),
         ];
 
-        return view('livewire.tenant.guests.guest-list', compact('guests', 'stats', 'categories'));
+        // NOTE: this flag is computed and passed to the view but the Blade
+        // template does not yet use it to hide email/phone columns — that
+        // change requires editing guest-list.blade.php, which I don't have.
+        // Until that's done, guests.view.basic-only users still see full PII.
+        $canViewFullGuest = app(PermissionService::class)->userCan(auth()->user(), 'guests.view');
+
+        return view('livewire.tenant.guests.guest-list', compact('guests', 'stats', 'categories', 'canViewFullGuest'));
     }
 }

@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Events;
 use App\Models\Tenant\Event;
 use App\Models\Tenant\EventType;
 use App\Models\Tenant\TenantEventStatus;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -44,12 +45,23 @@ class EventList extends Component
 
     public function confirmDelete(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.delete')) {
+            $this->toastError('You do not have permission to delete events.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.delete')) {
+            $this->toastError('You do not have permission to delete events.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         $event = Event::find($this->deleteId);
         if ($event) {
             $event->delete();
@@ -67,6 +79,11 @@ class EventList extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'events.view'),
+            403
+        );
+
         $events = Event::with(['eventType', 'status', 'createdBy'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')

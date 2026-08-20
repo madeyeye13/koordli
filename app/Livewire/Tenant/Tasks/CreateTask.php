@@ -8,6 +8,7 @@ use App\Models\Tenant\Event;
 use App\Models\Tenant\Task;
 use App\Models\Tenant\TenantTaskCategory;
 use App\Models\Tenant\User;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -34,6 +35,13 @@ class CreateTask extends Component
 
     public function mount(?int $id = null, ?int $eventId = null): void
     {
+        $permission = $id ? 'tasks.edit' : 'tasks.create';
+
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), $permission),
+            403
+        );
+
         if ($id) {
             $this->task             = Task::findOrFail($id);
             $this->taskId           = $id;
@@ -55,6 +63,11 @@ class CreateTask extends Component
 
     public function sendReminderNow(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.edit')) {
+            $this->toastError('You do not have permission to send task reminders.');
+            return;
+        }
+
         if (!$this->task || !$this->task->assignedTo) {
             $this->toastError('Assign this task to a staff member first.');
             return;
@@ -85,6 +98,23 @@ class CreateTask extends Component
 
     public function save(): void
     {
+        $permission = $this->task ? 'tasks.edit' : 'tasks.create';
+
+        if (!app(PermissionService::class)->userCan(auth()->user(), $permission)) {
+            $this->toastError('You do not have permission to ' . ($this->task ? 'edit this task.' : 'create tasks.'));
+            return;
+        }
+
+        // Reassigning to a different person requires the assign permission
+        // specifically, separate from general edit rights.
+        $previousAssignee = $this->task?->assigned_to;
+        if ($this->assigned_to && $this->assigned_to !== $previousAssignee) {
+            if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.assign')) {
+                $this->addError('assigned_to', 'You do not have permission to assign tasks.');
+                return;
+            }
+        }
+
         $this->validate([
             'title'            => 'required|string|min:2|max:300',
             'event_id'         => 'nullable|exists:events,id',
@@ -108,7 +138,6 @@ class CreateTask extends Component
         ];
 
         if ($this->task) {
-            $previousAssignee = $this->task->assigned_to;
             $this->task->update($data);
             $this->toastSuccess('Task updated successfully.');
 

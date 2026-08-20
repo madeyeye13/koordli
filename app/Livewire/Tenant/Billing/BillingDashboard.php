@@ -12,6 +12,11 @@ class BillingDashboard extends Component
 {
     public function render()
     {
+        abort_unless(
+            app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'billing.view'),
+            403
+        );
+
         $tenant       = auth()->user()->tenant;
         $subscription = Subscription::where('tenant_id', $tenant->id)
             ->with('plan')

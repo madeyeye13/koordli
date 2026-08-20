@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Budget;
 use App\Helpers\CurrencyHelper;
 use App\Models\Tenant\Budget;
 use App\Models\Tenant\Event;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -20,6 +21,11 @@ class BudgetOverview extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'budget.view'),
+            403
+        );
+
         $eventsWithBudget = Event::with(['budget.items', 'budget.clientPayments', 'status'])
             ->whereHas('budget')
             ->when($this->search, fn($q) =>

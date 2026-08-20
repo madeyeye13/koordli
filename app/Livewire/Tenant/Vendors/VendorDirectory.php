@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Vendors;
 
 use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorCategory;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Renderless;
@@ -37,6 +38,11 @@ class VendorDirectory extends Component
     #[Renderless]
     public function togglePreferred(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.edit')) {
+            $this->toastError('You do not have permission to edit vendors.');
+            return;
+        }
+
         $vendor = Vendor::find($id);
         if ($vendor) {
             $vendor->update(['is_preferred' => !$vendor->is_preferred]);
@@ -45,12 +51,23 @@ class VendorDirectory extends Component
 
     public function confirmDelete(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.delete')) {
+            $this->toastError('You do not have permission to delete vendors.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.delete')) {
+            $this->toastError('You do not have permission to delete vendors.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         Vendor::find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
@@ -65,6 +82,11 @@ class VendorDirectory extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'vendors.view'),
+            403
+        );
+
         $vendors = Vendor::with(['category', 'eventAssignments'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')

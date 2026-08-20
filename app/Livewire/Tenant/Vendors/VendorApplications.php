@@ -6,6 +6,7 @@ use App\Jobs\SendVendorApprovalJob;
 use App\Models\Central\VendorAccount;
 use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorApplication;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -31,6 +32,11 @@ class VendorApplications extends Component
 
     public function approve(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.applications.manage')) {
+            $this->toastError('You do not have permission to approve vendor applications.');
+            return;
+        }
+
         $application = VendorApplication::findOrFail($id);
 
         if (!$application->isPending()) {
@@ -104,6 +110,11 @@ class VendorApplications extends Component
 
     public function openRejectModal(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.applications.manage')) {
+            $this->toastError('You do not have permission to reject vendor applications.');
+            return;
+        }
+
         $this->rejectingId     = $id;
         $this->rejectionReason = '';
         $this->showRejectModal = true;
@@ -111,6 +122,12 @@ class VendorApplications extends Component
 
     public function confirmReject(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.applications.manage')) {
+            $this->toastError('You do not have permission to reject vendor applications.');
+            $this->showRejectModal = false;
+            return;
+        }
+
         $this->validate(['rejectionReason' => 'nullable|string|max:500']);
 
         $application = VendorApplication::findOrFail($this->rejectingId);
@@ -134,6 +151,12 @@ class VendorApplications extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'vendors.applications.view')
+                || app(PermissionService::class)->userCan(auth()->user(), 'vendors.applications.manage'),
+            403
+        );
+
         $applications = VendorApplication::where('status', $this->filter)
             ->with('category')
             ->orderByDesc('created_at')

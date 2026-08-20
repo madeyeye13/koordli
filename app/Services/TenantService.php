@@ -14,6 +14,20 @@ use Spatie\Permission\Models\Role;
 
 class TenantService
 {
+    /**
+     * The 5 staff-facing role templates copied into every new tenant.
+     * Deliberately excludes the 'client'/'vendor' template rows in
+     * PermissionSeeder — those are unused leftovers under the wrong guard
+     * and are not staff roles.
+     */
+    private const STAFF_ROLE_TEMPLATES = [
+        'company_owner',
+        'coordinator',
+        'finance',
+        'operations',
+        'social_media_manager',
+    ];
+
     public function create(array $data): Tenant
     {
         return DB::transaction(function () use ($data) {
@@ -69,27 +83,44 @@ class TenantService
                 'is_self_registered' => $data['is_self_registered'] ?? false,
             ]);
 
-            // 4. Assign company_owner role scoped to this tenant
+            // 4. Copy ALL staff role templates (company_owner + the 4 starter
+            // roles) into this tenant, each with its template's permissions —
+            // not just company_owner as before. This is what makes the
+            // "sensible defaults" starter roles actually exist per-tenant,
+            // instead of only being created empty the first time someone
+            // happens to invite a "coordinator".
             app(\Spatie\Permission\PermissionRegistrar::class)
                 ->setPermissionsTeamId($tenant->id);
 
-            $tenantRole = Role::firstOrCreate([
-                'name'       => 'company_owner',
-                'guard_name' => 'web',
-                'tenant_id'  => $tenant->id,
-            ]);
-
-            // Copy permissions from template role
-            $templateRole = Role::where('name', 'company_owner')
-                ->where('guard_name', 'web')
+            $templateRoles = Role::where('guard_name', 'web')
                 ->whereNull('tenant_id')
-                ->first();
+                ->whereIn('name', self::STAFF_ROLE_TEMPLATES)
+                ->get();
 
-            if ($templateRole) {
-                $tenantRole->syncPermissions($templateRole->permissions);
+            $ownerRole = null;
+
+            foreach ($templateRoles as $template) {
+                $tenantRole = Role::firstOrCreate(
+                    [
+                        'name'       => $template->name,
+                        'guard_name' => 'web',
+                        'tenant_id'  => $tenant->id,
+                    ],
+                    [
+                        'is_system' => $template->name === 'company_owner',
+                    ]
+                );
+
+                $tenantRole->syncPermissions($template->permissions);
+
+                if ($template->name === 'company_owner') {
+                    $ownerRole = $tenantRole;
+                }
             }
 
-            $user->assignRole($tenantRole);
+            if ($ownerRole) {
+                $user->assignRole($ownerRole);
+            }
 
             // 5. Seed default tenant data
             $seeder = new DefaultTenantSeeder();

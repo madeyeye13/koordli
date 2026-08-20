@@ -7,6 +7,7 @@ use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorContract;
 use App\Models\Tenant\VendorEventAssignment;
 use App\Models\Tenant\VendorInvoice;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -33,6 +34,11 @@ class CreateInvoice extends Component
 
     public function mount(): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'invoices.manage'),
+            403
+        );
+
         $this->issue_date = now()->format('Y-m-d');
         $this->due_date   = now()->addDays(14)->format('Y-m-d');
     }
@@ -56,6 +62,11 @@ class CreateInvoice extends Component
 
     public function save(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'invoices.manage')) {
+            $this->toastError('You do not have permission to create invoices.');
+            return;
+        }
+
         $this->validate([
             'vendor_id'       => 'required|exists:vendors,id',
             'issue_date'      => 'required|date',

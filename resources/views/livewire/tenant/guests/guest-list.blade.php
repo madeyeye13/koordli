@@ -266,14 +266,18 @@
                             @endif
                         </td>
                         <td>
-                            @if($guest->email)
-                            <div style="font-size:12px;color:#57534E;">{{ $guest->email }}</div>
-                            @endif
-                            @if($guest->phone)
-                            <div style="font-size:12px;color:#A8A29E;">{{ $guest->phone }}</div>
-                            @endif
-                            @if(!$guest->email && !$guest->phone)
-                            <span style="color:#A8A29E;font-size:12px;">—</span>
+                            @if($canViewFullGuest)
+                                @if($guest->email)
+                                <div style="font-size:12px;color:#57534E;">{{ $guest->email }}</div>
+                                @endif
+                                @if($guest->phone)
+                                <div style="font-size:12px;color:#A8A29E;">{{ $guest->phone }}</div>
+                                @endif
+                                @if(!$guest->email && !$guest->phone)
+                                <span style="color:#A8A29E;font-size:12px;">—</span>
+                                @endif
+                            @else
+                                <span style="color:#A8A29E;font-size:12px;">—</span>
                             @endif
                         </td>
                         <td>
@@ -340,7 +344,7 @@
                 <span class="krd-badge {{ $guest->statusBadgeClass() }}">{{ ucfirst($guest->rsvp_status) }}</span>
             </div>
 
-            @if($guest->email || $guest->phone)
+            @if($canViewFullGuest && ($guest->email || $guest->phone))
             <div style="margin-bottom:10px;">
                 @if($guest->email)<div style="font-size:12px;color:#78716C;">{{ $guest->email }}</div>@endif
                 @if($guest->phone)<div style="font-size:12px;color:#A8A29E;">{{ $guest->phone }}</div>@endif

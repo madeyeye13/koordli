@@ -1,34 +1,4 @@
-<div x-data="{
-        selectModeLocal: false,
-        selectedIds: [],
-        canDeleteEveryoneFlag: false,
-        recalcCanDeleteEveryone() {
-            if (this.selectedIds.length === 0) { this.canDeleteEveryoneFlag = false; return; }
-            var self = this;
-            this.canDeleteEveryoneFlag = this.selectedIds.every(function(id) {
-                var row = self.$el.querySelector('[data-message-id=\'' + id + '\']');
-                return row && row.dataset.isMine === '1' && row.dataset.canDeleteEveryone === '1';
-            });
-        },
-        toggleId(id) {
-            var idx = this.selectedIds.indexOf(id);
-            if (idx > -1) { this.selectedIds.splice(idx, 1); } else { this.selectedIds.push(id); }
-            this.recalcCanDeleteEveryone();
-        },
-        init() {
-            var self = this;
-            window.Echo.private('conversation.{{ $conversation->uuid }}').listen('.conversation.deleted', function(e) {
-                window.location.href = '/events/' + e.event_slug;
-            });
-            window.__convToggleId = function(id) { self.toggleId(id); };
-            this.$watch('selectModeLocal', function(value) {
-                window.__convSelectModeActive = value;
-                document.querySelectorAll('.conv-msg-row input[type=checkbox]').forEach(function(cb) {
-                    cb.style.display = value ? '' : 'none';
-                });
-            });
-        }
-    }">
+<div x-data="conversationDetailData(@js($conversation->uuid))">
     <div style="margin-bottom:20px;">
         <div style="margin-bottom:8px;">
             <a href="{{ route('tenant.events.show', $conversation->event->slug) }}" wire:navigate style="color:#A8A29E;text-decoration:none;font-size:13px;">← Back to {{ $conversation->event->name }}</a>
@@ -95,6 +65,16 @@
                             @endforeach
                         </div>
                         @endif
+                        @if($isMe && $msg->id === $this->myLastMessageId())
+                        @php $seenByNames = $msg->seenBy(); @endphp
+                        <div id="seen-indicator-{{ $msg->id }}" style="font-size:10px;color:#A8A29E;margin-top:3px;text-align:right;">
+                            @if($seenByNames->isNotEmpty())
+                                Seen by {{ $seenByNames->join(', ') }}
+                            @else
+                                Sent
+                            @endif
+                        </div>
+                        @endif
                     </div>
                 </div>
                 @empty
@@ -105,8 +85,8 @@
             <div x-show="selectModeLocal && selectedIds.length > 0" x-cloak style="position:sticky;bottom:0;background:#1C1917;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <span style="color:#fff;font-size:13px;" x-text="selectedIds.length + ' selected'"></span>
                 <div style="display:flex;gap:8px;">
-                    <button x-on:click="$wire.set('selectedMessageIds', selectedIds).then(function() { $wire.call('bulkDeleteForMe'); }); selectModeLocal = false; selectedIds = []; canDeleteEveryoneFlag = false;" class="krd-btn krd-btn-sm" style="background:#57534E;color:#fff;">Delete for Me</button>
-                    <button x-show="canDeleteEveryoneFlag" x-on:click="$wire.set('selectedMessageIds', selectedIds).then(function() { $wire.call('bulkDeleteForEveryone'); }); selectModeLocal = false; selectedIds = []; canDeleteEveryoneFlag = false;" class="krd-btn krd-btn-sm" style="background:#EF4444;color:#fff;">Delete for Everyone</button>
+                    <button x-on:click="deleteForMe()" class="krd-btn krd-btn-sm" style="background:#57534E;color:#fff;">Delete for Me</button>
+                    <button x-show="canDeleteEveryoneFlag" x-on:click="deleteForEveryone()" class="krd-btn krd-btn-sm" style="background:#EF4444;color:#fff;">Delete for Everyone</button>
                 </div>
             </div>
 
@@ -123,33 +103,7 @@
                 <div style="height:16px;margin-bottom:4px;">
                     <span id="conv-typing-indicator" style="display:none;font-size:11px;color:#A8A29E;font-style:italic;"></span>
                 </div>
-                <div style="position:relative;" x-data="{
-                    showMentions: false,
-                    mentionQuery: '',
-                    participants: {{ Js::from($conversation->participants->map(fn($p) => $p->resolveParticipant()?->name)->filter()->values()) }},
-                    checkMention(e) {
-                        var val = e.target.value;
-                        var cursorPos = e.target.selectionStart;
-                        var textBeforeCursor = val.slice(0, cursorPos);
-                        var match = textBeforeCursor.match(/@(\w*)$/);
-                        if (match) {
-                            this.mentionQuery = match[1].toLowerCase();
-                            this.showMentions = true;
-                        } else {
-                            this.showMentions = false;
-                        }
-                    },
-                    filteredParticipants() {
-                        var q = this.mentionQuery;
-                        return this.participants.filter(function(p) { return p.toLowerCase().includes(q); });
-                    },
-                    pickMention(name) {
-                        var val = $wire.get('body');
-                        val = val.replace(/@(\w*)$/, '@' + name + ' ');
-                        $wire.set('body', val);
-                        this.showMentions = false;
-                    }
-                }">
+                <div style="position:relative;" x-data="conversationMentionData(@js($conversation->participants->map(fn($p) => $p->resolveParticipant()?->name)->filter()->values()))">
                     <div x-show="showMentions" x-cloak style="position:absolute;bottom:100%;left:0;background:#fff;border:1px solid #E7E5E4;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);width:220px;max-height:160px;overflow-y:auto;z-index:50;margin-bottom:4px;">
                         <template x-for="name in filteredParticipants()" :key="name">
                             <div x-on:click="pickMention(name)" style="padding:8px 12px;font-size:13px;cursor:pointer;" x-text="'@' + name" onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='none'"></div>
@@ -266,3 +220,114 @@
 }
 body { overflow-x:hidden; }
 </style>
+
+<script>
+function conversationDetailData(conversationUuid) {
+    return {
+        selectModeLocal: false,
+        selectedIds: [],
+        canDeleteEveryoneFlag: false,
+
+        recalcCanDeleteEveryone: function () {
+            if (this.selectedIds.length === 0) { this.canDeleteEveryoneFlag = false; return; }
+            this.canDeleteEveryoneFlag = this.selectedIds.every(function (id) {
+                var row = document.querySelector('[data-message-id="' + id + '"]');
+                return row && row.dataset.isMine === '1' && row.dataset.canDeleteEveryone === '1';
+            });
+        },
+
+        toggleId: function (id) {
+            var idx = this.selectedIds.indexOf(id);
+            if (idx > -1) { this.selectedIds.splice(idx, 1); } else { this.selectedIds.push(id); }
+            this.recalcCanDeleteEveryone();
+        },
+
+        deleteForMe: function () {
+            var self = this;
+            this.$wire.set('selectedMessageIds', this.selectedIds).then(function () {
+                self.$wire.call('bulkDeleteForMe');
+            });
+            this.selectModeLocal = false;
+            this.selectedIds = [];
+            this.canDeleteEveryoneFlag = false;
+        },
+
+        deleteForEveryone: function () {
+            var self = this;
+            this.$wire.set('selectedMessageIds', this.selectedIds).then(function () {
+                self.$wire.call('bulkDeleteForEveryone');
+            });
+            this.selectModeLocal = false;
+            this.selectedIds = [];
+            this.canDeleteEveryoneFlag = false;
+        },
+
+        init: function () {
+            var self = this;
+
+            window.Echo.private('conversation.' + conversationUuid).listen('.conversation.deleted', function (e) {
+                window.location.href = '/events/' + e.event_slug;
+            });
+
+            window.Echo.private('conversation.' + conversationUuid).listen('.participants.changed', function () {
+                fetch('/conversations/' + conversationUuid + '/seen-status', {
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-store'
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.message_id) return;
+                        var el = document.getElementById('seen-indicator-' + data.message_id);
+                        if (el) {
+                            el.textContent = data.seen_by.length > 0
+                                ? 'Seen by ' + data.seen_by.join(', ')
+                                : 'Sent';
+                        }
+                    });
+            });
+
+            window.__convToggleId = function (id) { self.toggleId(id); };
+
+            this.$watch('selectModeLocal', function (value) {
+                window.__convSelectModeActive = value;
+                document.querySelectorAll('.conv-msg-row input[type=checkbox]').forEach(function (cb) {
+                    cb.style.display = value ? '' : 'none';
+                });
+            });
+        }
+    };
+}
+
+function conversationMentionData(participants) {
+    return {
+        showMentions: false,
+        mentionQuery: '',
+        participants: participants,
+
+        checkMention: function (e) {
+            var val = e.target.value;
+            var cursorPos = e.target.selectionStart;
+            var textBeforeCursor = val.slice(0, cursorPos);
+            var match = textBeforeCursor.match(/@(\w*)$/);
+            if (match) {
+                this.mentionQuery = match[1].toLowerCase();
+                this.showMentions = true;
+            } else {
+                this.showMentions = false;
+            }
+        },
+
+        filteredParticipants: function () {
+            var q = this.mentionQuery;
+            return this.participants.filter(function (p) { return p.toLowerCase().indexOf(q) !== -1; });
+        },
+
+        pickMention: function (name) {
+            var val = this.$wire.get('body');
+            val = val.replace(/@(\w*)$/, '@' + name + ' ');
+            this.$wire.set('body', val);
+            this.showMentions = false;
+        }
+    };
+}
+</script>

@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\Forms;
 
 use App\Models\Tenant\Form;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -21,6 +22,11 @@ class FormList extends Component
 
     public function confirmDelete(int $id, string $name): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.delete')) {
+            $this->toastError('You do not have permission to delete forms.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->deleteName      = $name;
         $this->showDeleteModal = true;
@@ -28,6 +34,12 @@ class FormList extends Component
 
     public function deleteForm(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.delete')) {
+            $this->toastError('You do not have permission to delete forms.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         Form::find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
@@ -36,6 +48,11 @@ class FormList extends Component
 
     public function toggleStatus(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.edit')) {
+            $this->toastError('You do not have permission to edit forms.');
+            return;
+        }
+
         $form = Form::find($id);
         if (!$form) return;
         $newStatus = $form->status === 'active' ? 'inactive' : 'active';
@@ -45,6 +62,11 @@ class FormList extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'forms.view'),
+            403
+        );
+
         $forms = Form::query()
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%'))

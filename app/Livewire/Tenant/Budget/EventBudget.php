@@ -6,6 +6,7 @@ use App\Models\Tenant\Budget;
 use App\Models\Tenant\BudgetItem;
 use App\Models\Tenant\ClientPayment;
 use App\Models\Tenant\Event;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -54,11 +55,25 @@ class EventBudget extends Component
 
     public function mount(string $slug): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'budget.view'),
+            403
+        );
+
         $this->event       = Event::where('slug', $slug)->firstOrFail();
         $this->budget      = Budget::with(['items', 'clientPayments'])
                                ->where('event_id', $this->event->id)
                                ->first();
         $this->paymentDate = now()->format('Y-m-d');
+    }
+
+    private function requireManage(): bool
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'budget.manage')) {
+            $this->toastError('You do not have permission to manage the budget.');
+            return false;
+        }
+        return true;
     }
 
     protected function getOrCreateBudget(): Budget
@@ -85,6 +100,8 @@ class EventBudget extends Component
 
     public function addItem(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'newCategory'  => 'required|string|max:200',
             'newEstimated' => 'required|numeric|min:0',
@@ -115,6 +132,8 @@ class EventBudget extends Component
 
     public function startEdit(int $itemId): void
     {
+        if (!$this->requireManage()) return;
+
         $item = BudgetItem::find($itemId);
         if (!$item) return;
         $this->editItemId    = $itemId;
@@ -127,6 +146,8 @@ class EventBudget extends Component
 
     public function saveEdit(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'editCategory'  => 'required|string|max:200',
             'editEstimated' => 'required|numeric|min:0',
@@ -160,12 +181,16 @@ class EventBudget extends Component
 
     public function confirmDelete(int $itemId): void
     {
+        if (!$this->requireManage()) return;
+
         $this->deleteItemId    = $itemId;
         $this->showDeleteModal = true;
     }
 
     public function deleteItem(): void
     {
+        if (!$this->requireManage()) return;
+
         BudgetItem::find($this->deleteItemId)?->delete();
         $this->reload();
         $this->showDeleteModal = false;
@@ -183,6 +208,8 @@ class EventBudget extends Component
 
     public function addPayment(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'paymentAmount'      => 'required|numeric|min:1',
             'paymentDate'        => 'required|date',
@@ -213,12 +240,16 @@ class EventBudget extends Component
 
     public function confirmDeletePayment(int $paymentId): void
     {
+        if (!$this->requireManage()) return;
+
         $this->deletePaymentId   = $paymentId;
         $this->showDeletePayment = true;
     }
 
     public function deletePayment(): void
     {
+        if (!$this->requireManage()) return;
+
         ClientPayment::find($this->deletePaymentId)?->delete();
         $this->reload();
         $this->showDeletePayment = false;
@@ -234,6 +265,8 @@ class EventBudget extends Component
 
     public function sendOutstandingReminder(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->event->client_email) {
             $this->toastError('No client email on this event. Edit the event to add one.');
             return;

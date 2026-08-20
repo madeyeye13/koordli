@@ -324,6 +324,145 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 
+    
+
+        // ── Client Portal: conversation widget (same pattern as staff's
+    // conversationWidget, but isMe checks sender_type === 'client') ───
+    Alpine.data('clientConversationWidget', (conversationUuid) => ({
+        init() {
+            requestAnimationFrame(() => { this.$el.scrollTop = this.$el.scrollHeight; });
+
+            this.$wire.on('local-message-sent', (event) => { this.appendMessage(event.message); });
+
+            window.Echo.private('conversation.' + conversationUuid).listen('.message.sent', (e) => {
+                const isMe = e.sender_type === 'client' && e.sender_id === window.__currentUserId;
+                if (isMe) { this.$wire.call('markRead'); return; }
+                this.appendMessage(e);
+                this.$wire.call('markRead');
+            });
+        },
+        appendMessage(e) {
+            const isMe = e.sender_type === 'client' && e.sender_id === window.__currentUserId;
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;margin-bottom:16px;' + (isMe ? 'justify-content:flex-end;' : '');
+            const inner = document.createElement('div');
+            inner.style.maxWidth = '75%';
+            const label = document.createElement('div');
+            label.style.cssText = 'font-size:11px;color:#A8A29E;margin-bottom:4px;' + (isMe ? 'text-align:right;' : '');
+            label.textContent = e.sender_name + ' \u00B7 ' + e.created_at;
+            inner.appendChild(label);
+            if (e.reply_to) {
+                const quote = document.createElement('div');
+                quote.style.cssText = 'font-size:11px;color:#78716C;background:#F5F5F4;border-left:2px solid #7C3AED;padding:4px 8px;margin-bottom:4px;border-radius:4px;' + (isMe ? 'margin-left:auto;' : '');
+                const strong = document.createElement('strong');
+                strong.textContent = e.reply_to.sender_name;
+                quote.appendChild(strong);
+                quote.append(': ' + e.reply_to.snippet);
+                inner.appendChild(quote);
+            }
+            if (e.body && e.body.trim() !== '') {
+                const bubble = document.createElement('div');
+                bubble.style.cssText = 'padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;' + (isMe ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');
+                bubble.innerHTML = e.rendered;
+                inner.appendChild(bubble);
+            }
+            if (e.attachments && e.attachments.length > 0) {
+                e.attachments.forEach(att => {
+                    if (att.is_audio) {
+                        const voiceWrap = document.createElement('div');
+                        voiceWrap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:18px;margin-top:6px;' + (isMe ? 'background:#7C3AED;' : 'background:#F5F5F4;') + 'max-width:240px;';
+                        const icon = document.createElement('span'); icon.textContent = '🎙️';
+                        const audio = document.createElement('audio');
+                        audio.controls = true;
+                        audio.style.cssText = 'height:32px;flex:1;' + (isMe ? 'filter:invert(1) hue-rotate(180deg);' : '');
+                        const source = document.createElement('source');
+                        source.src = att.url; source.type = att.mime_type;
+                        audio.appendChild(source);
+                        voiceWrap.appendChild(icon); voiceWrap.appendChild(audio);
+                        inner.appendChild(voiceWrap);
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = att.url; link.target = '_blank';
+                        link.style.cssText = 'font-size:11px;background:#F5F5F4;padding:4px 10px;border-radius:6px;color:#57534E;text-decoration:none;margin-top:6px;display:inline-block;';
+                        link.textContent = '📎 ' + att.name;
+                        inner.appendChild(link);
+                    }
+                });
+            }
+            wrap.appendChild(inner);
+            this.$el.appendChild(wrap);
+            this.$el.scrollTop = this.$el.scrollHeight;
+        }
+    }));
+
+    // ── Vendor Portal: conversation widget (same pattern as staff's) ──
+    Alpine.data('vendorConversationWidget', (conversationUuid) => ({
+        init() {
+            requestAnimationFrame(() => { this.$el.scrollTop = this.$el.scrollHeight; });
+
+            this.$wire.on('local-message-sent', (event) => { this.appendMessage(event.message); });
+
+            window.Echo.private('conversation.' + conversationUuid).listen('.message.sent', (e) => {
+                const isMe = e.sender_type === 'vendor_account' && e.sender_id === window.__currentUserId;
+                if (isMe) { this.$wire.call('markRead'); return; }
+                this.appendMessage(e);
+                this.$wire.call('markRead');
+            });
+        },
+        appendMessage(e) {
+            const isMe = e.sender_type === 'vendor_account' && e.sender_id === window.__currentUserId;
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;margin-bottom:16px;' + (isMe ? 'justify-content:flex-end;' : '');
+            const inner = document.createElement('div');
+            inner.style.maxWidth = '75%';
+            const label = document.createElement('div');
+            label.style.cssText = 'font-size:11px;color:#A8A29E;margin-bottom:4px;' + (isMe ? 'text-align:right;' : '');
+            label.textContent = e.sender_name + ' \u00B7 ' + e.created_at;
+            inner.appendChild(label);
+            if (e.reply_to) {
+                const quote = document.createElement('div');
+                quote.style.cssText = 'font-size:11px;color:#78716C;background:#F5F5F4;border-left:2px solid #7C3AED;padding:4px 8px;margin-bottom:4px;border-radius:4px;' + (isMe ? 'margin-left:auto;' : '');
+                const strong = document.createElement('strong');
+                strong.textContent = e.reply_to.sender_name;
+                quote.appendChild(strong);
+                quote.append(': ' + e.reply_to.snippet);
+                inner.appendChild(quote);
+            }
+            if (e.body && e.body.trim() !== '') {
+                const bubble = document.createElement('div');
+                bubble.style.cssText = 'padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;' + (isMe ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');
+                bubble.innerHTML = e.rendered;
+                inner.appendChild(bubble);
+            }
+            if (e.attachments && e.attachments.length > 0) {
+                e.attachments.forEach(att => {
+                    if (att.is_audio) {
+                        const voiceWrap = document.createElement('div');
+                        voiceWrap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:18px;margin-top:6px;' + (isMe ? 'background:#7C3AED;' : 'background:#F5F5F4;') + 'max-width:240px;';
+                        const icon = document.createElement('span'); icon.textContent = '🎙️';
+                        const audio = document.createElement('audio');
+                        audio.controls = true;
+                        audio.style.cssText = 'height:32px;flex:1;' + (isMe ? 'filter:invert(1) hue-rotate(180deg);' : '');
+                        const source = document.createElement('source');
+                        source.src = att.url; source.type = att.mime_type;
+                        audio.appendChild(source);
+                        voiceWrap.appendChild(icon); voiceWrap.appendChild(audio);
+                        inner.appendChild(voiceWrap);
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = att.url; link.target = '_blank';
+                        link.style.cssText = 'font-size:11px;background:#F5F5F4;padding:4px 10px;border-radius:6px;color:#57534E;text-decoration:none;margin-top:6px;display:inline-block;';
+                        link.textContent = '📎 ' + att.name;
+                        inner.appendChild(link);
+                    }
+                });
+            }
+            wrap.appendChild(inner);
+            this.$el.appendChild(wrap);
+            this.$el.scrollTop = this.$el.scrollHeight;
+        }
+    }));
+
     // ── Conversations: group/direct event conversations ─────────────
     Alpine.data('conversationWidget', (conversationUuid) => ({
         init() {
@@ -362,7 +501,20 @@ document.addEventListener('alpine:init', () => {
                     this.$wire.call('markRead');
                 })
                 .listen('.participants.changed', () => {
-                    this.$wire.call('refreshParticipants');
+                    fetch('/conversations/' + conversationUuid + '/seen-status', {
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store'
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.message_id) return;
+                        const row = document.getElementById('seen-indicator-' + data.message_id);
+                        if (row) {
+                            row.textContent = data.seen_by.length > 0
+                                ? 'Seen by ' + data.seen_by.join(', ')
+                                : 'Sent';
+                        }
+                    });
                 });
 
             const presence = window.Echo.join('conversation.' + conversationUuid);
@@ -478,6 +630,21 @@ document.addEventListener('alpine:init', () => {
                 });
 
                 inner.appendChild(attWrap);
+            }
+
+            // Move the seen-indicator to THIS message if it's mine — it just
+            // became the new "most recent own message," so remove any stale
+            // indicator from wherever it previously sat (only ever one at a
+            // time, matching ConversationDetail::myLastMessageId()'s logic)
+            if (isMe) {
+                document.querySelectorAll('[id^="seen-indicator-"]').forEach(function (oldEl) {
+                    oldEl.remove();
+                });
+                const seenEl = document.createElement('div');
+                seenEl.id = 'seen-indicator-' + e.id;
+                seenEl.style.cssText = 'font-size:10px;color:#A8A29E;margin-top:3px;text-align:right;';
+                seenEl.textContent = 'Sent';
+                inner.appendChild(seenEl);
             }
 
             wrap.appendChild(inner);

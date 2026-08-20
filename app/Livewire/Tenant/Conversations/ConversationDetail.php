@@ -45,9 +45,26 @@ class ConversationDetail extends Component
         $this->markRead();
     }
 
-        public function isTenantAdmin(): bool
+    private function canDeleteConversation(): bool
     {
-        return auth()->user()->hasRole('company_owner');
+        return app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'conversations.delete');
+    }
+
+    private function canManageParticipants(): bool
+    {
+        return app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'conversations.manage_participants');
+    }
+
+    /**
+     * @deprecated kept for backward compatibility — previously the ONLY gate
+     * (hasRole('company_owner')) covering both delete and remove-participant.
+     * Now split into two separate permissions; this returns true only if
+     * BOTH are held, matching prior behavior exactly for the default
+     * company_owner-only case.
+     */
+    public function isTenantAdmin(): bool
+    {
+        return $this->canDeleteConversation() && $this->canManageParticipants();
     }
 
     private function myParticipantRow(): ?ConversationParticipant
@@ -56,6 +73,18 @@ class ConversationDetail extends Component
             ->where('participant_type', 'tenant_user')
             ->where('participant_id', auth()->id())
             ->first();
+    }
+
+        /**
+     * The ID of the current user's own most recent message — read receipts
+     * are only shown under this one, not every message (matches WhatsApp).
+     */
+    public function myLastMessageId(): ?int
+    {
+        return $this->conversation->messages
+            ->where('sender_type', 'tenant_user')
+            ->where('sender_id', auth()->id())
+            ->last()?->id;
     }
 
     public function markRead(): void
@@ -146,6 +175,8 @@ class ConversationDetail extends Component
         ]);
 
         broadcast(new \App\Events\ConversationMessageSent($message, $this->conversation->uuid))->toOthers();
+
+        \App\Services\Conversations\ConversationNotifier::notifyOthers($this->conversation, $message);
 
         $this->markRead();
     }
@@ -242,8 +273,8 @@ class ConversationDetail extends Component
     // ── Conversation Deletion (tenant/admin only) ───────────────────
     public function confirmDeleteConversation(): void
     {
-        if (!$this->isTenantAdmin()) {
-            $this->toastError('Only the account owner can delete a conversation.');
+        if (!$this->canDeleteConversation()) {
+            $this->toastError('You do not have permission to delete this conversation.');
             return;
         }
         $this->showDeleteConvoModal = true;
@@ -251,8 +282,8 @@ class ConversationDetail extends Component
 
     public function deleteConversation(): void
     {
-        if (!$this->isTenantAdmin()) {
-            $this->toastError('Only the account owner can delete a conversation.');
+        if (!$this->canDeleteConversation()) {
+            $this->toastError('You do not have permission to delete this conversation.');
             return;
         }
 
@@ -292,6 +323,8 @@ class ConversationDetail extends Component
                 'participant_id'   => (int) $id,
                 'added_by'         => auth()->id(),
             ]);
+
+            \App\Services\Conversations\ConversationNotifier::notifyAdded($this->conversation, $type, (int) $id, auth()->user()->name);
         }
 
         $this->conversation->load('participants');
@@ -308,8 +341,8 @@ class ConversationDetail extends Component
 
     public function removeParticipant(): void
     {
-        if (!$this->isTenantAdmin()) {
-            $this->toastError('Only the account owner can remove participants.');
+        if (!$this->canManageParticipants()) {
+            $this->toastError('You do not have permission to remove participants.');
             $this->showRemoveModal = false;
             return;
         }
@@ -328,7 +361,7 @@ class ConversationDetail extends Component
 
     public function refreshParticipants(): void
     {
-        $this->conversation->load('participants');
+        $this->conversation->load('participants', 'messages.attachments', 'messages.replyTo', 'messages.mentions');
     }
 
         public function render()

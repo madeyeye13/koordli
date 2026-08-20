@@ -8,6 +8,7 @@ use App\Models\Tenant\Runsheet;
 use App\Models\Tenant\RunsheetItem;
 use App\Models\Tenant\User;
 use App\Models\Tenant\Vendor;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
@@ -60,8 +61,22 @@ class RunsheetManager extends Component
     public bool $showDeleteLocationModal = false;
     public ?int $deleteLocationId        = null;
 
+    private function requireManage(): bool
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'runsheet.manage')) {
+            $this->toastError('You do not have permission to manage the runsheet.');
+            return false;
+        }
+        return true;
+    }
+
     public function mount(string $slug): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'runsheet.view'),
+            403
+        );
+
         $this->event = Event::where('slug', $slug)->firstOrFail();
 
         $this->runsheet = Runsheet::where('event_id', $this->event->id)
@@ -87,6 +102,8 @@ class RunsheetManager extends Component
 
     public function saveRunsheet(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'title'  => 'required|string|min:2|max:200',
             'date'   => 'nullable|date',
@@ -121,6 +138,8 @@ class RunsheetManager extends Component
 
     public function showAddItem(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->runsheet) {
             $this->toastError('Save the runsheet first.');
             return;
@@ -132,6 +151,8 @@ class RunsheetManager extends Component
 
     public function saveItem(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'item_title'       => 'required|string|min:2|max:200',
             'item_start'       => 'nullable|date_format:H:i',
@@ -182,6 +203,8 @@ class RunsheetManager extends Component
 
     public function editItem(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $item = RunsheetItem::find($id);
         if (!$item) return;
 
@@ -200,6 +223,8 @@ class RunsheetManager extends Component
 
     public function updateItemStatus(int $id, string $status): void
     {
+        if (!$this->requireManage()) return;
+
         $item = RunsheetItem::find($id);
         $item?->update(['status' => $status]);
 
@@ -213,6 +238,8 @@ class RunsheetManager extends Component
 
     public function moveUp(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $item = RunsheetItem::find($id);
         if (!$item) return;
         $prev = RunsheetItem::where('runsheet_id', $item->runsheet_id)
@@ -227,6 +254,8 @@ class RunsheetManager extends Component
 
     public function moveDown(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $item = RunsheetItem::find($id);
         if (!$item) return;
         $next = RunsheetItem::where('runsheet_id', $item->runsheet_id)
@@ -241,12 +270,16 @@ class RunsheetManager extends Component
 
     public function confirmDelete(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $this->deleteItemId    = $id;
         $this->showDeleteModal = true;
     }
 
     public function deleteItem(): void
     {
+        if (!$this->requireManage()) return;
+
         RunsheetItem::find($this->deleteItemId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteItemId    = null;
@@ -256,12 +289,16 @@ class RunsheetManager extends Component
 
     public function showAddLocation(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->reset(['location_name', 'location_address', 'location_date', 'location_notes', 'editLocationId']);
         $this->showLocationForm = true;
     }
 
     public function editLocation(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $location = \App\Models\Tenant\EventLocation::find($id);
         if (!$location) return;
 
@@ -275,6 +312,8 @@ class RunsheetManager extends Component
 
     public function saveLocation(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'location_name' => 'required|string|min:2|max:150',
             'location_date' => 'nullable|date',
@@ -304,12 +343,16 @@ class RunsheetManager extends Component
 
     public function confirmDeleteLocation(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $this->deleteLocationId       = $id;
         $this->showDeleteLocationModal = true;
     }
 
     public function deleteLocation(): void
     {
+        if (!$this->requireManage()) return;
+
         \App\Models\Tenant\EventLocation::find($this->deleteLocationId)?->delete();
         $this->showDeleteLocationModal = false;
         $this->deleteLocationId        = null;
@@ -320,6 +363,12 @@ class RunsheetManager extends Component
 
     public function downloadCallSheet()
     {
+        // Read-only export — view tier is sufficient, doesn't require full manage.
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'runsheet.view'),
+            403
+        );
+
         $tenant   = auth()->user()->tenant;
         $branding = $tenant->branding ?? [];
 

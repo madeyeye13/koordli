@@ -97,6 +97,11 @@ document.addEventListener('alpine:init', () => {
             var wrap = document.createElement('div');
             wrap.style.cssText = 'display:flex;flex-direction:column;margin-bottom:10px;' + (isMe ? 'align-items:flex-end;' : 'align-items:flex-start;');
 
+            var label = document.createElement('div');
+            label.style.cssText = 'font-size:10px;color:#A8A29E;margin-bottom:2px;';
+            label.textContent = e.sender_name || (isMe ? 'You' : 'Them');
+            wrap.appendChild(label);
+
             if (e.body && e.body.trim() !== '' && !(e.body.indexOf('📎') === 0)) {
                 var bubble = document.createElement('div');
                 bubble.style.cssText = 'max-width:80%;padding:8px 12px;border-radius:8px;font-size:12.5px;line-height:1.5;' + (isMe ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');

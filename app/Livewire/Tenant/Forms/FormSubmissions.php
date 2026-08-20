@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Forms;
 use App\Models\Tenant\ConsultationBooking;
 use App\Models\Tenant\Form;
 use App\Models\Tenant\FormSubmission;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -23,17 +24,34 @@ class FormSubmissions extends Component
 
     public function mount(int $id): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'forms.submissions.view')
+                || app(PermissionService::class)->userCan(auth()->user(), 'forms.submissions.manage'),
+            403
+        );
+
         $this->form = Form::with('fields')->findOrFail($id);
     }
 
     public function confirmDelete(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.submissions.manage')) {
+            $this->toastError('You do not have permission to manage submissions.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function deleteSubmission(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.submissions.manage')) {
+            $this->toastError('You do not have permission to manage submissions.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         FormSubmission::find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
@@ -42,6 +60,11 @@ class FormSubmissions extends Component
 
     public function updateBookingStatus(int $bookingId, string $status): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.submissions.manage')) {
+            $this->toastError('You do not have permission to manage submissions.');
+            return;
+        }
+
         ConsultationBooking::find($bookingId)?->update(['status' => $status]);
         $this->toastSuccess('Booking status updated.');
     }

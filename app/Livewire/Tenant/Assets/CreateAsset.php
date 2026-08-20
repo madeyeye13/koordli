@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Assets;
 
 use App\Models\Tenant\Asset;
 use App\Models\Tenant\AssetCategory;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -23,6 +24,11 @@ class CreateAsset extends Component
 
     public function mount(?Asset $asset = null): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'assets.manage'),
+            403
+        );
+
         if ($asset && $asset->exists) {
             $this->isEdit = true;
             $this->asset  = $asset;
@@ -35,6 +41,11 @@ class CreateAsset extends Component
 
     public function save(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            return;
+        }
+
         $this->validate([
             'name'   => 'required|string|min:2|max:150',
             'status' => 'required|in:available,reserved,maintenance',

@@ -20,8 +20,13 @@ class UpgradePage extends Component
     public bool   $processing      = false;
     public array  $pricingData     = [];
 
-    public function mount(): void
+        public function mount(): void
     {
+        abort_unless(
+            app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'billing.manage'),
+            403
+        );
+
         $tenant = auth()->user()->tenant;
         $enabledGateways = BillingSetting::get('enabled_gateways', ['paystack', 'flutterwave']);
         $this->selectedGateway = $enabledGateways[0] ?? 'paystack';
@@ -56,6 +61,11 @@ class UpgradePage extends Component
 
     public function checkout(int $planId): void
     {
+        if (!app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'billing.manage')) {
+            $this->toastError('You do not have permission to change the subscription plan.');
+            return;
+        }
+
         $this->processing = true;
 
         $billing = app(BillingService::class);

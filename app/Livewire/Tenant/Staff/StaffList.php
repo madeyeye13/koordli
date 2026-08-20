@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\Staff;
 
 use App\Models\Tenant\User;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -31,6 +32,11 @@ class StaffList extends Component
 
     public function mount(): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'staff.view'),
+            403
+        );
+
         $this->tenantId = auth()->user()->tenant_id;
         setPermissionsTeamId($this->tenantId);
     }
@@ -41,6 +47,11 @@ class StaffList extends Component
 
     public function confirmToggleActive(int $userId, bool $isActive): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'staff.remove')) {
+            $this->toastError('You do not have permission to activate or deactivate staff.');
+            return;
+        }
+
         $this->targetUserId        = $userId;
         $this->targetIsActive      = $isActive;
         $this->showDeactivateModal = true;
@@ -48,6 +59,12 @@ class StaffList extends Component
 
     public function toggleActive(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'staff.remove')) {
+            $this->toastError('You do not have permission to activate or deactivate staff.');
+            $this->showDeactivateModal = false;
+            return;
+        }
+
         setPermissionsTeamId(auth()->user()->tenant_id);
 
         $user = User::find($this->targetUserId);
@@ -94,8 +111,8 @@ class StaffList extends Component
     $q->whereHas('roles', fn($r) =>
         $r->where('name', $this->roleFilter)
           ->where(fn($r2) =>
-              $r2->where('model_has_roles.team_id', $tenantId)
-                 ->orWhereNull('model_has_roles.team_id')
+              $r2->where('model_has_roles.tenant_id', $tenantId)
+                 ->orWhereNull('model_has_roles.tenant_id')
           )
     )
 )

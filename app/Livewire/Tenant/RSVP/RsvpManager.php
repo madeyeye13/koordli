@@ -6,6 +6,7 @@ use App\Models\Tenant\Event;
 use App\Models\Tenant\RsvpForm;
 use App\Models\Tenant\RsvpQuestion;
 use App\Models\Tenant\RsvpResponse;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -49,8 +50,22 @@ class RsvpManager extends Component
     public bool $showDeleteResponseModal = false;
     public ?int $deleteResponseId        = null;
 
+    private function requireManage(): bool
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'rsvp.manage')) {
+            $this->toastError('You do not have permission to manage RSVP.');
+            return false;
+        }
+        return true;
+    }
+
     public function mount(string $slug): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'rsvp.view'),
+            403
+        );
+
         $this->event = Event::where('slug', $slug)
             ->where('rsvp_enabled', true)
             ->firstOrFail();
@@ -86,6 +101,8 @@ class RsvpManager extends Component
 
     public function saveForm(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'title'       => 'required|string|min:2|max:200',
             'deadline'    => 'nullable|date',
@@ -126,6 +143,8 @@ class RsvpManager extends Component
 
     public function saveBranding(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->form) {
             $this->toastError('Save the RSVP form settings first.');
             return;
@@ -180,6 +199,8 @@ class RsvpManager extends Component
 
     public function removeCoverImage(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->form) return;
         $branding = $this->form->branding ?? [];
 
@@ -195,6 +216,8 @@ class RsvpManager extends Component
 
     public function showAddQuestion(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->reset(['q_label', 'q_field_type', 'q_is_required', 'q_options_raw', 'editQuestionId']);
         $this->q_field_type     = 'text';
         $this->showQuestionForm = true;
@@ -202,6 +225,8 @@ class RsvpManager extends Component
 
     public function saveQuestion(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->form) {
             $this->toastError('Save the RSVP form settings first.');
             return;
@@ -246,6 +271,8 @@ class RsvpManager extends Component
 
     public function editQuestion(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $q = RsvpQuestion::find($id);
         if (!$q) return;
         $this->editQuestionId   = $id;
@@ -258,6 +285,8 @@ class RsvpManager extends Component
 
     public function deleteQuestion(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         RsvpQuestion::find($id)?->delete();
         $this->form->load('questions');
         $this->toastSuccess('Question removed.');
@@ -265,6 +294,8 @@ class RsvpManager extends Component
 
     public function moveUp(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $q = RsvpQuestion::find($id);
         if (!$q || $q->sort_order === 0) return;
         $prev = RsvpQuestion::where('rsvp_form_id', $q->rsvp_form_id)
@@ -279,6 +310,8 @@ class RsvpManager extends Component
 
     public function moveDown(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $q = RsvpQuestion::find($id);
         if (!$q) return;
         $next = RsvpQuestion::where('rsvp_form_id', $q->rsvp_form_id)
@@ -293,12 +326,16 @@ class RsvpManager extends Component
 
     public function confirmDeleteResponse(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $this->deleteResponseId        = $id;
         $this->showDeleteResponseModal = true;
     }
 
     public function deleteResponse(): void
     {
+        if (!$this->requireManage()) return;
+
         RsvpResponse::find($this->deleteResponseId)?->delete();
         $this->showDeleteResponseModal = false;
         $this->deleteResponseId        = null;
@@ -307,6 +344,8 @@ class RsvpManager extends Component
 
     public function checkInResponse(int $id): void
     {
+        if (!$this->requireManage()) return;
+
         $response = RsvpResponse::find($id);
         if (!$response) return;
         $response->update([

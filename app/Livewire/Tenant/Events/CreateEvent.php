@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Events;
 use App\Models\Tenant\Event;
 use App\Models\Tenant\EventType;
 use App\Models\Tenant\TenantEventStatus;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -36,6 +37,13 @@ class CreateEvent extends Component
 
     public function mount(?string $slug = null): void
     {
+        $permission = $slug ? 'events.edit' : 'events.create';
+
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), $permission),
+            403
+        );
+
         if ($slug) {
             $this->event         = Event::where('slug', $slug)->firstOrFail();
             $this->eventSlug     = $this->event->slug;
@@ -63,6 +71,13 @@ class CreateEvent extends Component
 
     public function save(): void
     {
+        $permission = $this->event ? 'events.edit' : 'events.create';
+
+        if (!app(PermissionService::class)->userCan(auth()->user(), $permission)) {
+            $this->toastError('You do not have permission to ' . ($this->event ? 'edit this event.' : 'create events.'));
+            return;
+        }
+
         $this->validate([
             'name'          => 'required|string|min:2|max:200',
             'event_type_id' => 'nullable|exists:event_types,id',

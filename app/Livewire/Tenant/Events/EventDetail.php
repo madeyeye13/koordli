@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Events;
 use App\Helpers\CurrencyHelper;
 use App\Models\Tenant\Event;
 use App\Models\Tenant\TenantEventStatus;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Renderless;
@@ -23,6 +24,11 @@ class EventDetail extends Component
 
     public function mount(string $slug): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'events.view'),
+            403
+        );
+
         $this->event = Event::with([
             'eventType', 'status', 'tasks', 'rsvpResponses', 'team.user',
             'vendorAssignments.vendor.category',
@@ -33,6 +39,11 @@ class EventDetail extends Component
     #[Renderless]
     public function updateStatus(int $statusId): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
+            $this->toastError('You do not have permission to edit this event.');
+            return;
+        }
+
         $this->event->update(['status_id' => $statusId]);
         $this->toastSuccess('Status updated.');
     }
@@ -44,12 +55,22 @@ class EventDetail extends Component
 
     public function showAddStaff(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
+            $this->toastError('You do not have permission to edit this event.');
+            return;
+        }
+
         $this->reset(['add_staff_user_id', 'add_staff_role']);
         $this->showAddStaffForm = true;
     }
 
     public function addStaffToEvent(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
+            $this->toastError('You do not have permission to edit this event.');
+            return;
+        }
+
         $this->validate([
             'add_staff_user_id' => 'required|exists:users,id',
         ]);
@@ -77,6 +98,11 @@ class EventDetail extends Component
 
     public function removeStaffFromEvent(int $eventTeamId): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
+            $this->toastError('You do not have permission to edit this event.');
+            return;
+        }
+
         \App\Models\Tenant\EventTeam::find($eventTeamId)?->delete();
         $this->event->load('team.user');
         $this->toastSuccess('Staff member removed from event.');
@@ -90,6 +116,11 @@ class EventDetail extends Component
 
     public function showCreateConversation(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'conversations.create')) {
+            $this->toastError('You do not have permission to create conversations.');
+            return;
+        }
+
         $this->reset(['conversation_type', 'conversation_name', 'selected_participants']);
         $this->conversation_type = 'group';
         $this->showCreateConversationForm = true;
@@ -97,6 +128,11 @@ class EventDetail extends Component
 
     public function createConversation(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'conversations.create')) {
+            $this->toastError('You do not have permission to create conversations.');
+            return;
+        }
+
         $this->validate([
             'conversation_type' => 'required|in:group,direct',
             'conversation_name' => $this->conversation_type === 'group' ? 'required|string|max:150' : 'nullable|string|max:150',
@@ -142,6 +178,8 @@ class EventDetail extends Component
                 'participant_id'   => (int) $id,
                 'added_by'         => auth()->id(),
             ]);
+
+            \App\Services\Conversations\ConversationNotifier::notifyAdded($conversation, $type, (int) $id, auth()->user()->name);
         }
 
         $this->showCreateConversationForm = false;
@@ -150,6 +188,11 @@ class EventDetail extends Component
 
     public function inviteClient(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
+            $this->toastError('You do not have permission to invite a client for this event.');
+            return;
+        }
+
         if (empty($this->event->client_email) || empty($this->event->client_name)) {
             $this->toastError('This event has no client email or name set. Edit the event first.');
             return;

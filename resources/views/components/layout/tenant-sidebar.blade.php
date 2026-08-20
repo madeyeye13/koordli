@@ -151,7 +151,7 @@
             </a>
 
             <a href="{{ route('tenant.staff') }}"
-                class="krd-nav-item {{ request()->routeIs('tenant.staff*') ? 'active' : '' }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.staff*') && !request()->routeIs('tenant.staff.roles') ? 'active' : '' }}"
                 wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -159,6 +159,16 @@
                 </svg>
                 Staff
             </a>
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'staff.roles.manage'))
+            <a href="{{ route('tenant.staff.roles') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.staff.roles') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.6 0 3.1.42 4.4 1.15"/>
+                </svg>
+                Roles & Permissions
+            </a>
+            @endif
             <a href="{{ route('tenant.billing') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.billing*') ? 'active' : '' }}"
                 wire:navigate>

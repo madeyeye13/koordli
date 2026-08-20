@@ -8,6 +8,7 @@ use App\Models\Central\VendorAccount;
 use App\Models\Tenant\Event;
 use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorEventAssignment;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -54,6 +55,11 @@ class VendorDetail extends Component
 
     public function mount(int $id): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'vendors.view'),
+            403
+        );
+
         $this->vendor = Vendor::with([
             'category',
             'eventAssignments.event',
@@ -94,6 +100,11 @@ class VendorDetail extends Component
 
     public function assignToEvent(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.assign')) {
+            $this->toastError('You do not have permission to assign vendors to events.');
+            return;
+        }
+
         $this->validate([
             'assign_event_id' => 'required|exists:events,id',
             'assign_amount'   => 'nullable|numeric|min:0',
@@ -164,6 +175,11 @@ class VendorDetail extends Component
     }
     public function inviteVendor(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.edit')) {
+            $this->toastError('You do not have permission to invite vendors to the portal.');
+            return;
+        }
+
         if (empty($this->vendor->email)) {
             $this->toastError('This vendor has no email address. Edit the vendor first.');
             return;
@@ -208,6 +224,11 @@ class VendorDetail extends Component
 
     public function startEditAssignment(int $assignId): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.assign')) {
+            $this->toastError('You do not have permission to edit vendor assignments.');
+            return;
+        }
+
         $assign = VendorEventAssignment::find($assignId);
         if (!$assign) return;
         $this->editAssignId     = $assignId;
@@ -219,6 +240,11 @@ class VendorDetail extends Component
 
     public function saveEditAssignment(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.assign')) {
+            $this->toastError('You do not have permission to edit vendor assignments.');
+            return;
+        }
+
         $this->validate([
             'editAmountAgreed' => 'nullable|numeric|min:0',
             'editAmountPaid'   => 'nullable|numeric|min:0',
@@ -247,12 +273,23 @@ class VendorDetail extends Component
 
     public function confirmDeleteAssignment(int $assignId): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.assign')) {
+            $this->toastError('You do not have permission to remove vendor assignments.');
+            return;
+        }
+
         $this->deleteAssignId   = $assignId;
         $this->showDeleteAssign = true;
     }
 
     public function deleteAssignment(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.assign')) {
+            $this->toastError('You do not have permission to remove vendor assignments.');
+            $this->showDeleteAssign = false;
+            return;
+        }
+
         VendorEventAssignment::find($this->deleteAssignId)?->delete();
         $this->vendor->load('eventAssignments.event');
         $this->showDeleteAssign = false;
@@ -263,6 +300,11 @@ class VendorDetail extends Component
    
     public function showReview(int $assignmentId): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.edit')) {
+            $this->toastError('You do not have permission to review vendors.');
+            return;
+        }
+
         $assignment = \App\Models\Tenant\VendorEventAssignment::find($assignmentId);
         if (!$assignment) return;
 
@@ -300,6 +342,10 @@ class VendorDetail extends Component
 
     public function setRating(string $field, int $value): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.edit')) {
+            return;
+        }
+
         if (in_array($field, ['r_professionalism', 'r_communication', 'r_punctuality', 'r_quality_of_service', 'r_reliability', 'r_overall_experience'])) {
             $this->{$field} = $value;
         }
@@ -307,6 +353,11 @@ class VendorDetail extends Component
 
     public function saveReview(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.edit')) {
+            $this->toastError('You do not have permission to review vendors.');
+            return;
+        }
+
         $this->validate([
             'r_professionalism'    => 'required|integer|min:1|max:5',
             'r_communication'      => 'required|integer|min:1|max:5',

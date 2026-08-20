@@ -30,6 +30,10 @@ class AppServiceProvider extends ServiceProvider
             return new FeatureGateService();
         });
 
+        $this->app->singleton(\App\Services\PermissionService::class, function () {
+            return new \App\Services\PermissionService();
+        });
+
         // Register Livewire component hook early — before LivewireServiceProvider::boot()
         Livewire::componentHook(SubscriptionLockHook::class);
     }

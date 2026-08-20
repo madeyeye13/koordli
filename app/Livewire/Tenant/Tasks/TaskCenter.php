@@ -8,6 +8,7 @@ use App\Models\Tenant\Event;
 use App\Models\Tenant\Task;
 use App\Models\Tenant\TenantTaskCategory;
 use App\Models\Tenant\User;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -55,6 +56,11 @@ class TaskCenter extends Component
 
     public function markDone(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.edit')) {
+            $this->toastError('You do not have permission to edit tasks.');
+            return;
+        }
+
         $task = Task::find($id);
         if ($task) {
             $task->update(['status' => TaskStatus::Done->value]);
@@ -65,6 +71,11 @@ class TaskCenter extends Component
     #[Renderless]
 public function updateStatus(int $id, string $status): void
 {
+    if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.edit')) {
+        $this->toastError('You do not have permission to edit tasks.');
+        return;
+    }
+
     $task = Task::find($id);
     if ($task) {
         $task->update(['status' => $status]);
@@ -74,12 +85,23 @@ public function updateStatus(int $id, string $status): void
 
     public function confirmDelete(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.delete')) {
+            $this->toastError('You do not have permission to delete tasks.');
+            return;
+        }
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'tasks.delete')) {
+            $this->toastError('You do not have permission to delete tasks.');
+            $this->showDeleteModal = false;
+            return;
+        }
+
         $task = Task::find($this->deleteId);
         if ($task) {
             $task->delete();
@@ -97,6 +119,11 @@ public function updateStatus(int $id, string $status): void
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'tasks.view'),
+            403
+        );
+
         $userId = auth()->id();
 
         $query = Task::with(['event', 'assignedTo', 'category'])

@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Vendors;
 
 use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorCategory;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -31,6 +32,13 @@ class CreateVendor extends Component
 
     public function mount(?int $id = null): void
     {
+        $permission = $id ? 'vendors.edit' : 'vendors.create';
+
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), $permission),
+            403
+        );
+
         if ($id) {
             $this->vendor             = Vendor::findOrFail($id);
             $this->vendorId           = $id;
@@ -51,6 +59,13 @@ class CreateVendor extends Component
 
     public function save(): void
     {
+        $permission = $this->vendor ? 'vendors.edit' : 'vendors.create';
+
+        if (!app(PermissionService::class)->userCan(auth()->user(), $permission)) {
+            $this->toastError('You do not have permission to ' . ($this->vendor ? 'edit this vendor.' : 'create vendors.'));
+            return;
+        }
+
         $this->validate([
             'name'               => 'required|string|min:2|max:200',
             'vendor_category_id' => 'nullable|exists:vendor_categories,id',

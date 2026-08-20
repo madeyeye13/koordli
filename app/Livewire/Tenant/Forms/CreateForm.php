@@ -6,6 +6,7 @@ use App\Models\Tenant\ConsultationAvailability;
 use App\Models\Tenant\Form;
 use App\Models\Tenant\FormField;
 use App\Models\Tenant\FormRedirect;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -65,8 +66,27 @@ class CreateForm extends Component
         6 => ['active' => false, 'start' => '09:00', 'end' => '17:00'],
     ];
 
+    private function requiredPermission(): string
+    {
+        return $this->form ? 'forms.edit' : 'forms.create';
+    }
+
+    private function checkPermission(): bool
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), $this->requiredPermission())) {
+            $this->toastError('You do not have permission to ' . ($this->form ? 'edit this form.' : 'create forms.'));
+            return false;
+        }
+        return true;
+    }
+
     public function mount(?int $id = null): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), $id ? 'forms.edit' : 'forms.create'),
+            403
+        );
+
         if ($id) {
             $this->form    = Form::with(['fields', 'redirect', 'availabilities'])->findOrFail($id);
             $this->formId  = $id;
@@ -131,6 +151,8 @@ class CreateForm extends Component
 
     public function saveDetails(): void
     {
+        if (!$this->checkPermission()) return;
+
         $this->validate([
             'name'              => 'required|string|min:2|max:200',
             'type'              => 'required|in:booking,consultation',
@@ -205,6 +227,8 @@ class CreateForm extends Component
 
     public function saveRedirect(): void
     {
+        if (!$this->checkPermission()) return;
+
         if (!$this->form) {
             $this->toastError('Save form details first.');
             return;
@@ -233,6 +257,8 @@ class CreateForm extends Component
 
     public function saveAvailability(): void
     {
+        if (!$this->checkPermission()) return;
+
         if (!$this->form) {
             $this->toastError('Save form details first.');
             return;
@@ -258,6 +284,8 @@ class CreateForm extends Component
 
     public function showAddField(): void
     {
+        if (!$this->checkPermission()) return;
+
         if (!$this->form) {
             $this->toastError('Save form details first.');
             return;
@@ -269,6 +297,8 @@ class CreateForm extends Component
 
     public function saveField(): void
     {
+        if (!$this->checkPermission()) return;
+
         $this->validate([
             'f_label' => 'required|string|min:2|max:200',
             'f_type'  => 'required|in:text,textarea,email,phone,number,dropdown,radio,checkbox,date',
@@ -310,6 +340,8 @@ class CreateForm extends Component
 
     public function editField(int $id): void
     {
+        if (!$this->checkPermission()) return;
+
         $field = FormField::find($id);
         if (!$field) return;
         $this->editFieldId   = $id;
@@ -323,6 +355,8 @@ class CreateForm extends Component
 
     public function deleteField(int $id): void
     {
+        if (!$this->checkPermission()) return;
+
         FormField::find($id)?->delete();
         $this->form->load('fields');
         $this->toastSuccess('Field removed.');
@@ -330,6 +364,8 @@ class CreateForm extends Component
 
     public function moveFieldUp(int $id): void
     {
+        if (!$this->checkPermission()) return;
+
         $field = FormField::find($id);
         if (!$field) return;
         $prev = FormField::where('form_id', $field->form_id)
@@ -344,6 +380,8 @@ class CreateForm extends Component
 
     public function moveFieldDown(int $id): void
     {
+        if (!$this->checkPermission()) return;
+
         $field = FormField::find($id);
         if (!$field) return;
         $next = FormField::where('form_id', $field->form_id)

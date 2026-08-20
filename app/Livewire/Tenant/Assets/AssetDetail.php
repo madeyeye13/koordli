@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\Assets;
 use App\Models\Tenant\Asset;
 use App\Models\Tenant\AssetEventAssignment;
 use App\Models\Tenant\Event;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -27,17 +28,32 @@ class AssetDetail extends Component
 
     public function mount(int $id): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'assets.manage'),
+            403
+        );
+
         $this->asset = Asset::with(['category', 'eventAssignments.event'])->findOrFail($id);
     }
 
     public function showAssign(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            return;
+        }
+
         $this->reset(['assign_event_id', 'assign_date_from', 'assign_date_to', 'assign_notes']);
         $this->showAssignForm = true;
     }
 
     public function assignToEvent(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            return;
+        }
+
         $this->validate([
             'assign_event_id' => 'required|exists:events,id',
         ]);
@@ -68,12 +84,23 @@ class AssetDetail extends Component
 
     public function confirmDeleteAssign(int $id): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            return;
+        }
+
         $this->deleteAssignId = $id;
         $this->showDeleteAssignModal = true;
     }
 
     public function deleteAssign(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            $this->showDeleteAssignModal = false;
+            return;
+        }
+
         AssetEventAssignment::find($this->deleteAssignId)?->delete();
 
         if ($this->asset->eventAssignments()->count() === 0) {
@@ -88,6 +115,11 @@ class AssetDetail extends Component
 
     public function updateStatus(string $status): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
+            $this->toastError('You do not have permission to manage assets.');
+            return;
+        }
+
         $this->asset->update(['status' => $status]);
         $this->asset->refresh();
         $this->toastSuccess('Status updated.');

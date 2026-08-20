@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant;
 
 use App\Services\DomainVerificationService;
 use App\Services\FeatureGateService;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -19,6 +20,11 @@ class DomainSettings extends Component
 
     public function mount(): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'domain-settings.manage'),
+            403
+        );
+
         $tenant = auth()->user()->tenant;
         $this->subdomain     = $tenant->subdomain ?? '';
         $this->custom_domain = $tenant->custom_domain ?? '';
@@ -26,6 +32,11 @@ class DomainSettings extends Component
 
     public function saveSubdomain(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'domain-settings.manage')) {
+            $this->toastError('You do not have permission to manage domain settings.');
+            return;
+        }
+
         $tenant = auth()->user()->tenant;
         $gate   = app(FeatureGateService::class);
 
@@ -44,6 +55,11 @@ class DomainSettings extends Component
 
     public function saveCustomDomain(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'domain-settings.manage')) {
+            $this->toastError('You do not have permission to manage domain settings.');
+            return;
+        }
+
         $tenant = auth()->user()->tenant;
         $gate   = app(FeatureGateService::class);
 
@@ -68,6 +84,11 @@ class DomainSettings extends Component
 
     public function verifyNow(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'domain-settings.manage')) {
+            $this->toastError('You do not have permission to manage domain settings.');
+            return;
+        }
+
         $tenant = auth()->user()->tenant;
         $result = app(DomainVerificationService::class)->verify($tenant);
 
@@ -80,6 +101,11 @@ class DomainSettings extends Component
 
     public function removeCustomDomain(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'domain-settings.manage')) {
+            $this->toastError('You do not have permission to manage domain settings.');
+            return;
+        }
+
         auth()->user()->tenant->update([
             'custom_domain'             => null,
             'domain_status'             => 'unverified',

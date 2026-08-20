@@ -2484,6 +2484,80 @@ app/Console/Commands/BackfillClientEventAccess.php  ← koordli:backfill-client-
 - **Broader staff roles/permissions review** — only ONE specific gate was added this session (`company_owner` role required for removing participants / deleting a conversation). The user explicitly flagged that a general staff permissions review hasn't happened yet ("I don't think we have even worked on anything regarding role and permission for staffs") — this remains open for a future session.
 - **Voice note MIME-type detection relies on filename convention, not just server-side MIME sniffing** — browsers record audio as WebM containers, which PHP's byte-level MIME detection frequently reports as `video/webm` instead of `audio/webm` (an inherent ambiguity in the container format, not a bug). The reliable workaround, used consistently everywhere voice notes are rendered (full page, live broadcast payload, floating widget, quick-reply route): treat any attachment whose filename starts with `voice-note-` as audio regardless of what MIME type the server detected.
 
+
+# ADDENDUM — READ RECEIPTS, CLIENT/VENDOR PORTAL CHAT, AND CONVERSATION NOTIFICATIONS
+
+---
+
+## STRATEGIC CONTEXT
+
+This session extended the Conversations feature (built in the prior addendum) in three directions: (1) live read receipts on the full conversation page, (2) full Client Portal and Vendor Portal parity with the staff experience — dedicated conversation pages AND floating quick-reply widgets with emoji/voice-note support, and (3) a proper notification layer covering both "added to a conversation" and "unread message" scenarios, respecting white-label branding and a genuine per-recipient opt-out for Client/Vendor.
+
+A significant fraction of this session was debugging — several genuinely new failure modes were discovered and are documented as rules below, since multiple of them are structural risks that will recur in any future feature built the same way.
+
+---
+
+## NEW CRITICAL RULES TO ADD
+
+79. **A LIVEWIRE COMPONENT'S BLADE VIEW MUST ALWAYS RENDER A ROOT HTML ELEMENT, EVEN WHEN THE VISIBLE CONTENT IS CONDITIONALLY EMPTY.** Wrapping an entire view's content in a single top-level `@if(...)` (e.g. `@if($hasAnyConversation) <div>...</div> @endif`) causes `Livewire\Exceptions\RootTagMissingFromViewException` the moment that condition is false, because Livewire finds literally no HTML to attach its component wrapper to. This bug hit THREE separate small components in this session (`FloatingConversationsWidget` for all three portals, and the sidebar `UnreadBadge` component) before the pattern was recognized. **The fix pattern, now standard for any Livewire view with conditional content: wrap the ENTIRE template in an always-present outer `<div>...</div>`, and put the `@if`/`@endif` INSIDE that wrapper** — never let the root tag itself be inside the conditional. For a component whose only content is a single small conditional element (like a badge), the simpler fix is to always render the element but toggle its visibility via inline `display:none` rather than `@if`/`@endif` around the whole thing.
+80. **WHEN A ROUTE GROUP ALREADY HAS A `->name('prefix.')` APPLIED, ANY ROUTE INSIDE IT THAT ALSO CALLS `->name('prefix.something')` PRODUCES A DOUBLED, INCORRECT ROUTE NAME (`prefix.prefix.something`), NOT AN ERROR AT DEFINITION TIME.** This silently registers a route under a name nobody will ever reference correctly, and the mistake goes completely unnoticed until something calls `route('prefix.something')` and gets a "Route not defined" exception — which can be much later than when the route was written, since Blade views may not exercise that specific `route()` call until a specific UI element is clicked. This exact mistake was made independently in BOTH the `client.` and `vendor.` route groups when building the Conversations sub-routes (`->name('client.conversations')` inside a group already named `client.`, registering as `client.client.conversations`). **Rule going forward: inside any `Route::prefix(X)->name(X.)->group()` block, every nested `->name(...)` call must NEVER repeat the group's own prefix** — write `->name('conversations')`, not `->name('client.conversations')`, and let the group's own prefix compose it correctly into `client.conversations` automatically.
+81. **`fetch()` CALLS TO PORTAL-SCOPED ROUTES MUST INCLUDE THE PORTAL'S URL PREFIX EXPLICITLY — A BARE `/conversations/...` PATH SILENTLY MATCHES THE TENANT ROUTE (WHICH HAS NO PREFIX) INSTEAD OF THE INTENDED CLIENT/VENDOR ONE, EVEN WHEN CALLED FROM WITHIN A CLIENT/VENDOR PAGE.** Because the tenant portal's routes resolve by subdomain and therefore never needed a path prefix, a JS `fetch('/conversations/' + uuid + '/quick-messages')` call written inside the Vendor or Client floating widget actually hits the TENANT-guarded route, which then correctly rejects the (vendor/client-authenticated, not tenant-authenticated) request with a 302 redirect to the tenant login page — surfacing in DevTools as a confusing, silent redirect rather than an obvious 403 or 404. **Every portal-specific `fetch()` URL must be written with its full, explicit prefix** (`/vendor/conversations/...`, `/client/conversations/...`) — never assume a shared relative path will resolve correctly across differently-scoped route groups.
+82. **AN INLINE `x-data="{ ...many methods... }"` OBJECT LITERAL, ONCE IT ACCUMULATES ENOUGH CONTENT, BECOMES STRUCTURALLY UNRELIABLE ENOUGH THAT THE CORRECT, PERMANENT FIX IS TO EXTRACT IT INTO A NAMED GLOBAL FUNCTION FROM THE START ON ANY NEW WIDGET, NOT AS A LATER REPAIR.** This session repeated the same architectural fix (first established as Rule 77 in the prior addendum) on the Client and Vendor floating widgets proactively, from their very first version, specifically BECAUSE the tenant widget had already suffered multiple rounds of `x-data="{...}"` breakage. This paid off — the Client and Vendor widgets, written with `x-data="clientFloatingConversationsData()"` / `x-data="vendorFloatingConversationsData()"` calling functions defined in a plain `<script>` tag from day one, needed zero debugging of this class of bug during this session, in contrast to the extensive troubleshooting the tenant widget required in the prior session before reaching the same architecture. **Any new Alpine-heavy widget should default to the named-function pattern immediately, never starting with an inline object literal "to keep it simple," since that simplicity is illusory once a widget accumulates more than ~5-6 methods.**
+83. **A STALE VITE DEV-SERVER MODULE CACHE CAN SERVE AN OUTDATED VERSION OF A SPECIFIC IMPORTED FILE EVEN AFTER THE SOURCE HAS BEEN CORRECTLY EDITED, THE DEV SERVER RESTARTED, AND THE BROWSER HARD-REFRESHED (INCLUDING IN A FRESH INCOGNITO WINDOW) — THIS IS NOT BROWSER-SIDE CACHING AND WILL NOT BE FIXED BY CLEARING BROWSER CACHE ALONE.** A `sender_name` label addition to `conversations-widget-store.js` (a file imported by `app.js`, not `app.js` itself) failed to appear in the rendered output through multiple restart-and-hard-refresh cycles, including a completely fresh Incognito session — which conclusively ruled out browser caching as the cause. The actual fix required killing the Node process outright and deleting Vite's internal dependency pre-bundle cache directory before restarting: `Stop-Process -Force` on the node process, then `Remove-Item -Recurse -Force node_modules/.vite`, then a fresh `npm run dev`. **When a source-code change is verified correct (confirmed via direct file inspection, e.g. `Select-String`) but its effect is inconsistently or partially absent in the browser — especially when the SAME shared file works correctly for one caller (e.g. live-broadcast-received messages) but not another (e.g. locally-echoed sent messages) despite both paths calling the identical function — suspect a stale Vite module cache before suspecting the code itself, and clear `node_modules/.vite` as an early diagnostic step, not a last resort.**
+84. **CATEGORY-LEVEL NOTIFICATION PREFERENCES FOR NON-TENANT-USER NOTIFIABLES (Client, VendorAccount) REUSE THE EXISTING `NotificationPreference` MODEL'S POLYMORPHIC `notifiable_type`/`notifiable_id` DESIGN WITHOUT ANY SCHEMA CHANGE** — the table was already built generically enough (in the earlier Workflow Automation addendum) to support this. The convention: **absence of a `NotificationPreference` row for a given notifiable+category means "notifications enabled" (the default)**; a row only ever gets created the moment someone actively opts OUT (toggles a channel off), storing an empty or reduced `channels` array. This means the common case (nobody has touched their preferences) requires zero extra database rows or lookups beyond a single `->first()` call that correctly returns `null`, and every notification-sending code path must treat `null` preference row as "send normally," only suppressing when an actual row exists AND excludes the relevant channel — `if ($pref && !in_array('email', $pref->channels ?? ['email'])) return;` is the exact guard pattern used at every Conversation notification dispatch point (added-to-conversation, unread-digest) for Client and Vendor recipients.
+
+---
+
+## NEW FEATURES BUILT THIS SESSION
+
+### Read Receipts
+- `ConversationMessage::seenBy()` — computes which OTHER participants (excluding the sender) have `last_read_at >= this message's created_at`
+- `ConversationDetail::myLastMessageId()` — read receipts only display under the sender's single most recent message (WhatsApp convention), not every message
+- **Live update mechanism**: since the message list container is `wire:ignore`'d (per established rules), Livewire cannot re-render the "Seen by" text directly. The fix is a dedicated plain route, `/conversations/{uuid}/seen-status` (one per portal, tenant/client/vendor), polled via `fetch()` whenever a `ConversationParticipantsChanged` broadcast fires (which `markRead()` already triggers) — the JS then directly updates the `id="seen-indicator-{messageId}"` element's `textContent`
+- **Live-appended messages** (arriving via broadcast while the page is open) need their OWN fresh seen-indicator element created and the PREVIOUS one removed, since `appendMessage()`/`appendToMini()` builds new DOM nodes outside Livewire's render cycle entirely — handled by a `document.querySelectorAll('[id^="seen-indicator-"]').forEach(el => el.remove())` cleanup followed by creating exactly one new indicator on the newly-sent message
+
+### Client & Vendor Portal — Full Parity with Staff
+- `ConversationList` + `ConversationDetail` Livewire components for both Client and Vendor, scoped via `Conversation::hasParticipant('client'|'vendor_account', $id)` — same authoritative membership gate used everywhere else
+- Full messaging feature parity: real-time (Reverb), reply-to, emoji picker, voice notes (WhatsApp-style bubble, auto-send on stop-recording)
+- Sidebar nav entries ("Messages") with a live unread-count badge (`UnreadBadge` Livewire component, `lazy`-loaded) — see Rule 79 for the fix required on this specific small component
+- **Floating quick-reply widgets** for both portals, architecturally identical to the tenant one: Livewire component provides ONLY the initial data embed (via a `<script type="application/json">` tag, never interpolated into an `x-data` attribute — per the established Rule 76 pattern), all ongoing interaction (opening a chat, sending a message, sending a voice note) goes through plain `fetch()`-based routes (`quick-messages`, `quick-send`), completely bypassing Livewire's component/snapshot system for these high-frequency actions
+- Voice notes recorded in the mini-chat widget use a **local blob URL** (`URL.createObjectURL(blob)`) for the sender's own immediate playback, rather than waiting for the server round-trip — the broadcast/next-load later supplies the permanent server-hosted URL to everyone else
+
+### Conversation Notifications
+- **"Added to a conversation"** — `ConversationNotifier::notifyAdded()`, called from both `EventDetail::createConversation()` (initial creation) and `ConversationDetail::addParticipants()` (adding to an existing one). Tenant staff get the existing Workflow Automation in-app+email notification (always Koordli-branded); Client/Vendor get a dedicated white-label-aware `ConversationAddedMail`
+- **"Unread messages while away"** — already built in the prior session as an escalating 3-touch reminder (3 min / +30 min / +2 hr, debounced via cache lock, self-canceling once the recipient reads the message); this session added the preference-check guard (Rule 84) so it correctly respects an opt-out
+- **Notification Preferences pages** for both Client and Vendor (`/notifications/preferences` in each portal, linked from a new "Settings" sidebar section) — currently a single toggle ("Email me about unread messages") covering the `conversations` category; the underlying `NotificationPreference` model supports finer-grained category/channel control if ever needed later, this UI just exposes the one toggle that matters today
+
+---
+
+## KEY FILE LOCATIONS (new/changed this session)
+
+```
+app/Services/Conversations/ConversationNotifier.php   ← notifyOthers() (unread digest, from prior
+                                                           session) + notifyAdded() (new this session)
+app/Jobs/CheckTenantUserConversationReadJob.php        ← self-rescheduling escalation (tenant staff path)
+app/Jobs/SendConversationUnreadDigestJob.php            ← self-rescheduling escalation (Client/Vendor path),
+                                                           now also checks NotificationPreference before sending
+app/Mail/ConversationUnreadDigestMail.php               ← white-label-aware, Client/Vendor only
+app/Mail/ConversationAddedMail.php                      ← white-label-aware, Client/Vendor only
+
+app/Livewire/Client/Conversations/{ConversationList,ConversationDetail,FloatingConversationsWidget,UnreadBadge}.php
+app/Livewire/Vendor/Conversations/{ConversationList,ConversationDetail,FloatingConversationsWidget,UnreadBadge}.php
+app/Livewire/Client/NotificationPreferences.php
+app/Livewire/Vendor/NotificationPreferences.php
+
+routes/web.php  ← per-portal (tenant/client/vendor) quick-messages, quick-send, seen-status plain routes,
+                   each independently authenticated via Conversation::hasParticipant() — NOT behind
+                   Livewire's component system. See Rule 81 for the URL-prefix requirement.
+```
+
+---
+
+## KNOWN GAPS — STILL EXPLICITLY DEFERRED
+
+- **Broader staff roles/permissions review** — flagged in the prior addendum, still not addressed. Only the one specific gate exists (`company_owner` role required for conversation deletion / participant removal). Remains open for a future session.
+- **Notification Preferences UI is single-toggle, category-wide** — a Client/Vendor can only turn ALL conversation-related email off or on, not distinguish "added to conversation" from "unread digest" individually. The underlying schema supports this distinction if ever requested; the UI simply doesn't expose it yet, by deliberate scope choice.
+
 ## PENDING
 
 ### Phase 9 — Remaining polish (optional)

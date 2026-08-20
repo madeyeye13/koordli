@@ -4,6 +4,7 @@ namespace App\Livewire\Tenant\Contracts;
 
 use App\Jobs\SendVendorContractJob;
 use App\Models\Tenant\VendorContract;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -40,13 +41,30 @@ class ContractDetail extends Component
 
     public function mount(string $uuid): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'contracts.view')
+                || app(PermissionService::class)->userCan(auth()->user(), 'contracts.manage'),
+            403
+        );
+
         $this->contract = VendorContract::where('uuid', $uuid)
             ->with(['vendor', 'event', 'template', 'statusHistory.changedBy', 'createdBy'])
             ->firstOrFail();
     }
 
+    private function requireManage(): bool
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'contracts.manage')) {
+            $this->toastError('You do not have permission to edit this contract.');
+            return false;
+        }
+        return true;
+    }
+
     public function startEdit(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->title             = $this->contract->title;
         $this->content           = $this->contract->content;
         $this->contract_amount   = (string) ($this->contract->contract_amount ?? '');
@@ -57,6 +75,8 @@ class ContractDetail extends Component
 
     public function saveEdit(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'title'   => 'required|string|min:2|max:200',
             'content' => 'required|string|min:10',
@@ -127,6 +147,8 @@ class ContractDetail extends Component
 
     public function confirmSend(): void
     {
+        if (!$this->requireManage()) return;
+
         if (!$this->contract->vendor->email) {
             $this->toastError('This vendor has no email address on file.');
             return;
@@ -136,6 +158,8 @@ class ContractDetail extends Component
 
     public function sendContract(): void
     {
+        if (!$this->requireManage()) return;
+
         $pdf = Pdf::loadView('pdf.vendor-contract-pdf', $this->pdfData())->setPaper('a4');
         $fileName = 'contracts/' . $this->contract->uuid . '.pdf';
         Storage::disk('public')->put($fileName, $pdf->output());
@@ -163,6 +187,8 @@ class ContractDetail extends Component
 
     public function markSentManually(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->contract->changeStatus('sent', 'Marked as sent manually (delivered outside Koordli).');
         $this->contract->refresh();
         $this->showSendModal = false;
@@ -171,11 +197,15 @@ class ContractDetail extends Component
 
     public function showUploadSigned(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->showSignedUpload = true;
     }
 
     public function uploadSigned(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'signedFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
@@ -193,11 +223,15 @@ class ContractDetail extends Component
 
     public function confirmCancel(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->showCancelModal = true;
     }
 
     public function cancelContract(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->contract->changeStatus('cancelled', 'Contract cancelled by planner.');
         $this->contract->refresh();
         $this->showCancelModal = false;
@@ -206,12 +240,16 @@ class ContractDetail extends Component
 
     public function showSignPanel(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->planner_signature_full_name = auth()->user()->name;
         $this->showSignModal = true;
     }
 
     public function savePlannerSignature(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->validate([
             'planner_signature_data'      => 'required|string',
             'planner_signature_full_name' => 'required|string|min:2|max:100',
@@ -236,6 +274,8 @@ class ContractDetail extends Component
 
     public function removePlannerSignature(): void
     {
+        if (!$this->requireManage()) return;
+
         $this->contract->update([
             'planner_signature_type' => null,
             'planner_signature_data' => null,

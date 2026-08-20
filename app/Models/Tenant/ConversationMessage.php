@@ -50,12 +50,26 @@ class ConversationMessage extends Model
             ->exists();
     }
 
+        /**
+     * Names of participants (excluding the sender) who have read up to at
+     * least this message's timestamp — the read-receipt display data.
+     */
+    public function seenBy(): \Illuminate\Support\Collection
+    {
+        return $this->conversation->participants
+            ->reject(fn($p) => $p->participant_type === $this->sender_type && $p->participant_id === $this->sender_id)
+            ->filter(fn($p) => $p->last_read_at && $p->last_read_at->gte($this->created_at))
+            ->map(fn($p) => $p->resolveParticipant()?->name)
+            ->filter()
+            ->values();
+    }
+
     public function canDeleteForEveryone(string $senderType, int $senderId): bool
     {
         return $this->sender_type === $senderType
             && $this->sender_id === $senderId
             && !$this->deleted_at
-            && $this->created_at->diffInMinutes(now()) <= 30;
+            && abs($this->created_at->diffInMinutes(now())) <= 30;
     }
 
     public function senderName(): string

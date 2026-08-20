@@ -206,6 +206,7 @@ function floatingConversationsData() {
             store.appendToMini({
                 sender_type: 'tenant_user',
                 sender_id: window.__currentUserId,
+                sender_name: window.__currentUserName,
                 body: text || (file ? '📎 ' + file.name : '')
             });
 

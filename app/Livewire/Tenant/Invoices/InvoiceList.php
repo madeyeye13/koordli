@@ -3,6 +3,7 @@
 namespace App\Livewire\Tenant\Invoices;
 
 use App\Models\Tenant\VendorInvoice;
+use App\Services\PermissionService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -15,6 +16,12 @@ class InvoiceList extends Component
 
     public function render()
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'invoices.view')
+                || app(PermissionService::class)->userCan(auth()->user(), 'invoices.manage'),
+            403
+        );
+
         $invoices = VendorInvoice::with(['vendor', 'event'])
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, fn($q) => $q->where('invoice_number', 'like', '%' . $this->search . '%')

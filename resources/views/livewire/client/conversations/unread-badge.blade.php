@@ -1,0 +1,1 @@
+<span style="background:#EF4444;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:auto;{{ $count > 0 ? '' : 'display:none;' }}">{{ $count > 9 ? '9+' : $count }}</span>

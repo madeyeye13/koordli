@@ -7,6 +7,7 @@ use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorContract;
 use App\Models\Tenant\VendorContractTemplate;
 use App\Models\Tenant\VendorEventAssignment;
+use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -31,6 +32,11 @@ class CreateContract extends Component
 
     public function mount(?int $vendorId = null): void
     {
+        abort_unless(
+            app(PermissionService::class)->userCan(auth()->user(), 'contracts.manage'),
+            403
+        );
+
         $this->preselectVendorId = $vendorId;
         $this->vendor_id         = $vendorId;
     }
@@ -72,6 +78,11 @@ class CreateContract extends Component
 
     public function save(): void
     {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'contracts.manage')) {
+            $this->toastError('You do not have permission to create contracts.');
+            return;
+        }
+
         $this->validate([
             'vendor_id' => 'required|exists:vendors,id',
             'title'     => 'required|string|min:2|max:200',

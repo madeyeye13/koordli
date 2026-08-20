@@ -77,13 +77,15 @@ class PermissionSeeder extends Seeder
             'vendors.create',
             'vendors.edit',
             'vendors.delete',
+            'vendors.assign', // assigning a vendor to an event — financial commitment (amount_agreed), separate from general edit
 
             // Budget
             'budget.view',
             'budget.manage',
 
             // Guests
-            'guests.view',
+            'guests.view',        // full record, includes email/phone
+            'guests.view.basic',  // name + RSVP status/count only, no PII
             'guests.create',
             'guests.edit',
             'guests.delete',
@@ -107,6 +109,7 @@ class PermissionSeeder extends Seeder
             'staff.invite',
             'staff.edit',
             'staff.remove',
+            'staff.roles.manage', // create/rename/delete roles, edit role permissions, set per-user overrides
 
             // Settings
             'settings.view',
@@ -128,14 +131,36 @@ class PermissionSeeder extends Seeder
 
             // Vendor management
             'vendors.applications.view',
-            'vendors.applications.manage',
-            'vendors.profiles.view',
+            'vendors.applications.manage', // approve/reject — owner-only by default
 
             // Vendor self (for vendor role)
             'vendor.profile.manage',
             'vendor.events.view',
             'vendor.runsheet.view',
             'vendor.payments.view',
+
+            // Contracts
+            'contracts.manage', // full lifecycle: create/edit/send/cancel/templates
+            'contracts.view',   // view only, no edit
+
+            // Invoices
+            'invoices.manage', // full lifecycle: create/record payments/delete payments/cancel
+            'invoices.view',   // view only, no edit
+
+            // Billing (tenant's own subscription/plan)
+            'billing.manage', // change plan, initiate checkout — owner-only by default
+            'billing.view',
+
+            // Domain settings
+            'domain-settings.manage',
+
+            // Assets
+            'assets.manage', // full CRUD + assign to events
+
+            // Conversations
+            'conversations.create',
+            'conversations.delete',              // delete entire conversation
+            'conversations.manage_participants',  // add/remove people
         ];
 
         foreach ($tenantPermissions as $permission) {
@@ -146,47 +171,59 @@ class PermissionSeeder extends Seeder
         }
 
         // We define ROLE TEMPLATES here (tenant_id = null)
-        // When a tenant is created, DefaultTenantSeeder copies
-        // these roles and assigns them with that tenant's ID
+        // When a tenant is created, TenantService copies these roles and
+        // assigns them with that tenant's ID. company_owner always gets
+        // the full $tenantPermissions array — every permission, including
+        // any added here in the future — since it's the untouchable
+        // is_system role.
 
         $roles = [
-            'company_owner' => $tenantPermissions, // all permissions
+            'company_owner' => $tenantPermissions, // all permissions, always
+
             'coordinator'   => [
                 'events.view', 'events.create', 'events.edit',
                 'tasks.view', 'tasks.create', 'tasks.edit', 'tasks.assign',
-                'vendors.view', 'vendors.create', 'vendors.edit',
+                'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.assign',
                 'budget.view',
                 'guests.view', 'guests.create', 'guests.edit', 'guests.checkin',
                 'rsvp.view', 'rsvp.manage',
                 'runsheet.view', 'runsheet.manage',
                 'documents.view', 'documents.upload',
                 'reports.view',
-                'forms.view',
-                'forms.create',
-                'forms.edit',
-                'forms.submissions.view',
-                'forms.submissions.manage',
-                'vendors.applications.view',
-                'vendors.applications.manage',
+                'forms.view', 'forms.create', 'forms.edit',
+                'forms.submissions.view', 'forms.submissions.manage',
+                'vendors.applications.view', // view only — approval is owner-only
+                'contracts.manage',          // full contract ownership, per confirmed answer
+                'staff.view',                // read-only staff visibility, no edit
+                'conversations.create',
             ],
+
             'finance'       => [
-                'events.view',
+                'events.view',   // view only, no write access
+                'vendors.view',  // view only, no write access
+                'vendors.assign', // financial commitment — finance territory alongside coordinator
                 'budget.view', 'budget.manage',
-                'vendors.view',
                 'reports.view',
+                'contracts.view',  // view for reference only, no edit — contracts belong to coordinator
+                'invoices.manage', // finance's real ownership: full invoice lifecycle
             ],
+
             'operations'    => [
                 'events.view',
                 'tasks.view', 'tasks.edit',
-                'vendors.view',
+                'vendors.view', // view only — explicitly NOT vendors.assign (no financial commitment access)
                 'runsheet.view', 'runsheet.manage',
                 'guests.view', 'guests.checkin',
+                'assets.manage', // day-of-event logistics ownership, per confirmed answer
             ],
+
             'social_media_manager' => [
                 'events.view',
-                'guests.view',
+                'guests.view.basic', // names/counts only, never guests.view (no PII)
                 'documents.view',
+                // read-only across the board, no write permissions granted at all
             ],
+
             'client'        => [
                 'client.portal.access',
                 'events.view',
