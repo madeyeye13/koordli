@@ -152,6 +152,12 @@
                     <span wire:loading wire:target="save">Saving...</span>
                 </button>
                 <a href="{{ route('tenant.tasks') }}" wire:navigate class="krd-btn krd-btn-ghost">Cancel</a>
+                @if($task && $task->assignedTo)
+                <button wire:click="sendReminderNow" wire:loading.attr="disabled" class="krd-btn krd-btn-secondary">
+                    <span wire:loading.remove wire:target="sendReminderNow">🔔 Send Reminder Now</span>
+                    <span wire:loading wire:target="sendReminderNow">Sending...</span>
+                </button>
+                @endif
             </div>
 
         </div>

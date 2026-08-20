@@ -10,3 +10,22 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  */
 
 import './echo';
+
+// Attach the current WebSocket connection's socket ID to every outgoing
+// request, so Laravel's broadcast(...)->toOthers() knows which connection
+// to exclude (otherwise it silently has no effect and the sender receives
+// their own broadcast back, causing visible duplicate messages).
+window.Echo.connector.pusher.connection.bind('connected', () => {
+    window.axios.defaults.headers.common['X-Socket-Id'] = window.Echo.socketId();
+});// Attach the current WebSocket connection's socket ID to every outgoing
+// Livewire request, so broadcast(...)->toOthers() knows which connection to
+// exclude. Livewire 3 uses native fetch() internally, NOT axios, for its own
+// component update requests — so this must hook into Livewire's own request
+// lifecycle rather than axios interceptors, which have no effect on Livewire.
+document.addEventListener('livewire:init', () => {
+    Livewire.hook('request', ({ options }) => {
+        if (window.Echo?.socketId()) {
+            options.headers['X-Socket-Id'] = window.Echo.socketId();
+        }
+    });
+});

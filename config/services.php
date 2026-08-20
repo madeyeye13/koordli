@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'paystack' => [
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+        'base_url' => 'https://api.paystack.co',
+        'processing_percentage' => env('PAYSTACK_PROCESSING_PERCENTAGE', 1.5),
+        'processing_fixed' => env('PAYSTACK_PROCESSING_FIXED', 100),
+    ],
+
 ];

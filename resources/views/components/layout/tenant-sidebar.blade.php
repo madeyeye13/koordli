@@ -168,6 +168,16 @@
                 Billing
             </a>
 
+            <a href="{{ route('tenant.notifications.preferences') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.notifications.preferences') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 00-4-5.7V5a2 2 0 10-4 0v.3A6 6 0 006 11v3.2a2 2 0 01-.6 1.4L4 17h5"/>
+                    <path d="M9 17v1a3 3 0 006 0v-1"/>
+                </svg>
+                Notifications
+            </a>
+
             <a href="{{ route('tenant.domain-settings') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.domain-settings') ? 'active' : '' }}"
                 wire:navigate>
@@ -183,6 +193,7 @@
                 </svg>
                 Settings
             </a>
+            
         </div>
 
     </nav>

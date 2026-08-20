@@ -35,6 +35,21 @@ class SupportAgent extends Model
             && $this->active_chat_count < $this->max_concurrent_chats;
     }
 
+    /**
+     * Recompute active_chat_count from the actual source of truth (open tickets
+     * assigned to this agent) rather than trusting scattered increment/decrement
+     * calls to always stay perfectly balanced across every code path that can
+     * end a ticket/chat.
+     */
+    public function recalculateActiveChatCount(): void
+    {
+        $count = \App\Models\Central\SupportTicket::where('assigned_agent_id', $this->id)
+            ->whereNotIn('status', ['resolved', 'closed'])
+            ->count();
+
+        $this->update(['active_chat_count' => $count]);
+    }
+
     public static function nextAvailable(): ?self
     {
         return static::where('is_available', true)

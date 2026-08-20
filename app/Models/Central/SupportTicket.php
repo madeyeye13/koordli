@@ -122,15 +122,14 @@ class SupportTicket extends Model
             'changed_by'    => $changedBy,
         ]);
 
-        if ($previousAgent) {
-            $previousAgent->decrement('active_chat_count');
-        }
-
-        $agent->increment('active_chat_count');
-
         $this->update([
             'assigned_agent_id' => $agent->id,
             'status'            => 'in_progress',
         ]);
+
+        // Recalculate from source of truth rather than trusting increment/decrement
+        // to always stay balanced across every possible code path
+        $agent->recalculateActiveChatCount();
+        $previousAgent?->recalculateActiveChatCount();
     }
 }

@@ -47,4 +47,9 @@ class User extends Authenticatable
     return $this->belongsTo(\App\Models\Central\Tenant::class, 'tenant_id')
                 ->withoutGlobalScopes();
 }
+
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'notifications.tenant-user.' . $this->id;
+    }
 }

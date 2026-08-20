@@ -308,6 +308,8 @@ class ConsultationForm extends Component
             'guest_phone'       => $guestPhone ?: null,
         ]);
 
+        event(new \App\Events\BookingSubmitted($submission, $this->form->tenant_id, $guestName, $this->form->name));
+
         $tenant      = Tenant::find($this->form->tenant_id);
         $plannerUser = User::withoutGlobalScope('tenant')
             ->where('tenant_id', $this->form->tenant_id)

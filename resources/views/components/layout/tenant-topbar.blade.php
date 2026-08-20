@@ -23,6 +23,7 @@
     <div style="display: flex; align-items: center; gap: 12px;">
 
         <livewire:tenant.support.help-widget />
+        <livewire:tenant.notifications.notification-center />
 
         {{-- Dark mode toggle --}}
         <button

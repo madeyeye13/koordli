@@ -156,6 +156,7 @@ class ContractDetail extends Component
 
         $this->contract->changeStatus('sent', 'Contract emailed to vendor with e-signature link.');
         $this->contract->refresh();
+        event(new \App\Events\ContractSent($this->contract));
         $this->showSendModal = false;
         $this->toastSuccess('Contract sent to vendor.');
     }

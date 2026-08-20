@@ -131,4 +131,14 @@ class Event extends Model
     {
         return $this->locations()->count() > 0;
     }
+
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function clientAccess(): HasMany
+    {
+        return $this->hasMany(ClientEventAccess::class);
+    }
 }

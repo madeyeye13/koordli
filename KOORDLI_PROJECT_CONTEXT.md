@@ -1954,6 +1954,536 @@ platform, the conclusion reached (and executed) was:
   phase.
 
 
+  # ADDENDUM — WORKFLOW AUTOMATION & NOTIFICATIONS ENGINE, Stages 1-7 Complete
+
+*Append this section to KOORDLI_PROJECT_CONTEXT.md. Insert the new numbered rules into the CRITICAL RULES list (continuing at 54), and the rest as a new top-level section, e.g. right after the Industry Expansion addendum.*
+
+---
+
+## STRATEGIC CONTEXT (why this exists)
+
+Requested as a SaaS architect exercise BEFORE any code was written: "help Koordli not just organize work, but actively help ensure work gets done — via smart, reusable notifications and light workflow automation, without becoming a Zapier/n8n-style generic automation platform."
+
+**Core architectural decision (agreed and executed):** do NOT build a bespoke workflow/rules engine. Instead, lean entirely on **Laravel's native Events/Listeners system + Laravel's native Notification class** (`Illuminate\Notifications\Notification`, `->notify()`, the built-in polymorphic `notifications` table). This is the single most important design decision of this whole module — every one of the 7 stages is just this one pattern applied repeatedly to a new domain event, never a new mechanism.
+
+```
+Something happens in an existing Livewire component/model
+        ↓
+event(new SomeDomainEvent($model))   ← ONE new line added to EXISTING code
+        ↓
+A Listener (queued) reacts:
+   - logs an ActivityTimeline entry (per-record audit trail)
+   - calls NotificationDispatchService::notify() → resolves recipient's
+     channel preferences → sends via a shared KoordliNotification class
+     (database + mail + broadcast channels)
+   - writes ReminderLog rows (one per channel actually sent) for accountability
+```
+
+A separate, single scheduled command (`koordli:process-reminders`, every 15 min) reads a small `reminder_rules` config table and independently scans live data for time-based reminders/escalations/recurring patterns — this is NOT tied to the event-dispatch mechanism above; it's the second half of the system, driven entirely by data (rule rows), not code, so adding a new reminder type to an existing module requires zero new PHP classes, just new rows.
+
+---
+
+## NEW CRITICAL RULES TO ADD
+
+54. **THE NOTIFICATION ENGINE IS BUILT ENTIRELY ON LARAVEL'S NATIVE EVENTS/LISTENERS/NOTIFICATIONS SYSTEM — NEVER INTRODUCE A CUSTOM "WORKFLOW ENGINE," "RULE ENGINE," OR "AUTOMATION ENGINE" ABSTRACTION LAYER ON TOP OF IT.** Every module integration (Tasks, Contracts, Invoices, Bookings, RSVP, Vendor Applications, Runsheets) follows the identical 3-step pattern: dispatch a plain PHP domain event object at the exact point something already happens in existing code (one new line: `event(new XEvent($model))`), a queued Listener reacts (usually calling `NotificationDispatchService::notify()`), done. Multiple independent listeners can subscribe to the same event (Laravel supports this natively) — this is how "RSVP submitted → notify planner AND generate QR AND send email" type chains work without any custom "workflow" concept; they're just several listeners on one event.
+55. **`NotificationDispatchService::notify()`'S FULL PARAMETER LIST MUST BE PASSED EVERY TIME A RELATED FEATURE (reminder rule ID, manual-trigger flag) IS ADDED** — this method creates one `ReminderLog` row per delivery channel (database/mail/broadcast), and any metadata NOT passed as an explicit parameter (e.g. `reminderRuleId`, `isManual`) will silently be `null` on every one of those rows. A real bug hit exactly this: the interval-respecting scheduler logic queries `ReminderLog::where('reminder_rule_id', $rule->id)` to decide "was this already sent recently?" — when `reminderRuleId` wasn't threaded through, EVERY row came back null, breaking the entire "don't send duplicates" check and causing the recurring `every_6h` rule to have no memory of its own prior sends. Always pass `reminderRuleId: $rule->id` explicitly on every `notify()` call made from inside `ProcessReminders.php`.
+56. **ESCALATION "ALREADY ESCALATED" CHECKS MUST COMPARE `notifiable_id`, NEVER `notifiable_type`** — since the assignee and the escalation target (e.g. task creator/tenant owner) are frequently the SAME Eloquent class (`App\Models\Tenant\User`) but different row IDs, any "has this already escalated?" guard that compares class names will never be true and will re-escalate on every scheduler run. Always compare the actual ID (`notifiable_id`), and additionally guard against escalating to someone who IS the original assignee (`$task->createdBy->id !== $task->assigned_to`) — escalating to yourself is meaningless and was a real bug caught during Stage 3 testing with a self-assigned test task.
+57. **`Illuminate\Notifications\Notifiable` TRAIT IS NOT AUTOMATIC ON `Authenticatable` MODELS** — must be explicitly added (`use Illuminate\Notifications\Notifiable;` + `use Notifiable;` in the class) for `->notify()` to work at all on any notifiable model (tenant `User`, `PlatformUser`, `Client`, `VendorAccount`). Confirmed already present on tenant `User` in this codebase — but if the notification engine is ever extended to notify Clients or Vendors directly (currently deferred, see below), this must be verified/added on those models first.
+58. **A NOTIFIABLE MODEL MUST OVERRIDE `receivesBroadcastNotificationsOn()` WHEN ITS CLASS PATH DOESN'T MATCH LARAVEL'S DEFAULT SCAFFOLDED BROADCAST CHANNEL** — Laravel's out-of-the-box `routes/channels.php` registers `App.Models.User.{id}`, but this codebase's tenant User model is `App\Models\Tenant\User`, a different class entirely from what that default channel name implies. Without overriding `receivesBroadcastNotificationsOn()` to return a custom channel name (here: `notifications.tenant-user.{id}`) AND registering a matching `Broadcast::channel()` entry for that exact name, real-time notification broadcasts silently fail to reach the browser — the notification still gets created in the database and the email still sends, only the live Reverb push is affected, making this an easy-to-miss gap that "mostly works."
+59. **`ActivityTimeline`, `NotificationPreference`, `ReminderLog` ARE TENANT-SCOPED (`BelongsToTenant` trait); `ReminderRule`, `NotificationTemplate`, `TenantNotificationSettings` ARE CENTRAL/PLATFORM-WIDE (no tenant trait, explicit `tenant_id` FK where relevant)** — this mirrors the exact same split already established for `feature_flags`/`plan_features` (central config) vs `tenant_feature_overrides` (tenant-scoped). Reminder RULES are platform-defined (what reminder types exist, their timing patterns, their templates) and apply uniformly; the LOGS of what was actually sent, and each tenant's specific settings/preferences, are tenant data. Do not conflate these two categories when adding new reminder types.
+60. **SOME TENANT MODULES DELIBERATELY FALL OUTSIDE THE GENERAL REMINDER ENGINE'S SCOPE — DO NOT FORCE-FIT THEM.** `support_tickets`/`support_agents` are Central models (established in the Support System phase), not `App\Models\Tenant\*` — they don't fit the `ActivityTimeline`/`ReminderLog` tenant-scoped foreign-key shape cleanly. Support's own existing `koordli:close-inactive-chats` command (Central-model-aware, built in the Support System phase) remains the correct home for Support's time-based logic; it was NOT migrated into `ProcessReminders.php`. This is an intentional architectural boundary, not an oversight — when extending the reminder engine to a new module, first check whether that module's core model is tenant-scoped or central before assuming it fits the same pattern as Tasks/Contracts/Invoices.
+61. **CLIENT AND VENDOR NOTIFICATION PREFERENCES ARE EXPLICITLY DEFERRED (MVP SCOPE BOUNDARY)** — the entire engine (as built) only sends notifications to tenant `User` records (staff/planners). `VendorAccount` and `Client` models are NOT yet wired into `notification_preferences`/`Notifiable`. Every listener that could theoretically notify a vendor (e.g. `LogInvoiceActivity` on full payment) explicitly comments this deferral rather than silently notifying nobody or crashing — this was a deliberate decision from the original architecture discussion ("MVP should not implement AI... V2/long-term should extend to client/vendor-facing preferences"), not a gap to silently fill later without re-confirming scope.
+62. **DOMPDF EMOJI RULE (Rule 50) EXTENDS TO ALL FUTURE PDF-ADJACENT CONTENT, INCLUDING PLAIN-TEXT EMAIL/NOTIFICATION BODIES THAT MIGHT LATER BE RENDERED TO PDF** — not directly hit in this phase, but worth flagging: `notification_templates.body` content is plain text with `{{placeholders}}`, rendered via `str_replace()` (same safe pattern as Contract templates) — if any future feature exports a notification/reminder history to PDF, the same broken-glyph risk applies and templates should avoid emoji from the start rather than requiring a retrofit.
+
+---
+
+## DATABASE — NEW TABLES
+
+### Central (platform-wide, reused across all tenants)
+```
+reminder_rules              ← key, category, notification_type, pattern (once|daily|every_12h|every_6h|
+                               hourly|custom), custom_interval_minutes, offsets (JSON array of minute
+                               offsets, e.g. [-10080,-4320,-1440,0] for 7d/3d/1d/due-time), escalate_after_hours,
+                               escalate_to (role string), priority (critical|high|normal|low), template_key,
+                               is_active. ReminderRule::isRecurring()/intervalMinutes() helpers.
+notification_templates      ← key, category, subject, body (plain text + {{placeholders}}, rendered via
+                               str_replace — same pattern as Contract templates from Phase 8.3).
+                               NotificationTemplate::render(array $data): array
+tenant_notification_settings ← tenant_id (unique), reminders_enabled, business_hours_only,
+                               business_hours_start/end, weekend_reminders, dnd_start, dnd_end
+                               (quiet hours — separate concept from business hours),
+                               default_escalation_hours, digest_mode (off|daily|weekly).
+                               TenantNotificationSettings::forTenant($id) (firstOrCreate),
+                               isWithinQuietHours(), isWithinBusinessHours() — both accept an optional
+                               Carbon time, both handle overnight wraparound (e.g. 22:00→07:00) correctly
+notifications               ← Laravel's own native polymorphic table (php artisan notifications:table),
+                               NOT a custom table — id (uuid), type, notifiable_type/id, data (JSON —
+                               category/priority/subject/body/action_url all live here, NOT as dedicated
+                               columns, per idiomatic Laravel notification practice), read_at
+notification_digest_log     ← tenant_id, sent_at — prevents double-sending the same day's digest
+```
+
+### Tenant-scoped
+```
+reminder_logs        ← tenant_id, reminder_rule_id (nullable), notifiable_type/id, subject (polymorphic —
+                        the Task/Contract/Invoice/etc. this reminder was about), channel (database|mail|
+                        broadcast — one row created PER channel per notify() call), delivery_status,
+                        is_manual, sent_at, read_at. The accountability/audit trail for "prove this was sent."
+activity_timelines   ← tenant_id, subject (polymorphic, via $table->morphs('subject') — this call ALREADY
+                        creates the (subject_type,subject_id) index; never manually add a duplicate index on
+                        top of it, that was a real migration-breaking bug hit during Stage 1), event_type,
+                        description, actor_type, actor_id. ActivityTimeline::log($subject, $type, $desc, ...)
+                        static helper — used by nearly every listener in this system.
+notification_preferences ← tenant_id, notifiable_type (default App\Models\Tenant\User), notifiable_id,
+                        category, channels (JSON array, e.g. ["database","mail"]).
+                        NotificationPreference::channelsFor($notifiable, $category) — defaults to ALL
+                        channels enabled if no preference row exists yet (opt-out, not opt-in, model)
+```
+
+---
+
+## KEY FILE LOCATIONS
+
+### Core Engine
+```
+app/Services/Notifications/NotificationDispatchService.php  ← notify() — the single entry point every
+                                                                 listener calls. Resolves template, resolves
+                                                                 recipient's channel preferences, sends via
+                                                                 KoordliNotification, writes ReminderLog rows
+                                                                 (one per channel), logs ActivityTimeline if
+                                                                 a $subject model is passed
+app/Notifications/KoordliNotification.php                    ← extends Illuminate\Notifications\Notification.
+                                                                 via() returns only the channels actually
+                                                                 requested. toMail()/toDatabase()/toBroadcast()
+                                                                 all read from the same constructor properties
+                                                                 — one class serves every notification type in
+                                                                 the whole system, differentiated only by the
+                                                                 category/notificationType/subjectLine/body
+                                                                 values passed in per-call
+app/Console/Commands/ProcessReminders.php                    ← koordli:process-reminders, scheduled
+                                                                 everyFifteenMinutes(). ONE command, branches
+                                                                 internally by $rule->category (tasks|contracts|
+                                                                 invoices|vendors|runsheets — NOT bookings/rsvp/
+                                                                 support, which are event-only, no recurring
+                                                                 reminder rules defined for them in this phase).
+                                                                 Each category has its own private process*Rule()
+                                                                 method, all following the identical shape:
+                                                                 query live data → check rule's offsets/interval
+                                                                 against ReminderLog history → dispatch via
+                                                                 NotificationDispatchService if due and not
+                                                                 already sent
+app/Console/Commands/SendNotificationDigests.php              ← koordli:send-digests, scheduled hourly()
+                                                                 internally (checks isDailyMorning/isMondayMorning
+                                                                 flags itself rather than being scheduled at a
+                                                                 fixed cron time, so both daily and weekly modes
+                                                                 share one command). Skips users with nothing to
+                                                                 report (no empty digests sent)
+```
+
+### Domain Events (all in `app/Events/`, all plain Dispatchable+SerializesModels — no ShouldBroadcast, these are internal-only, distinct from the Support System's SupportChat* events which DO broadcast)
+```
+TaskAssigned, ContractSent, ContractFullySigned, InvoiceFullyPaid, BookingSubmitted,
+RsvpSubmitted, SupportTicketCreated, VendorApplicationSubmitted, RunsheetItemDelayed
+```
+
+### Listeners (all `App\Listeners`, all `implements ShouldQueue`)
+```
+SendTaskAssignedNotification    ← Tasks
+LogContractActivity             ← handles BOTH ContractSent (timeline only, no notification — email already
+                                    sent via the existing bespoke SendVendorContractJob from Phase 8.3, no
+                                    duplication) AND ContractFullySigned (timeline + in-app notification to
+                                    contract creator — genuinely NEW capability, since the existing
+                                    SendContractSignedNotificationJob only sends email, no database/in-app
+                                    notification existed before this)
+LogInvoiceActivity               ← InvoiceFullyPaid
+LogBookingActivity                ← BookingSubmitted (notifies tenant's first/owner User — bookings arrive
+                                    from unauthenticated public visitors, so there's no natural "creator" to
+                                    attribute the in-app notification to, unlike Tasks/Contracts/Invoices)
+LogRsvpActivity                   ← RsvpSubmitted (same "notify tenant owner" pattern as bookings)
+LogSupportTicketActivity          ← SupportTicketCreated — deliberately near-empty body (see Rule 60);
+                                    exists as the hook point but does no tenant-scoped timeline logging
+                                    since SupportTicket is a Central model
+LogVendorApplicationActivity      ← VendorApplicationSubmitted
+CascadeRunsheetDelayWarning        ← RunsheetItemDelayed — walks $item->dependents (the reverse of the
+                                    existing depends_on column, a NEW relation added this phase) and warns
+                                    each dependent item's assignee that their start time may shift
+```
+
+Registered via `Illuminate\Support\Facades\Event::listen()` calls inside `AppServiceProvider::boot()` — this codebase has no `EventServiceProvider` (Laravel 11/12 `bootstrap/app.php`-style app), so this is the correct, only registration point, following the exact same pattern already established for the Support System's earlier listener.
+
+### Dispatch Points Added To Existing Files (one line each, purely additive)
+```
+CreateTask.php::save()                                    → event(new TaskAssigned($task)) — only when
+                                                              assignee is set AND (new task OR assignee changed)
+ContractDetail.php::sendContract()/markSentManually()     → event(new ContractSent($contract))
+VendorContract.php::checkAndUpdateSignedStatus()          → event(new ContractFullySigned($this)) — dispatched
+                                                              from the MODEL, not the Livewire component, since
+                                                              this method is the single place both the
+                                                              planner-side and public vendor-side signing flows
+                                                              converge, guaranteeing the event fires regardless
+                                                              of which party completes the final signature
+VendorInvoice.php::recalculateStatus()                    → event(new InvoiceFullyPaid($this)) — same
+                                                              "dispatch from the model's central recalculation
+                                                              method" pattern as Contracts, for the same reason
+BookingForm.php, FormSubmissionController.php,
+ConsultationForm.php, ConsultationSubmissionController.php → event(new BookingSubmitted(...)) — FOUR separate
+                                                              dispatch points (2 form types × Livewire-vs-API
+                                                              submission paths) all firing the same event
+RsvpFormPage.php                                          → event(new RsvpSubmitted(...))
+CreateTicket.php (tenant Support)                          → event(new SupportTicketCreated($ticket))
+VendorRegister.php                                        → event(new VendorApplicationSubmitted($application))
+                                                              — required capturing the previously-uncaptured
+                                                              VendorApplication::create() return value into a
+                                                              variable first
+RunsheetManager.php::updateItemStatus()                    → event(new RunsheetItemDelayed($item)) — only
+                                                              when the new status is 'delayed'. NOTE: the
+                                                              equivalent vendor-side status-change action
+                                                              (Vendor\VendorRunsheet.php) still needs the same
+                                                              dispatch added — flagged but not completed in
+                                                              this phase, vendors marking items delayed from
+                                                              their own portal does not yet trigger the cascade
+```
+
+### UI Additions
+```
+app/Livewire/Tenant/Notifications/NotificationCenter.php         ← bell icon + dropdown panel in tenant
+                                                                     topbar, unread badge, mark-as-read/mark-all-
+                                                                     read, real-time update via
+                                                                     window.Echo.private(...).notification()
+                                                                     (Laravel Echo's dedicated notification
+                                                                     listener helper, distinct from .listen())
+app/Livewire/Tenant/Notifications/NotificationPreferences.php    ← per-category × per-channel checkbox grid,
+                                                                     /notifications/preferences route, linked
+                                                                     from both the bell dropdown and the tenant
+                                                                     sidebar (Settings area)
+app/Livewire/Tenant/DashboardWidgets.php                          ← Today's Tasks, Overdue Items, Upcoming
+                                                                     Deadlines (7-day window), Escalated Items
+                                                                     (derived from ReminderLog history + still-
+                                                                     pending status, no dedicated "escalated"
+                                                                     column), Recent Notifications, Today's
+                                                                     Runsheet Activities + Pending Vendor
+                                                                     Approvals. Self-contained component, embed
+                                                                     via <livewire:tenant.dashboard-widgets />
+                                                                     — added as a single new line into the
+                                                                     existing dashboard.blade.php, no other
+                                                                     changes to that file
+```
+
+### Manual "Send Reminder Now"
+`CreateTask.php::sendReminderNow()` — reuses `NotificationDispatchService::notify()` directly (not a separate
+code path), passes `isManual: true` so it's distinguishable in `reminder_logs` from scheduler-driven sends.
+Button only shows in `create-task.blade.php` when editing an existing task that has an assignee.
+
+---
+
+## RUNSHEET EVENT DAY MODE (Stage 6)
+
+- **Visual banner**: `runsheet-manager.blade.php` shows a pulsing "🔴 Event Day — live updates active" banner
+  when `$runsheet->date->isToday() && $runsheet->status === 'active'` — pure CSS/Blade conditional, no new
+  component
+- **"Starting soon" reminders** (30 min before an item's start_time) ONLY scan runsheets where
+  `whereDate('date', today())` — this is what makes it genuinely "Event Day only," not a general runsheet
+  reminder system. Deliberately skips business-hours/quiet-hours gating (an item starting in 30 minutes during
+  a live event is time-critical by definition, matching its `priority: high` classification)
+- **Dependency cascade**: uses the pre-existing `depends_on` column on `runsheet_items` (present since Phase 6,
+  previously unused for anything beyond a simple `dependency()` BelongsTo relation) — a NEW `dependents()`
+  HasMany relation (the reverse direction) was added this phase specifically to enable the cascade warning
+  walk. When item A is marked delayed, every item B where `B.depends_on = A.id` gets its assignee notified
+  that their own start time may shift.
+
+---
+
+## MVP vs DEFERRED — CURRENT ACTUAL STATE (post Stages 1-7)
+
+**Built and working:**
+- Full core engine (events/listeners/notifications/reminder logs/activity timelines)
+- Recurring patterns (once/daily/every_6h/every_12h/hourly/custom), escalation, quiet hours, business hours
+- Notification Center UI + real-time badge + manual trigger + per-category preferences
+- Event coverage: Tasks (full — assignment + due-soon + overdue + escalation), Contracts (sent + fully-signed +
+  awaiting-signature reminder), Invoices (fully-paid + due-soon + overdue + escalation), Bookings/Consultations
+  (submission notification), RSVP (submission notification), Vendor Applications (submission + pending-review
+  reminder), Runsheet (Event Day starting-soon reminders + dependency cascade delay warnings)
+- Dashboard widgets (6 cards), Digest emails (daily/weekly, skips empty digests)
+
+**Explicitly deferred (per original architecture discussion, not gaps to silently fill):**
+- Client/Vendor notification preferences and direct notifications (Rule 61) — all current notifications target
+  tenant `User` records only
+- Support ticket reminders staying on their own bespoke command rather than joining the general engine (Rule 60)
+- AI-driven insights layer ("this vendor ignored 3 reminders") — explicitly no schema/code for this; the
+  underlying structured data (events, reminder logs, timelines) already makes it possible later without
+  redesign, exactly as intended when this was discussed up front
+- Vendor-side Runsheet delay dispatch (VendorRunsheet.php) — flagged as an outstanding small gap, not yet wired
+
+
+# ADDENDUM — LIVE CHAT STABILIZATION & CRITICAL AUTO_INCREMENT DATABASE BUG
+
+---
+
+## PART 1 — LIVE CHAT STABILIZATION (extended debugging session on the Support System's Stage 4 real-time layer)
+
+This session was a long, iterative bug-fix pass on the already-built live chat feature (Support System Stage 4/5). No new features were added — every fix below closes a real, reproduced bug in the existing Reverb-based chat. Several of these bugs only manifested under specific sequences (claim → reply without refresh, auto-close → re-open, multiple simultaneous triggers), which is why they weren't caught during original build/testing.
+
+### NEW CRITICAL RULES TO ADD
+
+63. **`wire:key` CHANGES FORCE A FULL DOM REBUILD, WHICH SILENTLY DUPLICATES (NOT REPLACES) ECHO/PUSHER-JS CHANNEL LISTENERS.** Echo caches channel subscriptions internally by channel name — calling `Echo.private('x').listen(...)` a second time on an already-subscribed channel does NOT replace the first listener, it ADDS a second one, and both fire independently on every subsequent event. If a `wire:ignore`'d element's `wire:key` includes any value that changes during the element's lifetime (e.g. `{{ $stage }}` on a chat container that legitimately transitions through multiple stages), Livewire treats each transition as a brand-new element, tears down and rebuilds it, and Alpine's `x-init()` re-runs — silently stacking a duplicate listener each time. This was the root cause of a real bug where "You're now connected with [Agent]" was sent/displayed twice. **Fix pattern: a `wire:ignore`'d element that hosts long-lived JS state (Echo listeners, Alpine timers) should have a `wire:key` that changes ONLY when the element must be genuinely destroyed and recreated (e.g. `{{ $ticket->id }}` — a new ticket) — never a value that changes routinely within the SAME conversation's lifecycle (e.g. `{{ $stage }}`).**
+64. **NEVER LET TWO INDEPENDENT TRIGGERS CALL THE SAME STATE-CHANGING METHOD — COLLAPSE TO ONE AUTHORITATIVE SIGNAL.** The original live-chat design used BOTH a direct broadcast event (`.chat.accepted`) AND presence-channel callbacks (`.here()`/`.joining()`) to detect "an agent joined," intending the presence check as a redundant fallback. In practice this created a genuine race condition: two near-simultaneous Livewire requests could each read the pre-update `waiting` status before either committed, and both would proceed to announce the connection. Even after guarding the method itself with a fresh-read check (`$this->session->fresh()->status`), the race persisted because BOTH triggers independently called the guarded method within milliseconds of each other. **The correct fix was architectural, not defensive: remove the redundant trigger entirely** rather than trying to make two racing triggers idempotent against each other — `.chat.accepted` alone is a fully reliable signal once the platform side correctly broadcasts it, so the presence-based `.here()/.joining()` calls to `agentJoined()` were deleted, leaving the presence channel joined only for its other legitimate purpose (typing whispers).
+65. **A LIVEWIRE COMPONENT'S EAGER-LOADED ELOQUENT RELATION CAN GO STALE MID-REQUEST-LIFECYCLE WHEN THE UNDERLYING ROW IS MUTATED BY A DIFFERENT, CONCURRENT REQUEST (e.g. the tenant's own browser tab).** `PlatformTicketDetail::sendReply()` checked `$this->ticket->chatSession?->status === 'active'` to decide whether to broadcast live or send an email — but `$this->ticket->chatSession` was loaded once, at `claimTicket()` time, when the session was still `waiting`. Livewire persists a component's loaded relations across its own subsequent actions within the same page session; the relation never re-queries just because the actual database row changed via an entirely separate request (the tenant's `agentJoined()` flipping it to `active`). This silently misrouted every agent reply into the async-ticket email path instead of the live broadcast path, with no error — the bug was only visible as "message doesn't show until I refresh." **Fix pattern: for any status check that gates real-time vs. async behavior, always re-query the specific value fresh from the database in that exact method** (`SupportChatSession::where('ticket_id', $id)->value('status')`) rather than trusting an Eloquent relation that may have been loaded earlier in the component's lifecycle.
+66. **A `wire:ignore`'d CHAT WIDGET MUST NOT MOUNT (AND THUS MUST NOT ATTEMPT A CHANNEL SUBSCRIPTION) BEFORE THE DATA IT NEEDS FOR AUTHORIZATION ACTUALLY EXISTS.** The platform's chat widget was originally gated only on `$ticket->source === 'chat'`, meaning it mounted and attempted to subscribe to the ticket's private channel the instant the (unclaimed) ticket detail page loaded — at which point `assigned_agent_id` was still `null`, so `routes/channels.php`'s authorization check correctly rejected the subscription (403). The real problem: since the container's `wire:key` didn't change when the ticket was subsequently claimed, Livewire never re-mounted the widget, so the already-failed, dead subscription attempt from page-load just sat there forever — explaining why only a full page reload (which mounts a genuinely fresh widget, by which point `assigned_agent_id` is populated) ever worked. **Fix: gate `wire:ignore`/`x-data` mounting on the actual precondition for successful authorization** (`$ticket->assigned_agent_id` being non-null, not just `source === 'chat'`), **and include that same precondition's value in the `wire:key`** (`platform-chat-scroll-{{ $ticket->id }}-{{ $ticket->assigned_agent_id ?? 'unassigned' }}`) so that the SPECIFIC transition from unassigned→assigned correctly triggers a fresh, now-authorized mount — while the ticket ID staying constant for every OTHER transition (per Rule 63) prevents any unnecessary rebuilds/duplicate listeners afterward.
+67. **`Carbon::diffInMinutes()` / `diffInHours()` RETURN SIGNED (NEGATIVE) VALUES IN CARBON 3 WHEN THE COMPARISON DATE IS IN THE PAST RELATIVE TO THE CALLER** — this is a breaking change from Carbon 2's always-positive/absolute-value default behavior, and Carbon 3 ships with Laravel 11/12. `now()->diffInMinutes($someTimeInThePast)` returns a NEGATIVE number in Carbon 3. Any `>=` threshold comparison against such a value (`if ($minutesSince >= $this->warnAfterMinutes)`) silently and permanently evaluates false, with no error thrown — this exact bug caused the entire chat auto-close/warning system to appear completely non-functional despite otherwise-correct logic. **Fix: always wrap threshold-comparison `diffIn*()` calls in `abs()`** (`abs(now()->diffInMinutes($pastTimestamp))`) unless the sign is deliberately being used as a before/after indicator. This risk applies to EVERY `diffIn*()` call across the whole Workflow Automation module (Rule set 54-62) and should be audited wherever the argument order might put a future date first — calls structured as `$olderDate->diffInX(now())` happened to return positive by coincidence of argument order in most of that module's code, but this should not be relied upon; explicit `abs()` is the only fully safe pattern.
+68. **AN AGENT'S `active_chat_count` MUST BE RECALCULATED FROM SOURCE-OF-TRUTH DATA (actually-open assigned tickets), NEVER MAINTAINED VIA SCATTERED MANUAL `increment()`/`decrement()` CALLS ACROSS MULTIPLE FILES.** The original design incremented on claim/handoff and decremented on every distinct "chat ended" code path (tenant end, agent end, status-button resolve/close, auto-close command) — four+ separate files each responsible for keeping one shared counter balanced. In practice, this counter drifted upward over normal testing/usage (reaching `active_chat_count: 5` against a `max_concurrent_chats: 3` cap) because at least one end-path was missed or executed in an order that skipped the decrement, permanently locking `SupportAgent::nextAvailable()` out of finding an otherwise fully-available agent — surfacing as the false "our agents are currently busy" message even while the toggle correctly showed Available. **Fix: replace every manual increment/decrement with `SupportAgent::recalculateActiveChatCount()`**, a method that queries `SupportTicket::where('assigned_agent_id', $this->id)->whereNotIn('status', ['resolved','closed'])->count()` and sets the column to that real value — self-correcting by construction, so even a future code path that forgets to call it only causes a temporarily-stale count that heals itself the next time ANY claim/resolve/close action runs anywhere in the system, rather than drifting indefinitely.
+69. **`$table->morphs('subject')` (or any Laravel column-set helper that already creates an index) MUST NEVER BE FOLLOWED BY A MANUAL, DUPLICATE `$table->index([...])` CALL ON THE SAME COLUMNS** — `morphs()` already creates the `(subject_type, subject_id)` composite index as part of its own definition; adding another explicit index on the identical column pair produces a MySQL "Duplicate key name" error that aborts the entire migration batch partway through, leaving affected tables (in this case `activity_timelines`) in a broken, incompletely-migrated state that then requires manually dropping and re-running. Always check what a Laravel schema helper already provides before adding what looks like "the obvious missing index" — it frequently isn't missing.
+
+---
+
+## PART 2 — CRITICAL: WIDESPREAD MISSING `AUTO_INCREMENT` ON 21 CORE TABLES
+
+### What happened
+Setting up RSVP for a newly created event threw `SQLSTATE[HY000]: General error: 1364 Field 'id' doesn't have a default value` on `INSERT INTO rsvp_forms`. Investigation revealed this was not an isolated `rsvp_forms` problem — a full database sweep found **21 core tables** across nearly every part of the application missing `AUTO_INCREMENT` on their `id` primary key column:
+
+```
+plans, plan_features, platform_users, roles,
+rsvp_questions, rsvp_responses, rsvp_response_answers,
+runsheets, runsheet_items, tasks, tenants,
+tenant_event_statuses, tenant_feature_overrides, tenant_labels,
+tenant_task_categories, users, vendors, vendor_accounts,
+vendor_applications, vendor_categories, vendor_event_assignments
+```
+
+This is the SAME class of bug documented earlier in this project's history for `subscriptions`/`subscription_invoices`/`plan_prices` (Phase 9) — almost certainly caused by an early convention of writing `$table->unsignedBigInteger('id')->primary()` in migrations instead of Laravel's `$table->id()` helper, which is the only version that correctly sets `AUTO_INCREMENT`. That earlier fix was applied table-by-table as each was discovered; **this session did a full systemic sweep and fixed all remaining instances in one pass.**
+
+### NEW CRITICAL RULE TO ADD
+
+70. **`$table->unsignedBigInteger('id')->primary()` DOES NOT CREATE AN AUTO-INCREMENTING COLUMN — ALWAYS USE `$table->id()` FOR PRIMARY KEYS, NO EXCEPTIONS.** This mistake affected 21 separate core tables discovered in a single systemic audit (see full list above), spanning tenants, users, tasks, vendors, RSVP, runsheets, and plans — meaning any `Model::create()` call against ANY of these tables was one `INSERT` away from throwing `Field 'id' doesn't have a default value`, and several had simply never been exercised yet in testing. **Whenever a new migration is written by hand (not via `php artisan make:model X -m` scaffolding), explicitly verify `$table->id()` was used**, and whenever a "doesn't have a default value" error is hit on ANY table going forward, immediately run the full-database audit query below rather than assuming it's an isolated one-off — this bug pattern has now been proven to recur across the codebase and is worth checking systemically, not table-by-table, every time it resurfaces.
+
+### Full-database audit method (save this — reusable any time this error resurfaces)
+
+Since PowerShell chokes on nested-quote SQL passed via `php artisan tinker --execute="..."`, use a disposable PHP script instead:
+
+```php
+<?php
+require __DIR__ . '/vendor/autoload.php';
+$app = require_once __DIR__ . '/bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+$rows = \Illuminate\Support\Facades\DB::select("
+    SELECT TABLE_NAME, DATA_TYPE FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+    AND COLUMN_NAME = 'id'
+    AND EXTRA NOT LIKE '%auto_increment%'
+    AND DATA_TYPE IN ('bigint', 'int')
+");
+
+foreach ($rows as $row) {
+    echo $row->TABLE_NAME . ' (' . $row->DATA_TYPE . ')' . PHP_EOL;
+}
+```
+
+**The `DATA_TYPE IN ('bigint', 'int')` filter is essential** — without it, the query also flags Laravel's own native tables (`job_batches`, `notifications`, `sessions`) which intentionally use non-numeric string/UUID primary keys and were never meant to auto-increment; "fixing" those would break Laravel's own internals. Run via `php check_auto_increment.php`, delete the script after use.
+
+### Fix pattern for any newly-discovered batch
+
+One migration, looping the statement across every affected table name:
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    private array $tables = [
+        // ...table names from the audit query...
+    ];
+
+    public function up(): void
+    {
+        foreach ($this->tables as $table) {
+            DB::statement("ALTER TABLE `{$table}` MODIFY id BIGINT UNSIGNED AUTO_INCREMENT");
+        }
+    }
+
+    public function down(): void
+    {
+        foreach ($this->tables as $table) {
+            DB::statement("ALTER TABLE `{$table}` MODIFY id BIGINT UNSIGNED");
+        }
+    }
+};
+```
+
+`MODIFY ... AUTO_INCREMENT` is non-destructive — it only changes the column's future insert behavior and does NOT touch existing rows or existing foreign key relationships, so it is safe to run against a live/populated database. A `mysqldump` backup before running is still good practice on any table with real data, purely as a general precaution, not because this specific operation is inherently risky.
+
+---
+
+## PROJECT-WIDE FOLLOW-UP RECOMMENDED
+
+Since this bug pattern has now been confirmed to recur (first `subscriptions`/`plan_prices`/`subscription_invoices` in Phase 9, now 21 more tables in this session), **the audit script in Part 2 should be re-run any time a new module is added going forward**, even without a triggering error — cheaper to check proactively than to discover it live when a tenant hits an untested `create()` path in production.
+
+
+# ADDENDUM — EVENT CONVERSATIONS & MESSAGING SYSTEM, Plus Floating Widget Stabilization
+
+---
+
+## STRATEGIC CONTEXT (why this exists)
+
+Requested as a genuine security/architecture exercise before any code was written: Koordli needed real-time, WhatsApp-style messaging between event participants (Planner/Staff, Client, Vendor), but with **strict, deliberate, participant-based authorization** — having a Koordli account must never be sufficient to see an event's conversations; the person must additionally be individually and deliberately added to each specific conversation by a planner/admin.
+
+**The agreed authorization chain**, now fully implemented:
+```
+Account (tenant User / Client / VendorAccount)
+    ↓
+Event-level eligibility (EventTeam for staff — pre-existing table reused,
+    VendorEventAssignment for vendors — pre-existing table reused,
+    NEW ClientEventAccess for clients — closes a real pre-existing gap, see Rule 71)
+    ↓
+Conversation membership (NEW, fully deliberate — a planner/admin must
+    explicitly add each specific person to each specific conversation;
+    event eligibility alone grants ZERO conversation access)
+    ↓
+Permission (message-level: sender-only delete-for-everyone with a time
+    limit; conversation-level: tenant/admin-only remove-participant and
+    delete-conversation)
+```
+
+This was explicitly agreed NOT to auto-enroll anyone into any "main group" — a vendor assigned to an event does not see that event's conversations until a planner deliberately adds them to a specific one.
+
+---
+
+## NEW CRITICAL RULES TO ADD
+
+71. **A PRE-EXISTING AUTHORIZATION GAP WAS DISCOVERED AND CLOSED AS PART OF THIS WORK: `Client` ACCOUNTS HAD NO FORMAL LINK TO SPECIFIC `Event` ROWS.** The Client Portal's `Dashboard.php` resolved "which events belong to this client" purely via a fragile `Event.client_email` string match — no FK, no explicit grant/revoke, no audit trail, and critically, the "Invite Client" flow (`EventDetail::inviteClient()`) actively BLOCKED re-inviting an existing client to a second event (returned a warning and did nothing), meaning repeat clients could never be properly onboarded to new events at all. **Fixed via a new `client_event_access` pivot table** (tenant-scoped, `client_id` + `event_id` + `granted_by`), with `inviteClient()` rewritten to grant access via this table for both new AND existing (repeat) clients, a backfill command (`koordli:backfill-client-event-access`) for historical email-matched events, and `Dashboard.php`'s query updated to UNION the new authoritative table with the legacy email-match (never breaking existing working access). **When building any future feature that assumes "the client for this event," always check `ClientEventAccess`, never re-introduce email-string matching as the source of truth.**
+72. **`wire:ignore` AND `x-data` MUST NEVER SIT ON THE SAME ELEMENT WHEN THAT ELEMENT ALSO NEEDS RELIABLE ACCESS TO LIVEWIRE'S `$wire` MAGIC.** This is a distinct, separate gotcha from Rule 66 (which covered mounting timing) — `$wire` frequently fails to resolve, or resolves inconsistently across repeated calls, when Alpine's `x-data` scope is declared on an element Livewire has been told to never touch. **The correct pattern, discovered through extensive trial in this session: put `x-data` on a normal (non-ignored) wrapping element, and nest `wire:ignore` on a CHILD element inside it** — this lets `$wire` resolve correctly against the Livewire-tracked outer scope while the inner content still stays fully protected from re-render-induced teardown.
+73. **`Livewire.$wire.call('method', args)` IS LESS RELIABLE THAN THE DIRECT `$wire.methodName(args)` CALL SYNTAX** for obtaining a genuine, consistently-resolving Promise in Livewire 3 — `.call()` is more of a legacy/internal-style API. **Always prefer `this.$wire.methodName(args).then(...)` over `this.$wire.call('methodName', args).then(...)`** when a component method needs to return data to Alpine; the latter form produced `Cannot read properties of undefined (reading 'then')` errors repeatedly and inconsistently in this session even when the underlying component and method were both completely correct.
+74. **`@persist` IS THE CORRECT LARAVEL-DOCUMENTED TOOL FOR KEEPING A WIDGET'S LIVEWIRE COMPONENT IDENTITY (AND THUS ITS ECHO SUBSCRIPTIONS/ALPINE STATE) STABLE ACROSS `wire:navigate` PAGE TRANSITIONS — BUT IT INTRODUCES ITS OWN FIRST-MOUNT TIMING RISK THAT MUST BE HANDLED DEFENSIVELY.** Without `@persist`, a global widget embedded in the main layout gets destroyed and rebuilt with a brand-new component ID on every single page navigation, producing "Snapshot missing" errors the instant any in-flight `$wire` call from the OLD instance resolves after navigation. With `@persist`, the DOM/component survives navigation correctly, but the very FIRST attachment of the persisted island can still race against Alpine's `init()` firing before `$wire` is fully wired up. **The complete, proven-necessary fix is BOTH pieces together**: wrap the widget in `@persist('unique-name') ... @endpersist` in the layout, AND wrap any `init()`-time `$wire` call in a readiness/retry guard rather than calling it unconditionally on mount.
+75. **EVEN WITH BOTH FIXES IN RULE 74, A LIVEWIRE-COMPONENT-BACKED WIDGET REMAINS MEASURABLY LESS RELIABLE THAN A PLAIN AUTHENTICATED HTTP ENDPOINT FOR HIGH-FREQUENCY, CLICK-DRIVEN ACTIONS INSIDE A GLOBAL, CROSS-PAGE-PERSISTENT WIDGET.** After extensive debugging, the floating conversations widget's two most frequently-clicked actions (loading a conversation's messages, sending a quick reply) were ultimately rearchitected to use plain Laravel routes returning JSON, called via the browser's native `fetch()`, completely bypassing Livewire's component/snapshot system for those two specific actions. **This is a deliberate, permanent architectural choice for this widget, not a temporary workaround** — the Livewire component (`FloatingConversationsWidget`) is still used for the initial page-load data embed (server-rendered directly into a `<script type="application/json">` tag, read via `JSON.parse` — see Rule 76), but ongoing interaction goes through `/conversations/{uuid}/quick-messages` (GET) and `/conversations/{uuid}/quick-send` (POST), both plain closures in `routes/web.php`, authenticated via the normal session cookie and manually checking `Conversation::hasParticipant()`. **Any FUTURE global, `@persist`'d, high-interaction widget should default to this same plain-route pattern from the start, rather than rediscovering this the hard way.**
+76. **NEVER INTERPOLATE PHP-GENERATED DATA (EVEN VIA `@js()`) DIRECTLY INSIDE AN `x-data="..."` HTML ATTRIBUTE IF THE DATA CAN CONTAIN ARBITRARY USER-GENERATED TEXT** (message bodies, conversation names, etc.) — this is a stricter, more specific corollary of Rule 43. Even Blade's `@js()` helper, while safe against basic quote-escaping in the common case, is not immune to every edge case when the resulting JSON sits inside an HTML attribute that Alpine's own parser then has to tokenize as JavaScript. **The bulletproof pattern used going forward: emit server data into a dedicated, separate `<script type="application/json" id="...">{!! json_encode($data) !!}</script>` tag, and have the `x-data` object's `init()` read it via `document.getElementById(...).textContent` + `JSON.parse()`.** This has zero interaction with HTML attribute parsing at all, since the data never touches an attribute string.
+77. **AN `x-data="{ ...inline object literal with many methods... }"` ATTRIBUTE THAT HAS BEEN INCREMENTALLY EDITED MANY TIMES IN A ROW BECOMES INCREASINGLY LIKELY TO CONTAIN A SUBTLE SYNTAX BREAK (missing comma, stray brace, orphaned `.then()`) THAT IS EXTREMELY HARD TO SPOT VIA FIND/REPLACE DIFFS ALONE.** After roughly a dozen sequential incremental edits to the same `x-data` block in this session, each individually reviewed and "correct," the block still ultimately broke in ways only a full side-by-side read of the complete file could catch. **The recovery pattern that actually worked: (1) extract the ENTIRE inline object out of the HTML attribute into a named global function** (`x-data="widgetName()"` calling `function widgetName() { return {...} }` defined in a normal `<script>` tag), **removing the attribute-parsing risk category entirely**, and (2) when a complex Alpine component has been patched more than ~3-4 times, stop doing further incremental find/replace and instead request+regenerate the complete file from scratch to guarantee a known-good baseline, rather than layering yet another patch onto an unverified foundation.
+78. **`->latest()` (or any `orderBy` chained onto an Eloquent relation call) SILENTLY DOES NOTHING IF THE RELATION'S OWN DEFINITION ALREADY INCLUDES AN `orderBy` CLAUSE ON THE SAME COLUMN — THIS BUG PATTERN HAS NOW BEEN HIT TWICE IN THIS PROJECT (`SupportTicket::messages()` in the Support System addendum's Rule set, and `Conversation::messages()` here) AND MUST BE TREATED AS A STANDING PROJECT-WIDE RISK, NOT A ONE-OFF.** Any relation intentionally ordered ascending for full-thread display purposes (`->orderBy('created_at')`, needed so a chat page shows oldest-to-newest) becomes a trap the moment ANY other code path tries to reuse that same relation method with `->latest()`/`->orderByDesc()` layered on top to get "the N most recent" — MySQL keeps the first `ORDER BY` dominant, so the "latest" query silently returns the OLDEST N rows instead, with no error, and the correct-looking code appears to work until someone notices new content is missing. **The permanent fix pattern for "get latest N" against any model that has a display-ordered relation: always query the underlying model class directly** (`ConversationMessage::where('conversation_id', $id)->orderByDesc('created_at')->limit(20)->get()->reverse()`) **rather than calling `->latest()` on the relation method** — this was the fix applied both times this bug surfaced, and should be the default instinct anywhere "get recent items via a relation that's also used for ordered full-thread display" comes up in the future.
+
+---
+
+## DATABASE — NEW TABLES
+
+### Central-adjacent / Tenant-scoped
+```
+client_event_access             ← tenant_id, client_id, event_id, granted_by. unique(client_id, event_id).
+                                   Closes the pre-existing gap described in Rule 71.
+conversations                   ← uuid, tenant_id, event_id, type (group|direct), name (null for direct),
+                                   created_by_type/id (always tenant_user — only planners/staff create
+                                   conversations)
+conversation_participants       ← tenant_id, conversation_id, participant_type (tenant_user|client|
+                                   vendor_account), participant_id, added_by, joined_at, left_at (soft-remove,
+                                   preserves message history), last_read_at.
+                                   unique(conversation_id, participant_type, participant_id).
+                                   THIS is the sole authoritative membership gate — Conversation::hasParticipant()
+                                   is the single method every controller/channel-auth callback must call
+conversation_messages           ← tenant_id, conversation_id, reply_to_message_id (nullable self-FK),
+                                   sender_type, sender_id, body (plain text, linkified + @mention-highlighted
+                                   at render via renderedBody()), edited_at, deleted_at (soft — shows "This
+                                   message was deleted" placeholder rather than disappearing)
+conversation_message_attachments ← tenant_id, message_id, file_path, file_name, file_size, mime_type.
+                                   Voice notes are just attachments whose filename starts with "voice-note-"
+                                   (see note below on mime-type detection unreliability)
+conversation_message_mentions   ← tenant_id, message_id, participant_type, participant_id. Populated at
+                                   send-time by matching @Name against CURRENT conversation participants only
+                                   — you cannot @mention someone not actually in the conversation. Triggers a
+                                   Workflow-Automation-engine notification (category 'conversations') to
+                                   tenant_user mentions only (client/vendor notification deferred, per existing
+                                   Rule 61)
+conversation_message_deletions  ← tenant_id, message_id, participant_type, participant_id.
+                                   unique(message_id, participant_type, participant_id).
+                                   "Delete for me" — a per-participant hide, message stays intact for everyone
+                                   else. ConversationMessage::isHiddenFor() checks this.
+```
+
+### Notes on message deletion permissions (as agreed with the user)
+- **"Delete for me"**: any participant, any message, any age — purely personal, creates a `conversation_message_deletions` row, zero effect on anyone else's view
+- **"Delete for everyone"**: sender-only AND within 30 minutes of sending (`ConversationMessage::canDeleteForEveryone()`) — sets `deleted_at` + clears `body`, broadcasts `ConversationMessageDeleted`, shows a "This message was deleted" placeholder to all participants live
+- **Remove participant / Delete entire conversation**: tenant/admin only, gated via `hasRole('company_owner')` — a real, deliberate security fix, since the original build had ZERO permission check on `removeParticipant()`, meaning any staff member could remove the tenant owner from any conversation
+
+---
+
+## KEY FILE LOCATIONS
+
+### Models (new, all `App\Models\Tenant`)
+```
+ClientEventAccess, Conversation, ConversationParticipant, ConversationMessage,
+ConversationMessageAttachment, ConversationMessageMention, ConversationMessageDeletion
+```
+`Conversation::hasParticipant($type, $id)` — the single authoritative membership check, used identically by `routes/channels.php`'s broadcast authorization AND every Livewire method that gates an action.
+
+### Events (all `ShouldBroadcast`, all on `PrivateChannel('conversation.{uuid}')`)
+```
+ConversationMessageSent, ConversationParticipantsChanged, ConversationMessageDeleted, ConversationDeleted
+```
+
+### Livewire Components
+```
+app/Livewire/Tenant/Conversations/ConversationDetail.php          ← the full conversation page: send/reply/
+                                                                       react/@mention/voice-note/bulk-select/
+                                                                       delete/manage-participants/delete-
+                                                                       conversation. This is the primary, fully-
+                                                                       featured interface.
+app/Livewire/Tenant/Conversations/FloatingConversationsWidget.php ← the global bottom-right widget. Its
+                                                                       Livewire methods (getConversationList,
+                                                                       openMiniChat, sendMiniMessage) are now
+                                                                       LARGELY VESTIGIAL — kept for the initial
+                                                                       server-rendered data embed on page load,
+                                                                       but the actual click-driven interactions
+                                                                       (opening a mini-chat, sending a quick
+                                                                       reply) go through the plain routes
+                                                                       described in Rule 75, not these methods
+```
+
+### Plain Routes (bypass Livewire entirely — see Rule 75)
+```
+GET  /conversations/{uuid}/quick-messages  ← returns latest 20 messages + attachments as JSON,
+                                               Cache-Control: no-store header, authenticates via
+                                               Conversation::hasParticipant() manually
+POST /conversations/{uuid}/quick-send       ← accepts multipart FormData (body + optional single
+                                               attachment file), same manual auth check
+```
+Both defined as closures directly in `routes/web.php`'s tenant authenticated group — not extracted to
+controller classes, matching the lightweight, single-purpose nature of these two endpoints.
+
+### JS Architecture
+```
+resources/js/conversations-widget-store.js  ← Alpine.store('conversationsWidget') — genuinely global,
+                                                module-level state (list, subscribedUuids, panelOpen,
+                                                localUnread, audio ping) that survives page navigation
+                                                naturally without needing @persist itself, since it's plain
+                                                JS module state, not tied to any DOM element's lifecycle.
+                                                subscribeTo(uuid) sets up ONE live Echo listener per
+                                                conversation, deduped via subscribedUuids, that both updates
+                                                the badge/preview AND appends to the open mini-chat if that
+                                                conversation is the currently active one.
+resources/views/livewire/tenant/conversations/floating-conversations-widget.blade.php
+                                             ← x-data="floatingConversationsData()" — a NAMED function
+                                                (see Rule 77), not an inline object literal, defined in a
+                                                plain <script> tag at the bottom of this same file. Contains
+                                                the emoji picker, file-attach button, and voice recorder for
+                                                the quick-reply UI — same MediaRecorder-based approach as the
+                                                full page, feeding into the plain quick-send route's
+                                                multipart FormData instead of Livewire's file upload system.
+```
+
+### Console Commands
+```
+app/Console/Commands/BackfillClientEventAccess.php  ← koordli:backfill-client-event-access, one-time,
+                                                        idempotent (skips already-granted pairs)
+```
+
+---
+
+## KNOWN GAPS — EXPLICITLY DEFERRED, NOT OVERSIGHTS
+
+- **Client Portal / Vendor Portal conversation UI does not exist yet.** Clients and vendors CAN be added as conversation participants today and ARE correctly authorized (channel auth checks all three guards), but there is currently no page in either portal for them to actually view or send messages. The feature is fully staff-usable only at this point — extending it to Client/Vendor portals is the natural next stage but was not built in this session.
+- **Read receipts** were on the original WhatsApp-style feature wishlist but not implemented — `last_read_at` per participant exists and IS used for unread-count badges, but there's no "seen by X" indicator visible to the sender.
+- **Broader staff roles/permissions review** — only ONE specific gate was added this session (`company_owner` role required for removing participants / deleting a conversation). The user explicitly flagged that a general staff permissions review hasn't happened yet ("I don't think we have even worked on anything regarding role and permission for staffs") — this remains open for a future session.
+- **Voice note MIME-type detection relies on filename convention, not just server-side MIME sniffing** — browsers record audio as WebM containers, which PHP's byte-level MIME detection frequently reports as `video/webm` instead of `audio/webm` (an inherent ambiguity in the container format, not a bug). The reliable workaround, used consistently everywhere voice notes are rendered (full page, live broadcast payload, floating widget, quick-reply route): treat any attachment whose filename starts with `voice-note-` as audio regardless of what MIME type the server detected.
+
 ## PENDING
 
 ### Phase 9 — Remaining polish (optional)

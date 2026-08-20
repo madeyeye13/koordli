@@ -33,6 +33,8 @@
         </div>
     </div>
 
+    <livewire:tenant.dashboard-widgets />
+
     {{-- Recent Events + Pending Tasks --}}
     <div class="krd-grid-2" style="margin-bottom:16px;">
 

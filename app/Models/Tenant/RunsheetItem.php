@@ -58,6 +58,11 @@ class RunsheetItem extends Model
         return $this->belongsTo(RunsheetItem::class, 'depends_on');
     }
 
+    public function dependents(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(RunsheetItem::class, 'depends_on');
+    }
+
     public function statusColor(): string
     {
         return match($this->status->value) {

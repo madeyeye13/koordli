@@ -62,6 +62,8 @@ class FormSubmissionController extends Controller
 
         if (empty($guestName)) $guestName = 'Guest';
 
+        event(new \App\Events\BookingSubmitted($submission, $form->tenant_id, $guestName, $form->name));
+
         // Notify tenant
         $tenant = Tenant::find($form->tenant_id);
         $plannerUser = User::withoutGlobalScope('tenant')

@@ -53,6 +53,36 @@ class CreateTask extends Component
         }
     }
 
+    public function sendReminderNow(): void
+    {
+        if (!$this->task || !$this->task->assignedTo) {
+            $this->toastError('Assign this task to a staff member first.');
+            return;
+        }
+
+        app(\App\Services\Notifications\NotificationDispatchService::class)->notify(
+            notifiable: $this->task->assignedTo,
+            category: 'tasks',
+            notificationType: 'task_manual_reminder',
+            templateKey: 'task_due_soon',
+            placeholders: [
+                'user_name'      => $this->task->assignedTo->name,
+                'task_name'      => $this->task->title,
+                'event_name'     => $this->task->event?->name ?? 'General',
+                'due_date'       => $this->task->due_date?->format('D, d M Y') ?? 'No due date',
+                'remaining_time' => 'as a manual reminder from your planner',
+            ],
+            priority: 'normal',
+            actionUrl: route('tenant.tasks.edit', $this->task->id),
+            actionLabel: 'View Task',
+            subject: $this->task,
+            tenantId: auth()->user()->tenant_id,
+            isManual: true,
+        );
+
+        $this->toastSuccess('Reminder sent to ' . $this->task->assignedTo->name . '.');
+    }
+
     public function save(): void
     {
         $this->validate([
@@ -78,11 +108,20 @@ class CreateTask extends Component
         ];
 
         if ($this->task) {
+            $previousAssignee = $this->task->assigned_to;
             $this->task->update($data);
             $this->toastSuccess('Task updated successfully.');
+
+            if ($this->task->assigned_to && $this->task->assigned_to !== $previousAssignee) {
+                event(new \App\Events\TaskAssigned($this->task));
+            }
         } else {
-            Task::create($data);
+            $newTask = Task::create($data);
             $this->toastSuccess('Task created successfully.');
+
+            if ($newTask->assigned_to) {
+                event(new \App\Events\TaskAssigned($newTask));
+            }
         }
 
         // Redirect back to event detail if came from event, else task center

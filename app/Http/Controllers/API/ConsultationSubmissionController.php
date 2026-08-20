@@ -98,6 +98,8 @@ class ConsultationSubmissionController extends Controller
             'guest_phone'       => $guestPhone ?: null,
         ]);
 
+        event(new \App\Events\BookingSubmitted($submission, $form->tenant_id, $guestName, $form->name));
+
         $tenant = Tenant::find($form->tenant_id);
         $plannerUser = User::withoutGlobalScope('tenant')
             ->where('tenant_id', $form->tenant_id)

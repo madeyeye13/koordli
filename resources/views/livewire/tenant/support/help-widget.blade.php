@@ -78,19 +78,3 @@
     @endif
 </div>
 
-<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('helpWidgetListener', (ticketUuid) => ({
-        init() {
-            window.Echo.private('support-ticket.' + ticketUuid).listen('.message.sent', (e) => {
-                if (e.sender_type !== 'tenant') {
-                    this.$wire.call('refreshActiveChat');
-                    if (window.showToast) {
-                        window.showToast('New message from ' + e.sender_name, 'info');
-                    }
-                }
-            });
-        }
-    }));
-});
-</script>

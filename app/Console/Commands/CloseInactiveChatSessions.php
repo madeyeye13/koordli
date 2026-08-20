@@ -18,44 +18,57 @@ class CloseInactiveChatSessions extends Command
 
     public function handle(): void
     {
-        $sessions = SupportChatSession::where('status', 'active')
-            ->with('ticket.messages')
-            ->get();
+        $sessions = SupportChatSession::where('status', 'active')->get();
 
         foreach ($sessions as $session) {
-            $lastMessage = $session->ticket->messages()->latest()->first();
-            if (!$lastMessage) continue;
+            $lastRealMessage = SupportTicketMessage::where('ticket_id', $session->ticket_id)
+                ->whereIn('sender_type', ['tenant', 'agent', 'bot'])
+                ->orderByDesc('created_at')
+                ->first();
 
-            $minutesSinceLastMessage = now()->diffInMinutes($lastMessage->created_at);
+            if (!$lastRealMessage) continue;
 
-            // Already warned? Check for a system warning message sent after the last real message
-            $alreadyWarned = $session->ticket->messages()
+            $warningMessage = SupportTicketMessage::where('ticket_id', $session->ticket_id)
                 ->where('sender_type', 'system')
-                ->where('created_at', '>', $lastMessage->created_at)
-                ->exists();
+                ->where('created_at', '>=', $lastRealMessage->created_at)
+                ->orderByDesc('created_at')
+                ->first();
 
-            if ($minutesSinceLastMessage >= $this->closeAfterMinutes && $alreadyWarned) {
-                $session->update(['status' => 'ended', 'ended_by' => 'system', 'ended_at' => now()]);
-                $session->ticket->update(['status' => 'resolved', 'resolved_at' => now()]);
+            if ($warningMessage) {
+                // Already warned — check if enough time has passed since the WARNING itself
+                $minutesSinceWarning = abs(now()->diffInMinutes($warningMessage->created_at));
 
-                $msg = SupportTicketMessage::create([
-                    'ticket_id'   => $session->ticket_id,
-                    'sender_type' => 'system',
-                    'message'     => 'This chat has been closed due to inactivity. Feel free to start a new conversation anytime!',
-                ]);
-                broadcast(new SupportChatMessageSent($msg, $session->ticket->uuid));
+                if ($minutesSinceWarning >= ($this->closeAfterMinutes - $this->warnAfterMinutes)) {
+                    $session->update(['status' => 'ended', 'ended_by' => 'system', 'ended_at' => now()]);
+                    $session->ticket->update(['status' => 'closed', 'resolved_at' => now()]);
 
-                $this->info("Closed ticket #{$session->ticket_id} due to inactivity.");
+                    if ($session->ticket->assignedAgent) {
+                        $session->ticket->assignedAgent->recalculateActiveChatCount();
+                    }
 
-            } elseif ($minutesSinceLastMessage >= $this->warnAfterMinutes && !$alreadyWarned) {
-                $msg = SupportTicketMessage::create([
-                    'ticket_id'   => $session->ticket_id,
-                    'sender_type' => 'system',
-                    'message'     => "This chat will close in " . ($this->closeAfterMinutes - $this->warnAfterMinutes) . " minutes due to inactivity. Reply anytime to keep it open.",
-                ]);
-                broadcast(new SupportChatMessageSent($msg, $session->ticket->uuid));
+                    $msg = SupportTicketMessage::create([
+                        'ticket_id'   => $session->ticket_id,
+                        'sender_type' => 'system',
+                        'message'     => "This chat has been closed due to inactivity. Should you wish to continue this conversation, feel free to reach out to us again or raise a support ticket.",
+                    ]);
+                    broadcast(new SupportChatMessageSent($msg, $session->ticket->uuid));
+                    broadcast(new \App\Events\SupportChatEnded($session->ticket->uuid));
 
-                $this->info("Warned ticket #{$session->ticket_id} of upcoming closure.");
+                    $this->info("Closed ticket #{$session->ticket_id} due to inactivity.");
+                }
+            } else {
+                $minutesSinceLastMessage = abs(now()->diffInMinutes($lastRealMessage->created_at));
+
+                if ($minutesSinceLastMessage >= $this->warnAfterMinutes) {
+                    $msg = SupportTicketMessage::create([
+                        'ticket_id'   => $session->ticket_id,
+                        'sender_type' => 'system',
+                        'message'     => "This chat will close in " . ($this->closeAfterMinutes - $this->warnAfterMinutes) . " minutes due to inactivity. Reply anytime to keep it open.",
+                    ]);
+                    broadcast(new SupportChatMessageSent($msg, $session->ticket->uuid));
+
+                    $this->info("Warned ticket #{$session->ticket_id} of upcoming closure.");
+                }
             }
         }
     }

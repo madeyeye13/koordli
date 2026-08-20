@@ -208,6 +208,92 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/assets/create', \App\Livewire\Tenant\Assets\CreateAsset::class)->name('tenant.assets.create');
         Route::get('/assets/{id}/edit', \App\Livewire\Tenant\Assets\CreateAsset::class)->name('tenant.assets.edit');
         Route::get('/assets/{id}', \App\Livewire\Tenant\Assets\AssetDetail::class)->name('tenant.assets.show');
+
+        Route::get('/notifications/preferences', \App\Livewire\Tenant\Notifications\NotificationPreferences::class)->name('tenant.notifications.preferences');
+
+        Route::get('/conversations/{uuid}', \App\Livewire\Tenant\Conversations\ConversationDetail::class)->name('tenant.conversations.show');
+
+        Route::get('/conversations/{uuid}/quick-messages', function (string $uuid) {
+            $conversation = \App\Models\Tenant\Conversation::where('uuid', $uuid)->firstOrFail();
+
+            $isParticipant = $conversation->hasParticipant('tenant_user', auth()->id());
+            abort_unless($isParticipant, 403);
+
+            \App\Models\Tenant\ConversationParticipant::where('conversation_id', $conversation->id)
+                ->where('participant_type', 'tenant_user')
+                ->where('participant_id', auth()->id())
+                ->update(['last_read_at' => now()]);
+
+            $messages = \App\Models\Tenant\ConversationMessage::where('conversation_id', $conversation->id)
+                ->with('attachments')
+                ->orderByDesc('created_at')
+                ->limit(20)
+                ->get()
+                ->reverse()
+                ->values();
+
+            return response()->json($messages->map(fn($msg) => [
+                'id'          => $msg->id,
+                'sender_type' => $msg->sender_type,
+                'sender_id'   => $msg->sender_id,
+                'body'        => $msg->body,
+                'attachments' => $msg->attachments->map(fn($att) => [
+                    'url'       => \Illuminate\Support\Facades\Storage::url($att->file_path),
+                    'name'      => $att->file_name,
+                    'mime_type' => str_starts_with($att->file_name, 'voice-note-') ? 'audio/webm' : $att->mime_type,
+                    'is_audio'  => str_starts_with($att->mime_type ?? '', 'audio/') || str_starts_with($att->file_name, 'voice-note-'),
+                ])->values(),
+            ]))->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        })->name('tenant.conversations.quick-messages');
+
+        Route::post('/conversations/{uuid}/quick-send', function (string $uuid, \Illuminate\Http\Request $request) {
+            $conversation = \App\Models\Tenant\Conversation::where('uuid', $uuid)->firstOrFail();
+
+            $isParticipant = $conversation->hasParticipant('tenant_user', auth()->id());
+            abort_unless($isParticipant, 403);
+
+            $request->validate([
+                'body'       => 'nullable|string|max:3000',
+                'attachment' => 'nullable|file|max:10240',
+            ]);
+
+            if (empty($request->input('body')) && !$request->hasFile('attachment')) {
+                return response()->json(['error' => 'Empty message'], 422);
+            }
+
+            $message = \App\Models\Tenant\ConversationMessage::create([
+                'tenant_id'       => auth()->user()->tenant_id,
+                'conversation_id' => $conversation->id,
+                'sender_type'     => 'tenant_user',
+                'sender_id'       => auth()->id(),
+                'body'            => $request->input('body', ''),
+            ]);
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $path = $file->store('conversation-attachments', 'public');
+
+                \App\Models\Tenant\ConversationMessageAttachment::create([
+                    'tenant_id'  => auth()->user()->tenant_id,
+                    'message_id' => $message->id,
+                    'file_path'  => $path,
+                    'file_name'  => $file->getClientOriginalName(),
+                    'file_size'  => $file->getSize(),
+                    'mime_type'  => $file->getMimeType(),
+                ]);
+            }
+
+            $conversation->touch();
+
+            broadcast(new \App\Events\ConversationMessageSent($message, $conversation->uuid))->toOthers();
+
+            \App\Models\Tenant\ConversationParticipant::where('conversation_id', $conversation->id)
+                ->where('participant_type', 'tenant_user')
+                ->where('participant_id', auth()->id())
+                ->update(['last_read_at' => now()]);
+
+            return response()->json(['status' => 'ok']);
+        })->name('tenant.conversations.quick-send');
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');

@@ -123,6 +123,8 @@ class RsvpFormPage extends Component
         $event     = $this->rsvpForm->event;
         $eventDate = $event->date?->format('D, d M Y') ?? 'TBC';
 
+        event(new \App\Events\RsvpSubmitted($this->response, $this->rsvpForm->tenant_id));
+
         if ($this->respondent_email && $qrToken) {
             $__tenant = \App\Models\Central\Tenant::find($this->rsvpForm->tenant_id);
             SendRsvpConfirmationJob::dispatch(

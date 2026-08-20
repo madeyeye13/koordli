@@ -57,6 +57,11 @@
     {{-- Styles --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+
+    <script>
+        window.__currentUserId = {{ auth()->id() ?? 'null' }};
+        window.__currentUserName = @js(auth()->user()->name ?? '');
+    </script>
 </head>
 <body class="krd-body h-full" x-cloak>
 
@@ -106,6 +111,7 @@
 
     </div>
 
+        <livewire:tenant.conversations.floating-conversations-widget />
     @livewireScripts
 
     <script>

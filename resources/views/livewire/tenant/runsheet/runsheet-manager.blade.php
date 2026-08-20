@@ -1,5 +1,14 @@
 <div x-data="{ activeTab: '{{ $activeTab }}' }" wire:poll.60s>
 
+
+    @if($runsheet && $runsheet->date && $runsheet->date->isToday() && $runsheet->status === 'active')
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#F59E0B;animation:pulse 2s infinite;"></span>
+        <span style="font-size:13px;font-weight:600;color:#92400E;">🔴 Event Day — live updates active</span>
+    </div>
+    <style>@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }</style>
+    @endif
+    
     {{-- Header --}}
     <div style="margin-bottom:24px;">
         <div style="margin-bottom:8px;">

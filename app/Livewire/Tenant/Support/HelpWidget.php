@@ -39,7 +39,8 @@ class HelpWidget extends Component
 
     public function openChoices(): void
     {
-        // If there's already an active/waiting live chat, skip the menu and go straight there
+        $this->refreshActiveChat(); // re-verify before trusting the cached value
+
         if ($this->activeTicketUuid) {
             $this->redirect(route('tenant.support.chat'), navigate: true);
             return;

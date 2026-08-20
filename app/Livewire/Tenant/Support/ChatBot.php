@@ -150,6 +150,19 @@ class ChatBot extends Component
         $this->stage = 'typing_faq';
     }
 
+    /**
+     * Lets the tenant type directly at the initial menu stage instead of
+     * being forced to click a quick-reply button first — routes into the
+     * same FAQ search flow as clicking "How do I...?" would.
+     */
+    public function sendMenuStageMessage(): void
+    {
+        if (empty(trim($this->userInput))) return;
+
+        $this->stage = 'typing_faq';
+        $this->sendMessage();
+    }
+
     public function sendMessage(): void
     {
         if (empty(trim($this->userInput))) return;
@@ -202,11 +215,19 @@ class ChatBot extends Component
      */
     public function agentJoined(): void
     {
-        if ($this->stage === 'waiting') {
-            $this->session->update(['status' => 'active', 'agent_joined_at' => now()]);
+        $freshSession = $this->session->fresh();
+
+        if ($freshSession->status === 'waiting') {
+            $freshSession->update(['status' => 'active', 'agent_joined_at' => now()]);
+            $this->session = $freshSession;
             $this->stage = 'active';
             $this->botSay("You're now connected with " . ($this->ticket->fresh('assignedAgent.platformUser')->assignedAgent?->platformUser?->name ?? 'an agent') . ". Say hello!");
+        } else {
+            // Already activated by a near-simultaneous concurrent call — just sync local state, don't re-announce
+            $this->session = $freshSession;
+            $this->stage = 'active';
         }
+
         $this->ticket->markReadByTenant();
     }
 
@@ -252,8 +273,33 @@ class ChatBot extends Component
     {
         $this->session->update(['status' => 'ended', 'ended_by' => 'tenant', 'ended_at' => now()]);
         $this->ticket->update(['status' => 'resolved', 'resolved_at' => now()]);
+
+        if ($this->ticket->assignedAgent) {
+            $this->ticket->assignedAgent->recalculateActiveChatCount();
+        }
+
+        $msg = \App\Models\Central\SupportTicketMessage::create([
+            'ticket_id'   => $this->ticket->id,
+            'sender_type' => 'system',
+            'message'     => 'Chat ended by ' . auth()->user()->name . '.',
+        ]);
+        broadcast(new \App\Events\SupportChatMessageSent($msg, $this->ticket->uuid));
+
         $this->stage = 'ended';
+        broadcast(new \App\Events\SupportChatEnded($this->ticket->uuid));
     }
+
+    /**
+     * Called live via Echo when a SupportChatEnded broadcast arrives —
+     * covers the case where the chat was closed by the SCHEDULER (inactivity),
+     * not by the tenant clicking "End Chat" themselves.
+     */
+    public function handleChatEnded(): void
+    {
+        $this->stage = 'ended';
+        $this->ticket->refresh();
+    }
+
 
     public function leaveMessage(): void
     {

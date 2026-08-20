@@ -20,8 +20,8 @@
     <div style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;" id="platform-ticket-grid">
         <div>
             {{-- Conversation --}}
-            <div class="krd-card" id="platform-chat-scroll" style="padding:24px;margin-bottom:16px;max-height:480px;overflow-y:auto;background:#fff !important;"
-                @if($ticket->source === 'chat')
+            <div class="krd-card" id="platform-chat-scroll" wire:key="platform-chat-scroll-{{ $ticket->id }}-{{ $ticket->assigned_agent_id ?? 'unassigned' }}" style="padding:24px;margin-bottom:16px;max-height:480px;overflow-y:auto;background:#fff !important;"
+                @if($ticket->source === 'chat' && $ticket->assigned_agent_id)
                 wire:ignore
                 x-data="platformChatWidget(@js($ticket->uuid))"
                 @endif
@@ -29,9 +29,10 @@
                 @foreach($ticket->messages as $msg)
                     @if($msg->sender_type === 'system')
                     <div style="text-align:center;margin:8px 0;">
-                        <span style="font-size:11px;color:#78716C !important;background:#F5F5F4 !important;padding:4px 12px;border-radius:12px;display:inline-block;">{{ $msg->message }}</span>
+                        <span style="font-size:11px;color:#78716C;background:#F5F5F4;padding:4px 12px;border-radius:12px;display:inline-block;">{{ $msg->message }}</span>
                     </div>
-                    @else
+                    @continue
+                    @endif
                     <div style="display:flex;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}margin-bottom:16px;">
                         <div style="max-width:75%;">
                             <div style="font-size:11px;color:#A8A29E !important;margin-bottom:4px;{{ $msg->sender_type === 'agent' ? 'text-align:right;' : '' }}">
@@ -49,11 +50,15 @@
                             @endif
                         </div>
                     </div>
-                    @endif
                 @endforeach
             </div>
 
             @if($ticket->status !== 'closed')
+            @if($ticket->source === 'chat' && $ticket->chatSession && $ticket->chatSession->status === 'active')
+            <div style="margin-bottom:8px;text-align:right;">
+                <button wire:click="endChatByAgent" wire:confirm="End this chat with the tenant?" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">End Chat</button>
+            </div>
+            @endif
             <div class="krd-card" style="padding:20px;">
                @if($ticket->source === 'chat')
                 <div style="height:16px;margin-bottom:4px;">
@@ -63,7 +68,16 @@
                 <textarea wire:model="reply" onkeyup="if(window.__platformPresenceChannel) window.__platformPresenceChannel.whisper('agent-typing', {})" class="krd-input @error('reply') krd-input-error @enderror" rows="3" placeholder="Type your reply..."></textarea>
                 @error('reply') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:10px;">
-                    <input wire:model="attachments" type="file" multiple style="font-size:12px;" />
+                    <div style="display:flex;align-items:center;gap:10px;position:relative;" x-data="emojiPicker('reply')">
+                        <button type="button" x-on:click="toggle()" style="background:none;border:1px solid #E7E5E4;border-radius:6px;width:34px;height:34px;cursor:pointer;font-size:16px;">😊</button>
+                        <div x-show="open" x-cloak x-on:click.outside="open = false"
+                            style="position:absolute;bottom:40px;left:0;background:#fff;border:1px solid #E7E5E4;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:10px;width:260px;max-height:200px;overflow-y:auto;z-index:50;display:grid;grid-template-columns:repeat(8, 1fr);gap:4px;">
+                            <template x-for="emoji in emojis" :key="emoji">
+                                <button type="button" x-on:click="pick(emoji)" style="background:none;border:none;cursor:pointer;font-size:18px;padding:4px;border-radius:4px;" x-text="emoji" onmouseover="this.style.background='#F5F5F4'" onmouseout="this.style.background='none'"></button>
+                            </template>
+                        </div>
+                        <input wire:model="attachments" type="file" multiple style="font-size:12px;" />
+                    </div>
                     <button wire:click="sendReply" wire:loading.attr="disabled" class="krd-btn krd-btn-primary krd-btn-sm">
                         <span wire:loading.remove wire:target="sendReply">Send Reply</span>
                         <span wire:loading wire:target="sendReply">Sending...</span>
@@ -171,59 +185,3 @@
 @media (max-width: 768px) { #platform-ticket-grid { grid-template-columns: 1fr !important; } #platform-ticket-actions { position: static !important; } }
 </style>
 
-<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('platformChatWidget', (ticketUuid) => ({
-        init() {
-            this.$el.scrollTop = this.$el.scrollHeight;
-
-            window.Echo.private('support-ticket.' + ticketUuid).listen('.message.sent', (e) => {
-                const wrap = document.createElement('div');
-
-                if (e.sender_type === 'system') {
-                    wrap.style.textAlign = 'center';
-                    wrap.style.margin = '8px 0';
-                    const span = document.createElement('span');
-                    span.style.cssText = 'font-size:11px;color:#78716C;background:#F5F5F4;padding:4px 12px;border-radius:12px;display:inline-block;';
-                    span.textContent = e.message;
-                    wrap.appendChild(span);
-                    this.$el.appendChild(wrap);
-                    this.$el.scrollTop = this.$el.scrollHeight;
-                    return;
-                }
-
-                const isAgent = e.sender_type === 'agent';
-                wrap.style.cssText = 'display:flex;margin-bottom:16px;' + (isAgent ? 'justify-content:flex-end;' : '');
-
-                const inner = document.createElement('div');
-                inner.style.maxWidth = '75%';
-
-                const label = document.createElement('div');
-                label.style.cssText = 'font-size:11px;color:#A8A29E;margin-bottom:4px;' + (isAgent ? 'text-align:right;' : '');
-                label.textContent = e.sender_name + ' \u00B7 ' + e.created_at;
-
-                const bubble = document.createElement('div');
-                bubble.style.cssText = 'padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;' +
-                    (isAgent ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');
-                bubble.innerHTML = e.rendered;
-
-                inner.appendChild(label);
-                inner.appendChild(bubble);
-                wrap.appendChild(inner);
-                this.$el.appendChild(wrap);
-                this.$el.scrollTop = this.$el.scrollHeight;
-            });
-
-            window.__platformPresenceChannel = window.Echo.join('support-ticket.' + ticketUuid)
-                .listenForWhisper('tenant-typing', () => {
-                    const el = document.getElementById('platform-typing-indicator');
-                    if (el) el.style.display = 'block';
-                    clearTimeout(window.__platformTypingTimeout);
-                    window.__platformTypingTimeout = setTimeout(() => {
-                        if (el) el.style.display = 'none';
-                    }, 2500);
-                });
-        }
-    }));
-});
-</script>

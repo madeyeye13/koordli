@@ -83,6 +83,8 @@ class BookingForm extends Component
 
         if (empty($guestName)) $guestName = 'Guest';
 
+        event(new \App\Events\BookingSubmitted($submission, $this->form->tenant_id, $guestName, $this->form->name));
+
         $tenant = Tenant::find($this->form->tenant_id);
         $plannerUser = User::withoutGlobalScope('tenant')
             ->where('tenant_id', $this->form->tenant_id)

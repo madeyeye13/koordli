@@ -59,6 +59,7 @@ class VendorContract extends Model
     {
         if ($this->isFullySigned() && $this->status !== 'signed') {
             $this->changeStatus('signed', 'Both parties signed electronically.');
+            event(new \App\Events\ContractFullySigned($this));
         }
     }
 

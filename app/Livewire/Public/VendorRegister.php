@@ -97,7 +97,7 @@ class VendorRegister extends Component
             return;
         }
 
-        VendorApplication::withoutGlobalScope('tenant')->create([
+        $application = VendorApplication::withoutGlobalScope('tenant')->create([
             'uuid'                => Str::uuid(),
             'tenant_id'           => $this->tenant->id,
             'vendor_category_id'  => $this->vendor_category_id,
@@ -111,6 +111,8 @@ class VendorRegister extends Component
             'available_to_travel' => $this->available_to_travel,
             'status'              => 'pending',
         ]);
+
+        event(new \App\Events\VendorApplicationSubmitted($application));
 
         SendVendorApplicationReceivedJob::dispatch(
             $this->email,

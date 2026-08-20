@@ -269,6 +269,137 @@
 
     </div>
 
+    {{-- Staff & Conversations --}}
+    <div class="krd-grid-2" style="margin-bottom:16px;">
+
+        {{-- Assigned Staff --}}
+        <div class="krd-card" x-data="{ open: {{ $showAddStaffForm ? 'true' : 'false' }} }">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div class="krd-label">Assigned Staff</div>
+                <button x-on:click="open = true; $wire.showAddStaff()" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add Staff</button>
+            </div>
+
+            <div x-show="open" x-cloak style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:6px;padding:14px;margin-bottom:14px;">
+                <div class="krd-input-group" wire:ignore wire:key="staff-dropdown-{{ $event->team->count() }}"
+                    x-data="{
+                        ddOpen: false,
+                        label: 'Select staff...',
+                        pick(val, label) { this.label = label; this.ddOpen = false; $wire.set('add_staff_user_id', val); }
+                    }"
+                    x-on:click.outside="ddOpen = false"
+                    style="position:relative;">
+                    <label class="krd-label-text">Staff Member</label>
+                    <button type="button"
+                        x-on:click="ddOpen = !ddOpen"
+                        x-bind:class="ddOpen ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                        style="width:100%;">
+                        <span x-text="label"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="ddOpen" x-cloak class="krd-dropdown-menu">
+                        @foreach($eligibleStaff as $s)
+                        <div class="krd-dropdown-option {{ $add_staff_user_id == $s->id ? 'selected' : '' }}"
+                            x-on:click="pick({{ $s->id }}, @js($s->name))">{{ $s->name }}</div>
+                        @endforeach
+                    </div>
+                    @error('add_staff_user_id') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                </div>
+                <div class="krd-input-group" style="margin-bottom:0;">
+                    <label class="krd-label-text">Role on this event <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                    <input wire:model="add_staff_role" type="text" class="krd-input" placeholder="e.g. Lead Coordinator" />
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button wire:click="addStaffToEvent" class="krd-btn krd-btn-primary krd-btn-sm">Add</button>
+                    <button x-on:click="open = false" wire:click="$set('showAddStaffForm', false)" class="krd-btn krd-btn-ghost krd-btn-sm">Cancel</button>
+                </div>
+            </div>
+
+            @forelse($event->team as $teamMember)
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F5F4;">
+                <div>
+                    <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $teamMember->user->name ?? 'Unknown' }}</div>
+                    @if($teamMember->role_in_event)<div style="font-size:11px;color:#A8A29E;">{{ $teamMember->role_in_event }}</div>@endif
+                </div>
+                <button wire:click="removeStaffFromEvent({{ $teamMember->id }})" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;">×</button>
+            </div>
+            @empty
+            <div class="krd-empty-state" style="padding:20px;">
+                <div class="krd-empty-state-desc">No staff assigned to this event yet.</div>
+            </div>
+            @endforelse
+        </div>
+
+        {{-- Conversations --}}
+        <div class="krd-card" x-data="{ convOpen: {{ $showCreateConversationForm ? 'true' : 'false' }}, typeVal: '{{ $conversation_type }}' }">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div class="krd-label">Conversations</div>
+                <button x-on:click="convOpen = true; $wire.showCreateConversation()" class="krd-btn krd-btn-secondary krd-btn-sm">+ New</button>
+            </div>
+
+            <div x-show="convOpen" x-cloak style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:6px;padding:14px;margin-bottom:14px;">
+                <div class="krd-input-group"
+                    x-data="{
+                        typeOpen: false,
+                        typeLabel: '{{ $conversation_type === 'direct' ? 'Direct Message' : 'Group' }}',
+                        pickType(val, label) { this.typeLabel = label; this.typeOpen = false; typeVal = val; $wire.set('conversation_type', val); }
+                    }"
+                    x-on:click.outside="typeOpen = false"
+                    style="position:relative;">
+                    <label class="krd-label-text">Type</label>
+                    <button type="button"
+                        x-on:click="typeOpen = !typeOpen"
+                        x-bind:class="typeOpen ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                        style="width:100%;">
+                        <span x-text="typeLabel"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="typeOpen" x-cloak class="krd-dropdown-menu">
+                        <div class="krd-dropdown-option {{ $conversation_type === 'group' ? 'selected' : '' }}" x-on:click="pickType('group', 'Group')">Group</div>
+                        <div class="krd-dropdown-option {{ $conversation_type === 'direct' ? 'selected' : '' }}" x-on:click="pickType('direct', 'Direct Message')">Direct Message</div>
+                    </div>
+                </div>
+
+                <div class="krd-input-group" x-show="typeVal === 'group'" x-cloak>
+                    <label class="krd-label-text">Name</label>
+                    <input wire:model="conversation_name" type="text" class="krd-input" placeholder="e.g. Event Communication" />
+                    @error('conversation_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="krd-input-group" style="margin-bottom:0;">
+                    <label class="krd-label-text">Participants</label>
+                    <div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+                        @forelse($eligibleParticipants as $option)
+                        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#1C1917;">
+                            <input type="checkbox" wire:model="selected_participants" value="{{ $option['key'] }}" style="accent-color:#7C3AED;" />
+                            {{ $option['label'] }}
+                        </label>
+                        @empty
+                        <span style="font-size:12px;color:#A8A29E;">No eligible participants yet — assign staff, invite a client, or assign a vendor first.</span>
+                        @endforelse
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button wire:click="createConversation" class="krd-btn krd-btn-primary krd-btn-sm">Create</button>
+                    <button x-on:click="convOpen = false" wire:click="$set('showCreateConversationForm', false)" class="krd-btn krd-btn-ghost krd-btn-sm">Cancel</button>
+                </div>
+            </div>
+
+            @forelse($conversations as $conv)
+            <a href="{{ route('tenant.conversations.show', $conv->uuid) }}" wire:navigate style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F5F4;text-decoration:none;">
+                <div>
+                    <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $conv->name ?: ($conv->type === 'direct' ? 'Direct Message' : 'Conversation') }}</div>
+                    <div style="font-size:11px;color:#A8A29E;">{{ $conv->messages_count }} message(s)</div>
+                </div>
+                <span style="color:#A8A29E;">→</span>
+            </a>
+            @empty
+            <div class="krd-empty-state" style="padding:20px;">
+                <div class="krd-empty-state-desc">No conversations yet for this event.</div>
+            </div>
+            @endforelse
+        </div>
+
+    </div>
     {{-- Row 3: Guests + Budget --}}
     <div class="krd-grid-2">
 

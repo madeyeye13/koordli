@@ -34,6 +34,34 @@ class PlatformTicketDetail extends Component
             ->firstOrFail();
     }
 
+    public function endChatByAgent(): void
+    {
+        $chatSession = \App\Models\Central\SupportChatSession::where('ticket_id', $this->ticket->id)->first();
+
+        if ($this->ticket->source !== 'chat' || !$chatSession) {
+            return;
+        }
+
+        $chatSession->update(['status' => 'ended', 'ended_by' => 'agent', 'ended_at' => now()]);
+        $this->ticket->update(['status' => 'resolved', 'resolved_at' => now()]);
+
+        if ($this->ticket->assignedAgent) {
+            $this->ticket->assignedAgent->recalculateActiveChatCount();
+        }
+
+        $msg = \App\Models\Central\SupportTicketMessage::create([
+            'ticket_id'   => $this->ticket->id,
+            'sender_type' => 'system',
+            'message'     => 'Chat ended by ' . auth('platform')->user()->name . '. Should you wish to continue this conversation, feel free to reach out to us again or raise a support ticket.',
+        ]);
+        broadcast(new \App\Events\SupportChatMessageSent($msg, $this->ticket->uuid));
+        broadcast(new \App\Events\SupportChatEnded($this->ticket->uuid));
+
+        $this->ticket->refresh();
+        $this->toastSuccess('Chat ended.');
+    }
+
+
     public function claimTicket(): void
     {
         $agent = SupportAgent::where('platform_user_id', auth('platform')->id())->first();
@@ -98,8 +126,15 @@ class PlatformTicketDetail extends Component
             $this->ticket->update(['status' => 'in_progress']);
         }
 
+        // Query the chat session's CURRENT status directly — never trust $this->ticket->chatSession,
+        // since Livewire caches loaded relations across requests and this can go stale mid-conversation
+        // (e.g. the tenant flips it to 'active' in a completely separate request).
+        $currentChatStatus = $this->ticket->source === 'chat'
+            ? \App\Models\Central\SupportChatSession::where('ticket_id', $this->ticket->id)->value('status')
+            : null;
+
         // Live chat: broadcast instantly, skip the email (tenant is right there watching)
-        if ($this->ticket->source === 'chat' && $this->ticket->chatSession?->status === 'active') {
+        if ($currentChatStatus === 'active') {
             broadcast(new \App\Events\SupportChatMessageSent($message, $this->ticket->uuid));
         } else {
             // Async ticket: notify tenant by email
@@ -123,10 +158,18 @@ class PlatformTicketDetail extends Component
 
     public function updateStatus(string $status): void
     {
+        $wasActive = !in_array($this->ticket->status, ['resolved', 'closed']);
+        $becomingInactive = in_array($status, ['resolved', 'closed']);
+
         $this->ticket->update([
             'status'      => $status,
             'resolved_at' => $status === 'resolved' ? now() : $this->ticket->resolved_at,
         ]);
+
+        if ($wasActive && $becomingInactive && $this->ticket->assignedAgent) {
+            $this->ticket->assignedAgent->recalculateActiveChatCount();
+        }
+
         $this->ticket->refresh();
         $this->toastSuccess('Status updated to ' . $this->ticket->statusLabel() . '.');
     }

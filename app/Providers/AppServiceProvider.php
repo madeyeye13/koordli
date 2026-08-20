@@ -51,5 +51,56 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Blade::directive('upgradePrompt', function ($expression) {
             return "<?php echo view('components.ui.upgrade-prompt', ['feature' => $expression])->render(); ?>";
         });
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\TaskAssigned::class,
+            \App\Listeners\SendTaskAssignedNotification::class,
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\ContractSent::class,
+            [\App\Listeners\LogContractActivity::class, 'handleSent'],
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\ContractFullySigned::class,
+            [\App\Listeners\LogContractActivity::class, 'handleFullySigned'],
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\InvoiceFullyPaid::class,
+            \App\Listeners\LogInvoiceActivity::class,
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\BookingSubmitted::class,
+            \App\Listeners\LogBookingActivity::class,
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\RsvpSubmitted::class,
+            \App\Listeners\LogRsvpActivity::class,
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\BookingSubmitted::class,
+            \App\Listeners\LogBookingActivity::class,
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\RsvpSubmitted::class,
+            \App\Listeners\LogRsvpActivity::class,
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\SupportTicketCreated::class,
+            \App\Listeners\LogSupportTicketActivity::class,
+        );
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\VendorApplicationSubmitted::class,
+            \App\Listeners\LogVendorApplicationActivity::class,
+        );
+
+        \Illuminate\Support\Facades\Event::listen(
+            \App\Events\RunsheetItemDelayed::class,
+            \App\Listeners\CascadeRunsheetDelayWarning::class,
+        );
     }
 }

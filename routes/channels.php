@@ -2,9 +2,11 @@
 use Illuminate\Support\Facades\Broadcast;
 use App\Models\Central\SupportAgent;
 use App\Models\Central\SupportTicket;
+use App\Models\Tenant\Conversation;
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+// Tenant User personal notifications channel (see User::receivesBroadcastNotificationsOn())
+Broadcast::channel('notifications.tenant-user.{id}', function ($user, $id) {
+    return auth('web')->check() && (int) auth('web')->id() === (int) $id;
 });
 
 // Serves BOTH the private channel ('private-support-ticket.{uuid}') AND
@@ -35,4 +37,36 @@ Broadcast::channel('support-queue', function ($user) {
 
     $agent = SupportAgent::where('platform_user_id', auth('platform')->id())->first();
     return $agent ? ['id' => $agent->id, 'name' => auth('platform')->user()->name] : false;
+});
+
+// Serves BOTH private- and presence- variants of the same conversation channel.
+// Authorization checks CURRENT (not left) ConversationParticipant membership
+// across all three participant-bearing guards — this is the single
+// authoritative gate, matching Conversation::hasParticipant().
+Broadcast::channel('conversation.{uuid}', function ($user, string $uuid) {
+    $conversation = Conversation::where('uuid', $uuid)->first();
+    if (!$conversation) return false;
+
+    if (auth('web')->check()) {
+        $userId = auth('web')->id();
+        if ($conversation->hasParticipant('tenant_user', $userId)) {
+            return ['id' => 'tenant_user-' . $userId, 'name' => auth('web')->user()->name, 'type' => 'tenant_user'];
+        }
+    }
+
+    if (auth('client')->check()) {
+        $clientId = auth('client')->id();
+        if ($conversation->hasParticipant('client', $clientId)) {
+            return ['id' => 'client-' . $clientId, 'name' => auth('client')->user()->name, 'type' => 'client'];
+        }
+    }
+
+    if (auth('vendor')->check()) {
+        $vendorId = auth('vendor')->id();
+        if ($conversation->hasParticipant('vendor_account', $vendorId)) {
+            return ['id' => 'vendor_account-' . $vendorId, 'name' => auth('vendor')->user()->name, 'type' => 'vendor_account'];
+        }
+    }
+
+    return false;
 });

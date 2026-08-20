@@ -73,6 +73,7 @@ class CreateTicket extends Component
             ]);
         }
 
+        event(new \App\Events\SupportTicketCreated($ticket));
         $this->toastSuccess('Ticket created. We\'ll get back to you soon.');
         $this->redirect(route('tenant.support.tickets.show', $ticket->uuid), navigate: true);
     }

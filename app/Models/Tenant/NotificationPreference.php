@@ -2,30 +2,25 @@
 
 namespace App\Models\Tenant;
 
-use App\Enums\NotificationChannel;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NotificationPreference extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = [
-        'tenant_id',
-        'user_id',
-        'channel',
-        'event_type',
-        'is_enabled',
-    ];
+    protected $fillable = ['tenant_id', 'notifiable_type', 'notifiable_id', 'category', 'channels'];
 
-    protected $casts = [
-        'channel'    => NotificationChannel::class,
-        'is_enabled' => 'boolean',
-    ];
+    protected $casts = ['channels' => 'array'];
 
-    public function user(): BelongsTo
+    public static function channelsFor(\Illuminate\Database\Eloquent\Model $notifiable, string $category): array
     {
-        return $this->belongsTo(User::class);
+        $pref = static::where('notifiable_type', get_class($notifiable))
+            ->where('notifiable_id', $notifiable->id)
+            ->where('category', $category)
+            ->first();
+
+        // Default: all channels enabled if no preference row exists yet
+        return $pref?->channels ?? ['database', 'mail', 'broadcast'];
     }
 }

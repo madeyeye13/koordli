@@ -200,7 +200,13 @@ class RunsheetManager extends Component
 
     public function updateItemStatus(int $id, string $status): void
     {
-        RunsheetItem::find($id)?->update(['status' => $status]);
+        $item = RunsheetItem::find($id);
+        $item?->update(['status' => $status]);
+
+        if ($status === 'delayed' && $item) {
+            event(new \App\Events\RunsheetItemDelayed($item->fresh(['dependents.assignedTo', 'runsheet.event'])));
+        }
+
         $this->refreshRunsheet();
         $this->toastSuccess('Status updated.');
     }

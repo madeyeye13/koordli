@@ -32,7 +32,7 @@
             <span style="color:#fff;font-size:14px;font-weight:600;">Koordli Support</span>
         </div>
 
-        <div class="chat-body" id="chat-scroll"
+        <div class="chat-body" id="chat-scroll" wire:key="chat-scroll-{{ $ticket->id }}"
             @if($stage === 'active' || $stage === 'waiting')
             wire:ignore
             x-data="tenantChatWidget(@js($ticket->uuid))"
@@ -78,6 +78,10 @@
             <button wire:click="selectOption('howto')" class="chat-quick-btn">❓ How do I...?</button>
             <button wire:click="selectOption('broken')" class="chat-quick-btn">🐞 Something's broken</button>
             <button wire:click="selectOption('human')" class="chat-quick-btn">🧑‍💼 Talk to a human</button>
+        </div>
+        <div class="chat-input-row">
+            <input wire:model="userInput" wire:keydown.enter="sendMenuStageMessage" type="text" class="chat-input" placeholder="Or just type your question..." />
+            <button wire:click="sendMenuStageMessage" class="chat-send-btn">Send</button>
         </div>
         @endif
 
@@ -127,7 +131,14 @@
         <div style="padding:6px 20px;height:18px;">
             <span id="tenant-typing-indicator" style="display:none;font-size:11px;color:#A8A29E;font-style:italic;">Agent is typing...</span>
         </div>
-        <div class="chat-input-row">
+        <div class="chat-input-row" style="position:relative;" x-data="emojiPicker('userInput')">
+            <button type="button" x-on:click="toggle()" style="background:none;border:1px solid #E7E5E4;border-radius:6px;width:38px;flex-shrink:0;cursor:pointer;font-size:16px;">😊</button>
+            <div x-show="open" x-cloak x-on:click.outside="open = false"
+                style="position:absolute;bottom:52px;left:16px;background:#fff;border:1px solid #E7E5E4;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:10px;width:260px;max-height:200px;overflow-y:auto;z-index:50;display:grid;grid-template-columns:repeat(8, 1fr);gap:4px;">
+                <template x-for="emoji in emojis" :key="emoji">
+                    <button type="button" x-on:click="pick(emoji)" style="background:none;border:none;cursor:pointer;font-size:18px;padding:4px;border-radius:4px;" x-text="emoji" onmouseover="this.style.background='#F5F5F4'" onmouseout="this.style.background='none'"></button>
+                </template>
+            </div>
             <input wire:model="userInput" wire:keydown.enter="sendLiveMessage"
                 onkeyup="if(window.__tenantPresenceChannel) window.__tenantPresenceChannel.whisper('tenant-typing', {})"
                 type="text" class="chat-input" placeholder="Type a message..." />
@@ -158,70 +169,3 @@
 </div>
 </div>
 
-<script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('tenantChatWidget', (ticketUuid) => ({
-        init() {
-            this.$el.scrollTop = this.$el.scrollHeight;
-
-            window.Echo.private('support-ticket.' + ticketUuid).listen('.message.sent', (e) => {
-                const wrap = document.createElement('div');
-
-                if (e.sender_type === 'system') {
-                    wrap.style.textAlign = 'center';
-                    wrap.style.margin = '4px 0';
-                    const span = document.createElement('span');
-                    span.className = 'chat-bubble-system';
-                    span.textContent = e.message;
-                    wrap.appendChild(span);
-                } else if (e.sender_type === 'tenant') {
-                    wrap.className = 'chat-msg-tenant';
-                    const bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble-tenant';
-                    bubble.textContent = e.message;
-                    wrap.appendChild(bubble);
-                } else if (e.sender_type === 'agent') {
-                    wrap.className = 'chat-msg-bot';
-                    const label = document.createElement('div');
-                    label.style.cssText = 'font-size:11px;color:#A8A29E;margin-bottom:3px;';
-                    label.textContent = e.sender_name;
-                    const bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble-agent';
-                    bubble.innerHTML = e.rendered;
-                    wrap.appendChild(label);
-                    wrap.appendChild(bubble);
-                } else {
-                    wrap.className = 'chat-msg-bot';
-                    const bubble = document.createElement('div');
-                    bubble.className = 'chat-bubble-bot';
-                    bubble.innerHTML = e.rendered;
-                    wrap.appendChild(bubble);
-                }
-
-                this.$el.appendChild(wrap);
-                this.$el.scrollTop = this.$el.scrollHeight;
-
-                if (e.sender_type !== 'tenant') {
-                    this.$wire.call('markCurrentChatRead');
-                }
-            });
-
-            window.__tenantPresenceChannel = window.Echo.join('support-ticket.' + ticketUuid)
-                .here((users) => {
-                    if (users.some(u => u.type === 'agent')) this.$wire.call('agentJoined');
-                })
-                .joining((user) => {
-                    if (user.type === 'agent') this.$wire.call('agentJoined');
-                })
-                .listenForWhisper('agent-typing', () => {
-                    const el = document.getElementById('tenant-typing-indicator');
-                    if (el) el.style.display = 'block';
-                    clearTimeout(window.__tenantTypingTimeout);
-                    window.__tenantTypingTimeout = setTimeout(() => {
-                        if (el) el.style.display = 'none';
-                    }, 2500);
-                });
-        }
-    }));
-});
-</script>

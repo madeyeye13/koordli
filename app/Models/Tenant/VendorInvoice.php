@@ -139,6 +139,7 @@ class VendorInvoice extends Model
         if ($this->status === 'draft') return; // draft stays draft until explicitly sent
 
         $paid = $this->totalPaid();
+        $wasAlreadyPaid = $this->status === 'paid';
 
         if ($paid <= 0) {
             $newStatus = $this->isOverdue() ? 'overdue' : 'sent';
@@ -150,6 +151,10 @@ class VendorInvoice extends Model
 
         if ($newStatus !== $this->status) {
             $this->update(['status' => $newStatus]);
+
+            if ($newStatus === 'paid' && !$wasAlreadyPaid) {
+                event(new \App\Events\InvoiceFullyPaid($this));
+            }
         }
     }
 

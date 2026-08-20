@@ -142,9 +142,14 @@ class Dashboard extends Component
     {
         $client = auth('client')->user();
 
+        $grantedEventIds = \App\Models\Tenant\ClientEventAccess::where('client_id', $client->id)->pluck('event_id');
+
         $events = Event::withoutGlobalScope('tenant')
             ->where('tenant_id', $client->tenant_id)
-            ->where('client_email', $client->email)
+            ->where(function ($q) use ($client, $grantedEventIds) {
+                $q->where('client_email', $client->email)      // legacy fallback, kept for safety
+                  ->orWhereIn('id', $grantedEventIds);          // authoritative going forward
+            })
             ->with([
                 'eventType',
                 'status',
