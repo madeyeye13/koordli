@@ -125,6 +125,11 @@ class RsvpFormPage extends Component
 
         event(new \App\Events\RsvpSubmitted($this->response, $this->rsvpForm->tenant_id));
 
+        if ($this->status === 'confirmed') {
+            app(\App\Services\Notifications\ClientNotificationService::class)
+                ->checkRsvpMilestone($this->rsvpForm);
+        }
+
         if ($this->respondent_email && $qrToken) {
             $__tenant = \App\Models\Central\Tenant::find($this->rsvpForm->tenant_id);
             SendRsvpConfirmationJob::dispatch(
@@ -142,9 +147,13 @@ class RsvpFormPage extends Component
             );
         }
 
+        // Fixed: was hardcoded to role NAME 'company_owner', which silently
+        // breaks if a tenant renames their owner role via Roles & Permissions.
+        // Uses the is_system flag instead, matching every other owner-lookup
+        // fixed elsewhere in this app (MediaUploadController, VendorList, etc.)
         $plannerUser = User::withoutGlobalScope('tenant')
             ->where('tenant_id', $this->rsvpForm->tenant_id)
-            ->whereHas('roles', fn($q) => $q->where('name', 'company_owner'))
+            ->whereHas('roles', fn($q) => $q->where('is_system', true))
             ->first();
 
         if ($plannerUser?->email) {

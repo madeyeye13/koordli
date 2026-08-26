@@ -9,6 +9,7 @@ use App\Models\Tenant\VendorEventAssignment;
 use App\Models\Tenant\VendorInvoice;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -68,7 +69,7 @@ class CreateInvoice extends Component
         }
 
         $this->validate([
-            'vendor_id'       => 'required|exists:vendors,id',
+            'vendor_id'       => ['required', Rule::exists('vendors', 'id')->where('tenant_id', auth()->user()->tenant_id)],
             'issue_date'      => 'required|date',
             'due_date'        => 'nullable|date|after_or_equal:issue_date',
             'amount'          => 'required|numeric|min:0',
@@ -80,7 +81,9 @@ class CreateInvoice extends Component
         $totalAmount = (float) $this->amount + (float) $this->tax_amount - (float) $this->discount_amount;
 
         $attachmentPath = null;
+        $attachmentSize = null;
         if ($this->attachment) {
+            $attachmentSize = $this->attachment->getSize();
             $attachmentPath = $this->attachment->store('invoices', 'public');
         }
 
@@ -100,6 +103,7 @@ class CreateInvoice extends Component
             'status'                     => 'draft',
             'notes'                      => $this->notes ?: null,
             'attachment_path'            => $attachmentPath,
+            'attachment_size'            => $attachmentSize,
         ]);
 
         $this->toastSuccess('Invoice created.');

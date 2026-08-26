@@ -1,7 +1,11 @@
 <div x-data="{
     activeStatusId: {{ $event->status_id ?? 'null' }},
     activeStatusName: '{{ $event->status?->name ?? '' }}',
-    activeStatusColor: '{{ $event->status?->color ?? '#A8A29E' }}'
+    activeStatusColor: '{{ $event->status?->color ?? '#A8A29E' }}',
+    showRemoveStaffModal: false,
+    removeStaffId: null,
+    showDeleteConvoModal: false,
+    deleteConvoUuid: null,
 }">
     {{-- Header --}}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px;">
@@ -28,27 +32,54 @@
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <a href="{{ route('tenant.events.guests', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                👥 Guests
+            <a href="{{ route('tenant.events.guests', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Guests
             </a>
 
-            <a href="{{ route('tenant.events.runsheet', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                📋 Runsheet
+            <a href="{{ route('tenant.events.runsheet', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Runsheet
             </a>
 
             @if($event->rsvp_enabled)
-            <a href="{{ route('tenant.events.rsvp', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                📋 RSVP
+            <a href="{{ route('tenant.events.rsvp', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+                RSVP
             </a>
             @endif
 
 
-            <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
-                💰 Budget
+            <a href="{{ route('tenant.events.budget', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+                Budget
+            </a>
+            <a href="{{ route('tenant.events.media', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                </svg>
+                Media Library
+            </a>
+            <a href="{{ route('tenant.events.moodboards', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                </svg>
+                Moodboards
             </a>
             @if($event->client_email)
-            <button wire:click="inviteClient" wire:loading.attr="disabled" wire:target="inviteClient" class="krd-btn krd-btn-secondary krd-btn-sm">
-                <span wire:loading.remove wire:target="inviteClient">✉️ Invite Client</span>
+            <button wire:click="inviteClient" wire:loading.attr="disabled" wire:target="inviteClient" class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <span wire:loading.remove wire:target="inviteClient">Invite Client</span>
                 <span wire:loading wire:target="inviteClient">Sending...</span>
             </button>
             @endif
@@ -191,7 +222,11 @@
             </div>
             @if($event->tasks->isEmpty())
             <div class="krd-empty-state" style="padding:24px;">
-                <div class="krd-empty-state-icon" style="font-size:24px;">✅</div>
+                <div class="krd-empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/>
+                    </svg>
+                </div>
                 <div class="krd-empty-state-title">No tasks yet</div>
                 <div class="krd-empty-state-desc">Add tasks to track what needs to be done for this event.</div>
             </div>
@@ -227,11 +262,20 @@
         <div class="krd-card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div class="krd-label">Vendors</div>
-                <a href="{{ route('tenant.vendors') }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Assign Vendor</a>
+                <div style="display:flex;gap:6px;">
+                    @if($event->effectiveClientVendorInvolvementLevel() !== 'none')
+                    <a href="{{ route('tenant.events.vendor-suggestions', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Suggestions</a>
+                    @endif
+                    <a href="{{ route('tenant.vendors') }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Assign Vendor</a>
+                </div>
             </div>
             @if($event->vendorAssignments->isEmpty())
             <div class="krd-empty-state" style="padding:24px;">
-                <div class="krd-empty-state-icon" style="font-size:24px;">🏢</div>
+                <div class="krd-empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="2">
+                        <path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>
+                    </svg>
+                </div>
                 <div class="krd-empty-state-title">No vendors assigned</div>
                 <div class="krd-empty-state-desc">Go to the vendor directory to assign vendors to this event.</div>
             </div>
@@ -256,6 +300,11 @@
                     <span class="krd-badge {{ $assignment->statusBadge() }}" style="font-size:10px;">
                         {{ ucfirst($assignment->status) }}
                     </span>
+                    @if($assignment->selectionBadgeLabel())
+                    <span class="krd-badge" style="font-size:9px;background:{{ $assignment->selectionBadgeColor() }}22;color:{{ $assignment->selectionBadgeColor() }};">
+                        {{ $assignment->selectionBadgeLabel() }}
+                    </span>
+                    @endif
                 </div>
                 @endforeach
                 @if($event->vendorAssignments->count() > 5)
@@ -320,7 +369,12 @@
                     <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $teamMember->user->name ?? 'Unknown' }}</div>
                     @if($teamMember->role_in_event)<div style="font-size:11px;color:#A8A29E;">{{ $teamMember->role_in_event }}</div>@endif
                 </div>
-                <button wire:click="removeStaffFromEvent({{ $teamMember->id }})" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:16px;">×</button>
+                <button x-on:click="removeStaffId = {{ $teamMember->id }}; showRemoveStaffModal = true" title="Remove" style="background:none;border:none;color:#EF4444;cursor:pointer;padding:2px;display:flex;align-items:center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                    </svg>
+                </button>
             </div>
             @empty
             <div class="krd-empty-state" style="padding:20px;">
@@ -385,13 +439,23 @@
             </div>
 
             @forelse($conversations as $conv)
-            <a href="{{ route('tenant.conversations.show', $conv->uuid) }}" wire:navigate style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F5F4;text-decoration:none;">
-                <div>
-                    <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $conv->name ?: ($conv->type === 'direct' ? 'Direct Message' : 'Conversation') }}</div>
-                    <div style="font-size:11px;color:#A8A29E;">{{ $conv->messages_count }} message(s)</div>
-                </div>
-                <span style="color:#A8A29E;">→</span>
-            </a>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #F5F5F4;">
+                <a href="{{ route('tenant.conversations.show', $conv->uuid) }}" wire:navigate style="flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;text-decoration:none;">
+                    <div>
+                        <div style="font-size:13px;font-weight:500;color:#1C1917;">{{ $conv->name ?: ($conv->type === 'direct' ? 'Direct Message' : 'Conversation') }}</div>
+                        <div style="font-size:11px;color:#A8A29E;">{{ $conv->messages_count }} message(s)</div>
+                    </div>
+                    <span style="color:#A8A29E;">→</span>
+                </a>
+                @if($canDeleteConversations)
+                <button x-on:click="deleteConvoUuid = '{{ $conv->uuid }}'; showDeleteConvoModal = true" title="Delete conversation" style="background:none;border:none;color:#DC2626;cursor:pointer;padding:2px;display:flex;align-items:center;flex-shrink:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                    </svg>
+                </button>
+                @endif
+            </div>
             @empty
             <div class="krd-empty-state" style="padding:20px;">
                 <div class="krd-empty-state-desc">No conversations yet for this event.</div>
@@ -400,6 +464,41 @@
         </div>
 
     </div>
+
+    {{-- Delete Conversation Modal — Alpine-owned visibility, instant open/close --}}
+    <template x-teleport="body">
+    <div x-show="showDeleteConvoModal" x-cloak style="position:fixed;inset:0;z-index:60;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
+        <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:8px;padding:24px;max-width:380px;width:100%;">
+                <h3 style="font-size:15px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete this conversation?</h3>
+                <p style="font-size:12px;color:#78716C;margin-bottom:20px;line-height:1.6;">This deletes the conversation and all its messages for everyone. This cannot be undone.</p>
+                <div style="display:flex;gap:10px;">
+                    <button x-on:click="$wire.deleteConversation(deleteConvoUuid); showDeleteConvoModal = false" class="krd-btn krd-btn-danger" style="flex:1;">Delete</button>
+                    <button x-on:click="showDeleteConvoModal = false" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </template>
+
+    {{-- Remove Staff Modal --}}
+    <template x-teleport="body">
+    <div x-show="showRemoveStaffModal" x-cloak style="position:fixed;inset:0;z-index:60;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
+        <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:8px;padding:24px;max-width:380px;width:100%;">
+                <h3 style="font-size:15px;font-weight:600;color:#1C1917;margin-bottom:8px;">Remove this staff member from the event?</h3>
+                <p style="font-size:12px;color:#78716C;margin-bottom:20px;line-height:1.6;">They'll lose access tied to this event's assignment. This can be reversed by adding them back.</p>
+                <div style="display:flex;gap:10px;">
+                    <button x-on:click="$wire.removeStaffFromEvent(removeStaffId); showRemoveStaffModal = false" class="krd-btn krd-btn-danger" style="flex:1;">Remove</button>
+                    <button x-on:click="showRemoveStaffModal = false" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </template>
+
     {{-- Row 3: Guests + Budget --}}
     <div class="krd-grid-2">
 
@@ -416,7 +515,11 @@
             @endphp
             @if($guestCount === 0 && !$event->max_guests)
             <div class="krd-empty-state" style="padding:24px;">
-                <div class="krd-empty-state-icon" style="font-size:24px;">👥</div>
+                <div class="krd-empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                    </svg>
+                </div>
                 <div class="krd-empty-state-title">No guests yet</div>
                 <div class="krd-empty-state-desc">Click Manage Guests to add guests or set an expected count.</div>
             </div>
@@ -475,7 +578,11 @@
             </div>
             @else
             <div class="krd-empty-state" style="padding:24px;">
-                <div class="krd-empty-state-icon" style="font-size:24px;">💰</div>
+                <div class="krd-empty-state-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                    </svg>
+                </div>
                 <div class="krd-empty-state-title">No budget set</div>
                 <div class="krd-empty-state-desc">Edit the event to set an agreed budget.</div>
             </div>

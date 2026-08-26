@@ -9,15 +9,17 @@ enum DocumentableType: string
     case Task      = 'task';
     case Guest     = 'guest';
     case Runsheet  = 'runsheet';
+    case Moodboard = 'moodboard';
 
     public function label(): string
     {
         return match($this) {
-            self::Event    => 'Event',
-            self::Vendor   => 'Vendor',
-            self::Task     => 'Task',
-            self::Guest    => 'Guest',
-            self::Runsheet => 'Runsheet',
+            self::Event     => 'Event',
+            self::Vendor    => 'Vendor',
+            self::Task      => 'Task',
+            self::Guest     => 'Guest',
+            self::Runsheet  => 'Runsheet',
+            self::Moodboard => 'Moodboard',
         };
     }
 }

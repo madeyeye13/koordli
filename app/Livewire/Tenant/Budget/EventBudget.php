@@ -222,7 +222,7 @@ class EventBudget extends Component
 
         $budget = $this->getOrCreateBudget();
 
-        ClientPayment::create([
+        $payment = ClientPayment::create([
             'tenant_id'      => auth()->user()->tenant_id,
             'budget_id'      => $budget->id,
             'amount'         => $this->paymentAmount,
@@ -230,6 +230,9 @@ class EventBudget extends Component
             'paid_on'        => $this->paymentDate,
             'payment_method' => $this->paymentMethod,
         ]);
+
+        app(\App\Services\Notifications\ClientNotificationService::class)
+            ->notifyPaymentRecorded($payment);
 
         $this->reload();
         $this->reset(['paymentAmount', 'paymentDescription', 'paymentMethod', 'showPaymentForm']);

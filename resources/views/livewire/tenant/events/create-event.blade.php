@@ -197,6 +197,44 @@
                 @endif
             </div>
 
+            {{-- Client Vendor Involvement Override --}}
+            <div class="krd-card" style="padding:24px;">
+                <div class="krd-label" style="margin-bottom:4px;">Client Vendor Involvement</div>
+                <div style="font-size:12px;color:#78716C;margin-bottom:16px;line-height:1.6;">
+                    By default, this event uses your workspace-wide setting (configured in the Vendor Directory). Override it here only if this specific event needs different rules.
+                </div>
+
+                <div class="krd-input-group" style="margin-bottom:0;">
+                    <label class="krd-label-text">Override for this event</label>
+                    <x-ui.dropdown
+                        wire="client_vendor_involvement_override"
+                        placeholder="Use default setting"
+                        selected="{{ ['none' => 'None', 'view_only' => 'View Only', 'approve_selections' => 'Approve Selections', 'full_participation' => 'Full Participation'][$client_vendor_involvement_override] ?? 'Use default setting' }}"
+                    >
+                        <div class="krd-dropdown-option {{ $client_vendor_involvement_override === '' ? 'selected' : '' }}"
+                            x-on:click="select('Use default setting', '')">
+                            Use default setting
+                        </div>
+                        <div class="krd-dropdown-option {{ $client_vendor_involvement_override === 'none' ? 'selected' : '' }}"
+                            x-on:click="select('None', 'none')">
+                            None — client sees nothing vendor-related
+                        </div>
+                        <div class="krd-dropdown-option {{ $client_vendor_involvement_override === 'view_only' ? 'selected' : '' }}"
+                            x-on:click="select('View Only', 'view_only')">
+                            View Only — client sees confirmed vendors only
+                        </div>
+                        <div class="krd-dropdown-option {{ $client_vendor_involvement_override === 'approve_selections' ? 'selected' : '' }}"
+                            x-on:click="select('Approve Selections', 'approve_selections')">
+                            Approve Selections — client can approve/reject suggestions
+                        </div>
+                        <div class="krd-dropdown-option {{ $client_vendor_involvement_override === 'full_participation' ? 'selected' : '' }}"
+                            x-on:click="select('Full Participation', 'full_participation')">
+                            Full Participation — client can also suggest their own vendors
+                        </div>
+                    </x-ui.dropdown>
+                </div>
+            </div>
+
             {{-- Submit --}}
             <div style="display:flex;gap:10px;">
                 <button wire:click="save" wire:loading.attr="disabled" class="krd-btn krd-btn-primary krd-btn-lg">

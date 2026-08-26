@@ -43,6 +43,10 @@ class VendorRunsheet extends Component
         $this->toastSuccess('Status updated.');
     }
 
+    // Note: delayed status is confirmed via confirmDelay() below, not here —
+    // the notification fires there since that's where the status change
+    // actually completes for the delayed path.
+
     public function confirmDelay(): void
     {
         $vendor = auth('vendor')->user();
@@ -57,6 +61,10 @@ class VendorRunsheet extends Component
                 'status' => 'delayed',
                 'notes'  => $this->delayNote ?: $item->notes,
             ]);
+
+            app(\App\Services\Notifications\VendorNotificationService::class)
+                ->notifyRunsheetDelayedByVendor($item->fresh(['runsheet.event']));
+
             $this->toastSuccess('Marked as delayed.');
         }
 

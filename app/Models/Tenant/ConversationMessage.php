@@ -12,7 +12,7 @@ class ConversationMessage extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'conversation_id', 'reply_to_message_id', 'sender_type', 'sender_id',
+        'tenant_id', 'conversation_id', 'reply_to_message_id', 'shared_moodboard_id', 'sender_type', 'sender_id',
         'body', 'edited_at', 'deleted_at',
     ];
 
@@ -40,6 +40,21 @@ class ConversationMessage extends Model
     {
         return $this->hasMany(\App\Models\Tenant\ConversationMessageMention::class, 'message_id');
     }
+
+    public function sharedMoodboard(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+{
+    return $this->belongsTo(\App\Models\Tenant\Moodboard::class, 'shared_moodboard_id');
+}
+
+public function sharedMoodboardCardHtml(bool $alignRight = false): ?string
+{
+    if (!$this->shared_moodboard_id) return null;
+
+    $moodboard = $this->sharedMoodboard;
+    if (!$moodboard) return null;
+
+    return view('partials.moodboard-share-card', compact('moodboard', 'alignRight'))->render();
+}
 
     
     public function isHiddenFor(string $type, int $id): bool

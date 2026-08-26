@@ -108,11 +108,23 @@ class EventDetail extends Component
         $this->toastSuccess('Staff member removed from event.');
     }
 
+    /**
+     * Called via $wire.removeStaffFromEvent(id) directly from Alpine —
+     * receives the id as a parameter rather than a bound property, since
+     * the confirmation modal that collects it is Alpine-owned for instant
+     * open/close (matching the pattern already fixed for Delete Role /
+     * Delete Conversation modals — see the wire:click-causes-a-round-trip
+     * bug documented in the project context's Rules section).
+     */
+
     // ── Conversations ──────────────────────────────────────────
     public bool $showCreateConversationForm = false;
     public string $conversation_type = 'group';
     public string $conversation_name = '';
-    public array  $selected_participants = []; // ["tenant_user:5", "client:2", "vendor_account:9"]
+    public array  $selected_participants = [];
+
+    public bool $showDeleteConversationModal = false;
+    public ?string $deleteConversationUuid = null;
 
     public function showCreateConversation(): void
     {
@@ -157,7 +169,6 @@ class EventDetail extends Component
             'created_by_id'   => auth()->id(),
         ]);
 
-        // Always add the creating planner as a participant
         \App\Models\Tenant\ConversationParticipant::create([
             'tenant_id'        => auth()->user()->tenant_id,
             'conversation_id'  => $conversation->id,
@@ -169,7 +180,7 @@ class EventDetail extends Component
         foreach ($this->selected_participants as $key) {
             [$type, $id] = explode(':', $key);
 
-            if ($type === 'tenant_user' && (int) $id === auth()->id()) continue; // already added above
+            if ($type === 'tenant_user' && (int) $id === auth()->id()) continue;
 
             \App\Models\Tenant\ConversationParticipant::create([
                 'tenant_id'        => auth()->user()->tenant_id,
@@ -186,6 +197,22 @@ class EventDetail extends Component
         $this->toastSuccess('Conversation created.');
     }
 
+    public function deleteConversation(string $uuid): void
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'conversations.delete')) {
+            $this->toastError('You do not have permission to delete conversations.');
+            return;
+        }
+
+        $conversation = \App\Models\Tenant\Conversation::where('uuid', $uuid)->first();
+
+        if ($conversation) {
+            broadcast(new \App\Events\ConversationDeleted($conversation->uuid, $this->event->slug));
+            $conversation->delete(); // cascades to messages/attachments/participants/mentions/deletions
+            $this->toastSuccess('Conversation deleted.');
+        }
+    }
+
     public function inviteClient(): void
     {
         if (!app(PermissionService::class)->userCan(auth()->user(), 'events.edit')) {
@@ -193,70 +220,14 @@ class EventDetail extends Component
             return;
         }
 
-        if (empty($this->event->client_email) || empty($this->event->client_name)) {
-            $this->toastError('This event has no client email or name set. Edit the event first.');
-            return;
-        }
+        $result = app(\App\Services\ClientInviteService::class)->inviteForEvent($this->event, auth()->id());
 
-        $tenant = auth()->user()->tenant;
-
-        $existing = Client::where('tenant_id', $tenant->id)
-            ->where('email', $this->event->client_email)
-            ->first();
-
-        // Repeat client — grant access to THIS event, don't create a duplicate account or re-send credentials
-        if ($existing) {
-            $alreadyGranted = \App\Models\Tenant\ClientEventAccess::where('client_id', $existing->id)
-                ->where('event_id', $this->event->id)
-                ->exists();
-
-            if ($alreadyGranted) {
-                $this->toastWarning('This client already has access to this event.');
-                return;
-            }
-
-            \App\Models\Tenant\ClientEventAccess::create([
-                'tenant_id'  => $tenant->id,
-                'client_id'  => $existing->id,
-                'event_id'   => $this->event->id,
-                'granted_by' => auth()->id(),
-            ]);
-
-            $this->toastSuccess($existing->name . ' already has a Koordli account — granted them access to this event using their existing login.');
-            return;
-        }
-
-        // New client — create account AND grant access, in one atomic step
-        $password = Str::random(10);
-
-        $client = Client::create([
-            'tenant_id' => $tenant->id,
-            'name'      => $this->event->client_name,
-            'email'     => $this->event->client_email,
-            'password'  => Hash::make($password),
-            'phone'     => $this->event->client_phone,
-            'is_active' => true,
-        ]);
-
-        \App\Models\Tenant\ClientEventAccess::create([
-            'tenant_id'  => $tenant->id,
-            'client_id'  => $client->id,
-            'event_id'   => $this->event->id,
-            'granted_by' => auth()->id(),
-        ]);
-
-        SendClientInviteJob::dispatch(
-            $this->event->client_email,
-            $this->event->client_name,
-            $password,
-            $tenant->name,
-            $this->event->name,
-            app(\App\Services\FeatureGateService::class)->canAccess($tenant, 'white_label'),
-        );
-
-        $this->toastSuccess('Client invited successfully. Login credentials sent to ' . $this->event->client_email);
+        match ($result['status']) {
+            'error'   => $this->toastError($result['message']),
+            'warning' => $this->toastWarning($result['message']),
+            default   => $this->toastSuccess($result['message']),
+        };
     }
-
     public function render()
     {
         $eligibleStaff = \App\Models\Tenant\User::withoutGlobalScope('tenant')
@@ -299,6 +270,7 @@ class EventDetail extends Component
             'eligibleStaff'        => $eligibleStaff,
             'eligibleParticipants' => $eligibleParticipants,
             'conversations'        => $conversations,
+            'canDeleteConversations' => app(PermissionService::class)->userCan(auth()->user(), 'conversations.delete'),
         ]);
     }
 }

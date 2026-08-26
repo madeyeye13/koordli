@@ -38,12 +38,23 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Billing Cycle</label>
-                        <select wire:model="billing_cycle" class="krd-input" style="cursor:pointer;">
-                            <option value="monthly">Monthly</option>
-                            <option value="annual">Annual</option>
-                            <option value="lifetime">Lifetime</option>
-                            <option value="trial">Trial Only</option>
-                        </select>
+                        <div x-data="{
+                                open: false,
+                                labels: { monthly: 'Monthly', annual: 'Annual', lifetime: 'Lifetime', trial: 'Trial Only' },
+                                pick(val) { $wire.set('billing_cycle', val); this.open = false; }
+                             }"
+                             style="position:relative;">
+                            <button type="button" x-on:click="open = !open" class="krd-dropdown-trigger" style="width:100%;">
+                                <span x-text="labels['{{ $billing_cycle }}']"></span>
+                                <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak x-on:click.outside="open = false" class="krd-dropdown-menu">
+                                <div class="krd-dropdown-option {{ $billing_cycle === 'monthly' ? 'selected' : '' }}" x-on:click="pick('monthly')">Monthly</div>
+                                <div class="krd-dropdown-option {{ $billing_cycle === 'annual' ? 'selected' : '' }}" x-on:click="pick('annual')">Annual</div>
+                                <div class="krd-dropdown-option {{ $billing_cycle === 'lifetime' ? 'selected' : '' }}" x-on:click="pick('lifetime')">Lifetime</div>
+                                <div class="krd-dropdown-option {{ $billing_cycle === 'trial' ? 'selected' : '' }}" x-on:click="pick('trial')">Trial Only</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Trial Days</label>
@@ -79,9 +90,13 @@
                         <label class="krd-label-text">Max Storage (MB)</label>
                         <input wire:model="max_storage_mb" type="number" min="0" class="krd-input" placeholder="Unlimited" />
                     </div>
-                    <div class="krd-input-group" style="margin-bottom:0;">
+                    <div class="krd-input-group">
                         <label class="krd-label-text">Max Guests / Event</label>
                         <input wire:model="max_guests" type="number" min="0" class="krd-input" placeholder="Unlimited" />
+                    </div>
+                    <div class="krd-input-group" style="margin-bottom:0;">
+                        <label class="krd-label-text">Max Moodboards</label>
+                        <input wire:model="max_moodboards" type="number" min="0" class="krd-input" placeholder="Unlimited" />
                     </div>
                 </div>
                 <div style="margin-top:10px;">

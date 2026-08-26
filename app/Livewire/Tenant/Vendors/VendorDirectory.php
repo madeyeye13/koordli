@@ -25,6 +25,10 @@ class VendorDirectory extends Component
     public bool $showDeleteModal = false;
     public ?int $deleteId        = null;
 
+    public bool $showInvolvementSettings = false;
+    public string $involvementLevel = 'none';
+    public string $disclaimerText = '';
+
     public function updatedSearch(): void         { $this->resetPage(); }
     public function updatedCategoryFilter(): void { $this->resetPage(); }
     public function updatedStatusFilter(): void   { $this->resetPage(); }
@@ -80,6 +84,40 @@ class VendorDirectory extends Component
         $this->deleteId        = null;
     }
 
+    public function openInvolvementSettings(): void
+    {
+        if (!app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'vendors.client_involvement.manage')) {
+            $this->toastError('You do not have permission to manage client vendor involvement settings.');
+            return;
+        }
+
+        $tenant = auth()->user()->tenant;
+        $this->involvementLevel = $tenant->client_vendor_involvement_level ?? 'none';
+        $this->disclaimerText = $tenant->vendor_disclaimer_text ?? '';
+        $this->showInvolvementSettings = true;
+    }
+
+    public function saveInvolvementSettings(): void
+    {
+        if (!app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'vendors.client_involvement.manage')) {
+            $this->toastError('You do not have permission to manage client vendor involvement settings.');
+            return;
+        }
+
+        $this->validate([
+            'involvementLevel' => 'required|in:none,view_only,approve_selections,full_participation',
+            'disclaimerText'   => 'nullable|string|max:2000',
+        ]);
+
+        auth()->user()->tenant->update([
+            'client_vendor_involvement_level' => $this->involvementLevel,
+            'vendor_disclaimer_text'           => $this->disclaimerText ?: null,
+        ]);
+
+        $this->showInvolvementSettings = false;
+        $this->toastSuccess('Client vendor involvement settings saved.');
+    }
+
     public function render()
     {
         abort_unless(
@@ -87,6 +125,8 @@ class VendorDirectory extends Component
             403
         );
 
+
+        $canManageInvolvement = app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'vendors.client_involvement.manage');
         $vendors = Vendor::with(['category', 'eventAssignments'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -110,9 +150,10 @@ class VendorDirectory extends Component
             ->paginate($this->view === 'grid' ? 12 : 15);
 
         return view('livewire.tenant.vendors.vendor-directory', [
-            'vendors'    => $vendors,
-            'categories' => VendorCategory::orderBy('sort_order')->get(),
-            'totalCount' => Vendor::count(),
+            'vendors'               => $vendors,
+            'categories'            => VendorCategory::orderBy('sort_order')->get(),
+            'totalCount'            => Vendor::count(),
+            'canManageInvolvement'  => $canManageInvolvement,
         ]);
     }
 }

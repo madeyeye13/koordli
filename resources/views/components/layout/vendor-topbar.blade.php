@@ -11,6 +11,9 @@
         <div style="font-size: 13px; font-weight: 500; color: #1C1917;">Vendor Portal</div>
     </div>
     <div style="display: flex; align-items: center; gap: 12px;">
+        <livewire:vendor.quick-access-widget />
+        <livewire:vendor.notifications.notification-center />
+
         <button x-on:click="$store.theme.toggle()"
             style="background:none;border:none;cursor:pointer;color:#78716C;display:flex;align-items:center;padding:6px;">
             <svg x-show="!$store.theme.dark" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

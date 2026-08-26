@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Vendor;
 
+use App\Models\Central\VendorAccount;
 use App\Models\Tenant\NotificationPreference;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
@@ -12,30 +13,45 @@ class NotificationPreferences extends Component
 {
     use WithToast;
 
-    public bool $emailEnabled = true;
+    public array $categories = [
+        'conversations' => ['label' => 'Messages',          'desc' => 'When someone sends you a message.'],
+        'tasks'         => ['label' => 'Tasks Assigned',    'desc' => 'When a task is assigned to you.'],
+        'runsheets'     => ['label' => 'Runsheet Updates',  'desc' => 'Runsheet changes relevant to you.'],
+        'bookings'      => ['label' => 'Event Bookings',    'desc' => 'When you\'re booked for an event, or a booking status changes.'],
+        'contracts'     => ['label' => 'Contracts',         'desc' => 'When a contract is sent to you for signature.'],
+    ];
+
+    public array $emailEnabled = [];
 
     public function mount(): void
     {
-        $pref = NotificationPreference::where('notifiable_type', 'vendor_account')
-            ->where('notifiable_id', auth('vendor')->id())
-            ->where('category', 'conversations')
-            ->first();
+        $vendor = auth('vendor')->user();
 
-        $this->emailEnabled = !$pref || in_array('email', $pref->channels ?? ['email']);
+        foreach (array_keys($this->categories) as $category) {
+            $pref = NotificationPreference::where('notifiable_type', VendorAccount::class)
+                ->where('notifiable_id', $vendor->id)
+                ->where('category', $category)
+                ->first();
+
+            $this->emailEnabled[$category] = !$pref || in_array('mail', $pref->channels ?? ['mail']);
+        }
     }
 
-    public function toggle(): void
+    public function toggle(string $category): void
     {
-        $this->emailEnabled = !$this->emailEnabled;
+        $vendor = auth('vendor')->user();
+        $this->emailEnabled[$category] = !$this->emailEnabled[$category];
+
+        $channels = $this->emailEnabled[$category] ? ['database', 'mail'] : ['database'];
 
         NotificationPreference::updateOrCreate(
             [
-                'tenant_id'       => auth('vendor')->user()->tenant_id,
-                'notifiable_type' => 'vendor_account',
-                'notifiable_id'   => auth('vendor')->id(),
-                'category'        => 'conversations',
+                'tenant_id'       => $vendor->tenant_id,
+                'notifiable_type' => VendorAccount::class,
+                'notifiable_id'   => $vendor->id,
+                'category'        => $category,
             ],
-            ['channels' => $this->emailEnabled ? ['email'] : []]
+            ['channels' => $channels]
         );
 
         $this->toastSuccess('Preference saved.');

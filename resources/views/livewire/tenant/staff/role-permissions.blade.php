@@ -15,7 +15,7 @@
         <div class="krd-card" style="padding:16px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;">Roles</div>
-                <button wire:click="showCreateRole" class="krd-btn krd-btn-primary krd-btn-sm">+ New Role</button>
+                <button x-on:click="openCreateRole()" class="krd-btn krd-btn-primary krd-btn-sm">+ New Role</button>
             </div>
 
             <div style="display:flex;flex-direction:column;gap:6px;">
@@ -30,10 +30,15 @@
                     </div>
                     @if(!$r->is_system)
                     <div style="display:flex;gap:4px;" x-on:click.stop>
-                        <button wire:click="showRenameRole({{ $r->id }})" title="Rename"
+                        <button x-on:click="openRenameRole({{ $r->id }}, @js($r->name))" title="Rename"
                             style="background:none;border:none;cursor:pointer;color:#A8A29E;font-size:12px;padding:2px 4px;">✎</button>
-                        <button wire:click="confirmDeleteRole({{ $r->id }})" title="Delete"
-                            style="background:none;border:none;cursor:pointer;color:#DC2626;font-size:12px;padding:2px 4px;">✕</button>
+                        <button x-on:click="openDeleteRole({{ $r->id }})" title="Delete"
+                            style="background:none;border:none;cursor:pointer;color:#DC2626;padding:2px 4px;display:flex;align-items:center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                                <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                            </svg>
+                        </button>
                     </div>
                     @endif
                 </div>
@@ -67,10 +72,6 @@
                                 @foreach($perms as $perm)
                                 <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;font-size:12px;color:#1C1917;"
                                     :style="selectedRole.isSystem ? '' : 'cursor:pointer;'">
-                                    {{-- PLACEHOLDER: native checkbox — swap for the app's real checkbox
-                                         component once available. Bound to Alpine state (isChecked) rather
-                                         than a Blade {{ }} value since it must update instantly when the
-                                         selected role changes client-side, per Rule 29 (Alpine ownership). --}}
                                     <input type="checkbox"
                                         :checked="isChecked('{{ $perm->name }}')"
                                         :disabled="selectedRole.isSystem"
@@ -92,42 +93,46 @@
 
     </div>
 
-    {{-- Create/Rename Role Modal --}}
-    @if($showRoleForm)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
-            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:16px;">
-                {{ $editingRoleId ? 'Rename Role' : 'New Role' }}
-            </h3>
-            <div class="krd-input-group">
-                <label class="krd-label-text">Role Name</label>
-                <input wire:model="roleName" type="text" class="krd-input @error('roleName') krd-input-error @enderror"
-                    placeholder="e.g. Lead Planner" autofocus />
-                @error('roleName') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
-            </div>
-            <div style="display:flex;gap:10px;margin-top:16px;">
-                <button wire:click="saveRole" class="krd-btn krd-btn-primary" style="flex:1;">Save</button>
-                <button wire:click="cancelRoleForm" class="krd-btn krd-btn-ghost" style="flex:1;">Cancel</button>
+    {{-- Create/Rename Role Modal — Alpine-owned visibility, instant open/close --}}
+    <template x-teleport="body">
+    <div x-show="showRoleModal" x-cloak style="position:fixed;inset:0;z-index:60;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
+        <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+                <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:16px;" x-text="roleModalMode === 'rename' ? 'Rename Role' : 'New Role'"></h3>
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Role Name</label>
+                    <input x-model="roleModalName" type="text" class="krd-input @error('roleName') krd-input-error @enderror"
+                        placeholder="e.g. Lead Planner" />
+                    @error('roleName') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                </div>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button x-on:click="saveRoleModal()" class="krd-btn krd-btn-primary" style="flex:1;">Save</button>
+                    <button x-on:click="closeRoleModal()" class="krd-btn krd-btn-ghost" style="flex:1;">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-    @endif
+    </template>
 
-    {{-- Delete Role Modal --}}
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
-            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete Role?</h3>
-            <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
-                This cannot be undone. If any staff members are still assigned this role, deletion will be blocked until they're reassigned.
-            </p>
-            <div style="display:flex;gap:10px;">
-                <button wire:click="deleteRole" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
-                <button wire:click="cancelDeleteRole" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+    {{-- Delete Role Modal — Alpine-owned visibility, instant open/close --}}
+    <template x-teleport="body">
+    <div x-show="showDeleteRoleModal" x-cloak style="position:fixed;inset:0;z-index:60;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
+        <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+                <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete Role?</h3>
+                <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
+                    This cannot be undone. If any staff members are still assigned this role, deletion will be blocked until they're reassigned.
+                </p>
+                <div style="display:flex;gap:10px;">
+                    <button x-on:click="confirmDeleteRoleModal()" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
+                    <button x-on:click="closeDeleteRoleModal()" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-    @endif
+    </template>
 
 </div>
 
@@ -142,6 +147,14 @@
             selectedRoleId: {{ $initialSelectedRoleId ?? 'null' }},
             selectedRole: null,
 
+            showRoleModal: false,
+            roleModalMode: 'create',
+            roleModalId: null,
+            roleModalName: '',
+
+            showDeleteRoleModal: false,
+            deleteRoleModalId: null,
+
             init() {
                 const raw = document.getElementById('roles-permissions-data').textContent;
                 this.rolesById = JSON.parse(raw);
@@ -155,9 +168,7 @@
             pick(roleId) {
                 this.selectedRoleId = roleId;
                 this.syncSelectedRole();
-                // Keep the server in sync in the background — Renderless,
-                // so this never triggers a re-render or visible delay.
-                $wire.selectRole(roleId);
+                $wire.selectRole(roleId); // Renderless — background sync only
             },
 
             isChecked(permissionName) {
@@ -168,8 +179,6 @@
             toggle(permissionName) {
                 if (!this.selectedRole) return;
 
-                // Optimistic local update so the checkbox flips instantly —
-                // Livewire's Renderless call persists it in the background.
                 const idx = this.selectedRole.permissions.indexOf(permissionName);
                 if (idx === -1) {
                     this.selectedRole.permissions.push(permissionName);
@@ -177,7 +186,52 @@
                     this.selectedRole.permissions.splice(idx, 1);
                 }
 
-                $wire.togglePermission(permissionName);
+                $wire.togglePermission(permissionName); // Renderless — background sync only
+            },
+
+            // ── Create/Rename modal — instant, no network call to open/close ──
+            openCreateRole() {
+                this.roleModalMode = 'create';
+                this.roleModalId = null;
+                this.roleModalName = '';
+                this.showRoleModal = true;
+            },
+
+            openRenameRole(id, name) {
+                this.roleModalMode = 'rename';
+                this.roleModalId = id;
+                this.roleModalName = name;
+                this.showRoleModal = true;
+            },
+
+            closeRoleModal() {
+                this.showRoleModal = false;
+            },
+
+            async saveRoleModal() {
+                try {
+                    await $wire.saveRole(this.roleModalMode === 'rename' ? this.roleModalId : null, this.roleModalName);
+                    this.showRoleModal = false;
+                } catch (e) {
+                    // Validation failed server-side — Livewire re-renders with
+                    // the inline error message; keep the modal open so the
+                    // person can see it and correct their input.
+                }
+            },
+
+            // ── Delete modal — instant, no network call to open/close ──
+            openDeleteRole(id) {
+                this.deleteRoleModalId = id;
+                this.showDeleteRoleModal = true;
+            },
+
+            closeDeleteRoleModal() {
+                this.showDeleteRoleModal = false;
+            },
+
+            confirmDeleteRoleModal() {
+                $wire.deleteRole(this.deleteRoleModalId);
+                this.showDeleteRoleModal = false;
             },
         };
     }

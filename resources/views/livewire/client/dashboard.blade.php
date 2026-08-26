@@ -41,12 +41,25 @@
                         {{ $event->name }}
                     </h2>
                 </div>
-                @if($event->status)
-                <span class="krd-badge krd-badge-dynamic"
-                    style="background:{{ $event->status->color }}1a;color:{{ $event->status->color }};">
-                    {{ $event->status->name }}
-                </span>
-                @endif
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <a href="{{ route('client.events.media', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Media
+                    </a>
+                    <a href="{{ route('client.moodboards.index', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Moodboards
+                    </a>
+                    @if($event->effectiveClientVendorInvolvementLevel() !== 'none')
+                    <a href="{{ route('client.events.vendors', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Vendors
+                    </a>
+                    @endif
+                    @if($event->status)
+                    <span class="krd-badge krd-badge-dynamic"
+                        style="background:{{ $event->status->color }}1a;color:{{ $event->status->color }};">
+                        {{ $event->status->name }}
+                    </span>
+                    @endif
+                </div>
             </div>
 
             {{-- Event Details --}}

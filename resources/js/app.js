@@ -366,6 +366,34 @@ document.addEventListener('alpine:init', () => {
                 bubble.innerHTML = e.rendered;
                 inner.appendChild(bubble);
             }
+            if (e.shared_moodboard) {
+                const card = document.createElement('a');
+                card.href = '/moodboards/' + e.shared_moodboard.id;
+                card.style.cssText = 'display:block;text-decoration:none;background:#fff;border:1px solid #E7E5E4;border-radius:10px;overflow:hidden;max-width:260px;margin-top:6px;' + (isMe ? 'margin-left:auto;' : '');
+                const coverWrap = document.createElement('div');
+                coverWrap.style.cssText = 'width:100%;height:100px;background:#F5F5F4;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                if (e.shared_moodboard.cover) {
+                    const img = document.createElement('img');
+                    img.src = e.shared_moodboard.cover;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    coverWrap.appendChild(img);
+                } else {
+                    coverWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+                }
+                const textWrap = document.createElement('div');
+                textWrap.style.cssText = 'padding:8px 10px;';
+                const label = document.createElement('div');
+                label.style.cssText = 'font-size:10px;color:#A8A29E;text-transform:uppercase;';
+                label.textContent = 'Moodboard';
+                const title = document.createElement('div');
+                title.style.cssText = 'font-size:12.5px;font-weight:600;color:#1C1917;';
+                title.textContent = e.shared_moodboard.title;
+                textWrap.appendChild(label);
+                textWrap.appendChild(title);
+                card.appendChild(coverWrap);
+                card.appendChild(textWrap);
+                inner.appendChild(card);
+            }
             if (e.attachments && e.attachments.length > 0) {
                 e.attachments.forEach(att => {
                     if (att.is_audio) {
@@ -433,6 +461,34 @@ document.addEventListener('alpine:init', () => {
                 bubble.style.cssText = 'padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.6;' + (isMe ? 'background:#7C3AED;color:#fff;' : 'background:#F5F5F4;color:#1C1917;');
                 bubble.innerHTML = e.rendered;
                 inner.appendChild(bubble);
+            }
+            if (e.shared_moodboard) {
+                const card = document.createElement('a');
+                card.href = '/moodboards/' + e.shared_moodboard.id;
+                card.style.cssText = 'display:block;text-decoration:none;background:#fff;border:1px solid #E7E5E4;border-radius:10px;overflow:hidden;max-width:260px;margin-top:6px;' + (isMe ? 'margin-left:auto;' : '');
+                const coverWrap = document.createElement('div');
+                coverWrap.style.cssText = 'width:100%;height:100px;background:#F5F5F4;display:flex;align-items:center;justify-content:center;overflow:hidden;';
+                if (e.shared_moodboard.cover) {
+                    const img = document.createElement('img');
+                    img.src = e.shared_moodboard.cover;
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    coverWrap.appendChild(img);
+                } else {
+                    coverWrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+                }
+                const textWrap = document.createElement('div');
+                textWrap.style.cssText = 'padding:8px 10px;';
+                const label = document.createElement('div');
+                label.style.cssText = 'font-size:10px;color:#A8A29E;text-transform:uppercase;';
+                label.textContent = 'Moodboard';
+                const title = document.createElement('div');
+                title.style.cssText = 'font-size:12.5px;font-weight:600;color:#1C1917;';
+                title.textContent = e.shared_moodboard.title;
+                textWrap.appendChild(label);
+                textWrap.appendChild(title);
+                card.appendChild(coverWrap);
+                card.appendChild(textWrap);
+                inner.appendChild(card);
             }
             if (e.attachments && e.attachments.length > 0) {
                 e.attachments.forEach(att => {
@@ -594,6 +650,21 @@ document.addEventListener('alpine:init', () => {
                 inner.appendChild(bubble);
             }
 
+            // Shared moodboard card — mirrors the Blade-rendered version's
+            // markup exactly, positioned in the same spot (after the body
+            // bubble, before attachments), so the instant local-echo bubble
+            // looks identical to what the next real page load would show.
+            // Renders the server's pre-rendered HTML string for the
+            // moodboard card — same partial that draws it on page-load,
+            // so this can NEVER visually drift from the Blade version.
+            // The card's actual design lives in exactly one file:
+            // resources/views/partials/moodboard-share-card.blade.php
+            if (e.shared_moodboard_html) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = e.shared_moodboard_html;
+                inner.appendChild(wrapper.firstElementChild);
+            }
+
             if (e.attachments && e.attachments.length > 0) {
                 const attWrap = document.createElement('div');
                 attWrap.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:6px;' + (isMe ? 'align-items:flex-end;' : '');
@@ -715,3 +786,286 @@ document.addEventListener('livewire:init', () => {
         });
     });
 });
+
+// ── PWA: Service Worker Registration ────────────────────────────────
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Silent failure — PWA install is a progressive enhancement,
+            // never block the app if registration fails.
+        });
+    });
+}
+
+// ── PWA: White-Label Reinstall Detection ────────────────────────────
+// An already-installed home-screen icon typically won't auto-update when
+// a tenant's white-label status changes (especially on iOS). This detects
+// the false→true transition and prompts the person to reinstall so they
+// pick up their new branding.
+(function () {
+    if (typeof window.__tenantWhiteLabel === 'undefined') return;
+
+    const storageKey = 'krd-white-label-status-' + (window.__tenantSlug || 'koordli');
+    const dismissedKey = storageKey + '-prompted';
+
+    const previousStatus = localStorage.getItem(storageKey);
+    const currentStatus = window.__tenantWhiteLabel ? 'true' : 'false';
+
+    const justEnabled = previousStatus === 'false' && currentStatus === 'true';
+    const alreadyPrompted = localStorage.getItem(dismissedKey) === 'true';
+
+    localStorage.setItem(storageKey, currentStatus);
+
+    if (justEnabled && !alreadyPrompted) {
+        showReinstallBanner();
+        localStorage.setItem(dismissedKey, 'true');
+    }
+
+    function showReinstallBanner() {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+        banner.innerHTML = `
+            <span style="flex:1;line-height:1.5;">Your workspace now has custom branding. If you've already installed this app, remove it and re-add it to your home screen to see your updated icon and name.</span>
+            <button style="background:#7C3AED;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;flex-shrink:0;">Got it</button>
+        `;
+        banner.querySelector('button').addEventListener('click', () => banner.remove());
+        document.body.appendChild(banner);
+    }
+})();
+
+// ── PWA: Push Notification Subscribe Prompt ─────────────────────────
+(function () {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (typeof window.__vapidPublicKey === 'undefined' || !window.__vapidPublicKey) return;
+    if (typeof window.__currentUserId === 'undefined' || window.__currentUserId === null) return;
+
+    const dismissKey = 'krd-push-prompt-dismissed';
+    if (localStorage.getItem(dismissKey) === 'true') return;
+
+    navigator.serviceWorker.ready.then((registration) => {
+        registration.pushManager.getSubscription().then((existing) => {
+            if (existing) return; // already subscribed, nothing to prompt
+            if (Notification.permission === 'denied') return; // respect a prior explicit "no"
+
+            showPushPrompt(registration);
+        });
+    });
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+    }
+
+    function showPushPrompt(registration) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+        banner.innerHTML = `
+            <span style="flex:1;line-height:1.5;">Enable notifications to get instant updates for tasks, messages, and reminders.</span>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button id="krd-push-enable" style="background:#7C3AED;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Enable</button>
+                <button id="krd-push-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Not now</button>
+            </div>
+        `;
+        document.body.appendChild(banner);
+
+        banner.querySelector('#krd-push-dismiss').addEventListener('click', () => {
+            localStorage.setItem(dismissKey, 'true');
+            banner.remove();
+        });
+
+        banner.querySelector('#krd-push-enable').addEventListener('click', () => {
+            subscribe(registration);
+            localStorage.setItem(dismissKey, 'true');
+            banner.remove();
+        });
+    }
+
+    function subscribe(registration) {
+        registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(window.__vapidPublicKey),
+        }).then((subscription) => {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            fetch('/push/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token || '',
+                },
+                body: JSON.stringify(subscription),
+            });
+        }).catch(() => {
+            // Permission denied or subscribe failed — fail silently, this
+            // is a progressive enhancement, never block the app.
+        });
+    }
+})();
+
+// ── Global Chunked Upload Engine ────────────────────────────────────
+// Deliberately NOT a Livewire component — lives as a plain global object
+// so it survives wire:navigate page transitions (Livewire's SPA-style
+// navigation keeps the JS runtime alive), matching the requirement that
+// an upload must keep working if the user navigates elsewhere in the app.
+window.KoordliUploader = (function () {
+    const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
+    const MAX_BATCH = 20; // client-side UX limit only, not a security boundary
+    const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    let onComplete = null;
+
+    function uuid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+        });
+    }
+
+    const pendingFiles = {}; // sessionId -> { file, eventId, folderId, uploadType } — kept for retry
+
+    function renderProgressCard(sessionId, fileName) {
+        const container = document.getElementById('krd-upload-progress');
+        if (!container) return null;
+
+        const card = document.createElement('div');
+        card.id = 'krd-upload-' + sessionId;
+        card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
+        card.innerHTML = `
+            <svg width="56" height="56" viewBox="0 0 56 56">
+                <circle cx="28" cy="28" r="24" fill="none" stroke="#E7E5E4" stroke-width="4"/>
+                <circle class="krd-progress-ring" cx="28" cy="28" r="24" fill="none" stroke="#7C3AED" stroke-width="4"
+                    stroke-dasharray="150.8" stroke-dashoffset="150.8" transform="rotate(-90 28 28)"/>
+                <text x="28" y="32" text-anchor="middle" font-size="12" fill="#1C1917" class="krd-progress-text">0%</text>
+            </svg>
+            <span style="font-size:10px;color:#78716C;max-width:70px;text-align:center;word-break:break-word;">${fileName}</span>
+            <button class="krd-retry-btn" style="display:none;background:none;border:1px solid #DC2626;color:#DC2626;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;">Retry</button>
+        `;
+        container.appendChild(card);
+        card.querySelector('.krd-retry-btn').addEventListener('click', () => retryUpload(sessionId));
+        return card;
+    }
+
+    function updateProgressCard(card, percent) {
+        if (!card) return;
+        const ring = card.querySelector('.krd-progress-ring');
+        const text = card.querySelector('.krd-progress-text');
+        const circumference = 150.8;
+        ring.setAttribute('stroke-dashoffset', circumference - (circumference * percent) / 100);
+        text.textContent = Math.round(percent) + '%';
+    }
+
+    function markCardSuccess(card, sessionId) {
+        if (!card) return;
+        const ring = card.querySelector('.krd-progress-ring');
+        const text = card.querySelector('.krd-progress-text');
+        ring.setAttribute('stroke', '#10B981');
+        ring.setAttribute('stroke-dashoffset', 0);
+        text.textContent = '✓';
+        delete pendingFiles[sessionId];
+        setTimeout(() => card.remove(), 1500);
+    }
+
+    function markCardFailed(card) {
+        if (!card) return;
+        const ring = card.querySelector('.krd-progress-ring');
+        const text = card.querySelector('.krd-progress-text');
+        ring.setAttribute('stroke', '#DC2626');
+        text.textContent = '✕';
+        card.querySelector('.krd-retry-btn').style.display = 'inline-block';
+    }
+
+    function retryUpload(sessionId) {
+        const entry = pendingFiles[sessionId];
+        if (!entry) return;
+        const card = document.getElementById('krd-upload-' + sessionId);
+        card.querySelector('.krd-retry-btn').style.display = 'none';
+        card.querySelector('.krd-progress-ring').setAttribute('stroke', '#7C3AED');
+        uploadFile(entry.file, entry.eventId, entry.folderId, entry.uploadType, sessionId, card);
+    }
+
+    async function uploadFile(file, eventId, folderId, uploadType, existingSessionId, existingCard) {
+        const sessionId = existingSessionId || uuid();
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const card = existingCard || renderProgressCard(sessionId, file.name);
+        pendingFiles[sessionId] = { file, eventId, folderId, uploadType };
+
+        try {
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const chunk = file.slice(start, start + CHUNK_SIZE);
+
+                const formData = new FormData();
+                formData.append('upload_session', sessionId);
+                formData.append('event_id', eventId);
+                formData.append('chunk_index', i);
+                formData.append('total_chunks', totalChunks);
+                formData.append('chunk', chunk);
+
+                let attempt = 0;
+                let success = false;
+                while (attempt < 3 && !success) {
+                    try {
+                        const res = await fetch('/media/upload/chunk', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': csrfToken() },
+                            body: formData,
+                        });
+                        if (!res.ok) throw new Error('Chunk upload failed');
+                        success = true;
+                    } catch (e) {
+                        attempt++;
+                        if (attempt >= 3) throw e;
+                        await new Promise((r) => setTimeout(r, 1000 * attempt));
+                    }
+                }
+
+                updateProgressCard(card, ((i + 1) / totalChunks) * 100);
+            }
+
+            const finalizeRes = await fetch('/media/upload/finalize', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken(),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    upload_session: sessionId,
+                    event_id: eventId,
+                    folder_id: folderId,
+                    file_name: file.name,
+                    total_chunks: totalChunks,
+                    upload_type: uploadType || 'file',
+                }),
+            });
+
+            const result = await finalizeRes.json();
+
+            if (!finalizeRes.ok) {
+                if (window.showToast) window.showToast(result.error || 'Upload failed.', 'error');
+                markCardFailed(card);
+                return;
+            }
+
+            markCardSuccess(card, sessionId);
+            if (onComplete) onComplete(result.document);
+        } catch (e) {
+            if (window.showToast) window.showToast('Upload failed: ' + file.name, 'error');
+            markCardFailed(card);
+        }
+    }
+
+    function enqueue(fileList, eventId, folderId, uploadType) {
+        const files = Array.from(fileList).slice(0, MAX_BATCH);
+        if (fileList.length > MAX_BATCH && window.showToast) {
+            window.showToast(`Only the first ${MAX_BATCH} files were queued (batch limit).`, 'error');
+        }
+        files.forEach((file) => uploadFile(file, eventId, folderId, uploadType));
+    }
+
+    return {
+        enqueue,
+        set onComplete(fn) { onComplete = fn; },
+        openLightbox: null, // bound per-page by media-library.blade.php's Alpine component
+    };
+})();

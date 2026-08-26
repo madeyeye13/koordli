@@ -205,3 +205,10 @@ Set a tenant's subdomain in Domain Settings (e.g. `haywhy`), visit `https://hayw
 ---
 
 *This document reflects the Koordli Phase 11 domain/white-label architecture as built. The application-layer code (feature flags, tenant resolution middleware, Domain Settings UI, verification service) is already complete and requires no changes to work with this infrastructure setup.*
+
+## ADDENDUM ABOUT VIDEO COMPRESSION AFTER DEPLOYMENT
+
+Two things to verify on your VPS before this actually works, not just locally:
+
+ffmpeg and ffprobe must both be on the system PATH the PHP process/queue worker runs under — installing FFmpeg typically installs both together, but worth confirming ffprobe -version succeeds too, not just ffmpeg -version.
+Your queue worker's timeout must exceed video compression time — I set the FFmpeg process's own timeout to 30 minutes, but if your queue:work process (or Supervisor config) has a shorter global job timeout, a large video could get killed mid-compression. Worth checking config/queue.php's retry_after value once you're on the VPS.

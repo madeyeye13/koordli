@@ -22,7 +22,7 @@
             {{ $message ?? 'This feature is not available on your current plan.' }}
         </div>
     </div>
-    <a href="#" style="background:#7C3AED;color:#fff;font-size:12px;font-weight:500;padding:7px 14px;border-radius:4px;text-decoration:none;white-space:nowrap;flex-shrink:0;">
+        <a href="{{ route('tenant.billing.upgrade') }}" wire:navigate style="background:#7C3AED;color:#fff;font-size:12px;font-weight:500;padding:7px 14px;border-radius:4px;text-decoration:none;white-space:nowrap;flex-shrink:0;">
         Upgrade
     </a>
 </div>

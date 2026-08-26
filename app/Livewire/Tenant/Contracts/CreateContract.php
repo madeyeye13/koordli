@@ -9,6 +9,7 @@ use App\Models\Tenant\VendorContractTemplate;
 use App\Models\Tenant\VendorEventAssignment;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -84,7 +85,7 @@ class CreateContract extends Component
         }
 
         $this->validate([
-            'vendor_id' => 'required|exists:vendors,id',
+            'vendor_id' => ['required', Rule::exists('vendors', 'id')->where('tenant_id', auth()->user()->tenant_id)],
             'title'     => 'required|string|min:2|max:200',
             'content'   => 'required|string|min:10',
         ]);

@@ -19,13 +19,15 @@ class Task extends Model
         'assigned_to', 'vendor_account_id', 'created_by',
         'title', 'description', 'priority', 'status',
         'due_date', 'completed_at', 'sort_order', 'depends_on',
+        'is_client_visible',
     ];
 
     protected $casts = [
-        'priority'     => TaskPriority::class,
-        'status'       => TaskStatus::class,
-        'due_date'     => 'date',
-        'completed_at' => 'datetime',
+        'priority'           => TaskPriority::class,
+        'status'             => TaskStatus::class,
+        'due_date'           => 'date',
+        'completed_at'       => 'datetime',
+        'is_client_visible'  => 'boolean',
     ];
 
     protected static function booted(): void
@@ -45,6 +47,22 @@ class Task extends Model
             }
             if ($task->isDirty('status') && $task->status !== TaskStatus::Done) {
                 $task->completed_at = null;
+            }
+        });
+
+        // Fires exactly once, regardless of whether completion happened via
+        // TaskCenter::markDone(), TaskCenter::updateStatus(), or
+        // CreateTask::save() — all three funnel through this one hook,
+        // rather than needing the dispatch call duplicated in three places.
+        static::updated(function (Task $task) {
+            if (
+                $task->wasChanged('status')
+                && $task->status === TaskStatus::Done
+                && $task->is_client_visible
+                && $task->event_id
+            ) {
+                app(\App\Services\Notifications\ClientNotificationService::class)
+                    ->notifyMilestoneCompleted($task);
             }
         });
     }

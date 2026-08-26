@@ -115,12 +115,14 @@
 
         <div class="krd-nav-section">
             <div class="krd-nav-label">Experience</div>
-            <a href="#" class="krd-nav-item">
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'clients.manage'))
+            <a href="{{ route('tenant.clients') }}" class="krd-nav-item {{ request()->routeIs('tenant.clients') ? 'active' : '' }}" wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
                 </svg>
                 {{ term_title('client_plural', 'Clients') }}
             </a>
+            @endif
             <a href="{{ route('tenant.events') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.events.guests') ? 'active' : '' }}"
                 wire:navigate>
@@ -137,6 +139,16 @@
                 </svg>
                 Runsheet
             </a>
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'moodboards.view'))
+            <a href="{{ route('tenant.moodboards.hub') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.moodboards.hub') || request()->routeIs('tenant.events.moodboards') || request()->routeIs('tenant.moodboards.edit') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>
+                </svg>
+                Moodboards
+            </a>
+            @endif
         </div>
 
         <div class="krd-nav-section">
@@ -169,6 +181,26 @@
                 Roles & Permissions
             </a>
             @endif
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'client-notifications.manage'))
+            <a href="{{ route('tenant.client-notifications') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.client-notifications') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+                </svg>
+                Client Notifications
+            </a>
+            @endif
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'quick-access.manage') && app(\App\Services\FeatureGateService::class)->canAccess(auth()->user()->tenant, 'quick_access_links'))
+            <a href="{{ route('tenant.quick-access') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.quick-access') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/>
+                </svg>
+                Quick Access Links
+            </a>
+            @endif
             <a href="{{ route('tenant.billing') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.billing*') ? 'active' : '' }}"
                 wire:navigate>
@@ -197,7 +229,13 @@
                 </svg>
                 Domain Settings
             </a>
-            <a href="#" class="krd-nav-item">
+            <a href="{{ route('tenant.my-profile') }}" class="krd-nav-item {{ request()->routeIs('tenant.my-profile') ? 'active' : '' }}" wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                My Profile
+            </a>
+            <a href="{{ route('tenant.settings') }}" class="krd-nav-item {{ request()->routeIs('tenant.settings') ? 'active' : '' }}" wire:navigate>
                 <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/>
                 </svg>

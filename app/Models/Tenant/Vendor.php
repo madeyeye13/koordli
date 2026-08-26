@@ -14,6 +14,8 @@ class Vendor extends Model
     protected $fillable = [
         'tenant_id',
         'vendor_category_id',
+        'source',
+        'added_by_client_id',
         'name',
         'contact_name',
         'phone',
@@ -52,6 +54,16 @@ class Vendor extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(VendorCategory::class, 'vendor_category_id');
+    }
+
+    public function addedByClient(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Central\Client::class, 'added_by_client_id');
+    }
+
+    public function isClientAdded(): bool
+    {
+        return $this->source === 'client_added';
     }
 
     public function eventAssignments(): HasMany

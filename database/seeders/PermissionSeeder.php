@@ -133,6 +133,22 @@ class PermissionSeeder extends Seeder
             'vendors.applications.view',
             'vendors.applications.manage', // approve/reject — owner-only by default
 
+            // Client vendor involvement
+            'vendors.client_involvement.manage', // toggle involvement level, approve/reject suggestions, finalize proposals
+
+            // Client notification settings
+            'client-notifications.manage',
+
+            // Quick Access links (tenant-side management of staff/vendor links)
+            'quick-access.manage',
+
+            // Client account management (this new tenant-side Clients page)
+            'clients.manage',
+
+            // Moodboards
+            'moodboards.view',
+            'moodboards.manage',
+
             // Vendor self (for vendor role)
             'vendor.profile.manage',
             'vendor.events.view',
@@ -184,6 +200,11 @@ class PermissionSeeder extends Seeder
                 'events.view', 'events.create', 'events.edit',
                 'tasks.view', 'tasks.create', 'tasks.edit', 'tasks.assign',
                 'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.assign',
+                'vendors.client_involvement.manage',
+                'client-notifications.manage',
+                'quick-access.manage',
+                'clients.manage',
+                'moodboards.view', 'moodboards.manage',
                 'budget.view',
                 'guests.view', 'guests.create', 'guests.edit', 'guests.checkin',
                 'rsvp.view', 'rsvp.manage',
@@ -215,6 +236,7 @@ class PermissionSeeder extends Seeder
                 'runsheet.view', 'runsheet.manage',
                 'guests.view', 'guests.checkin',
                 'assets.manage', // day-of-event logistics ownership, per confirmed answer
+                'moodboards.view', // reference-only — operations doesn't create creative direction, just reads it
             ],
 
             'social_media_manager' => [

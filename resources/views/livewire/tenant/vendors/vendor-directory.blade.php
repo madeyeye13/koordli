@@ -1,4 +1,4 @@
-<div x-data="{ view: '{{ $view }}' }">
+<div x-data="{ view: '{{ $view }}', showInvolvementModal: false }">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -30,11 +30,65 @@
                     <span x-text="copied ? '✓ Copied!' : 'Copy Vendor Link'"></span>
                 </button>
             </div>
+            @if($canManageInvolvement)
+            <button type="button" x-on:click="$wire.openInvolvementSettings(); showInvolvementModal = true" class="krd-btn krd-btn-secondary">
+                Client Vendor Involvement
+            </button>
+            @endif
             <a href="{{ route('tenant.vendors.create') }}" wire:navigate class="krd-btn krd-btn-primary">
                 + Add {{ term_title('vendor', 'Vendor') }}
             </a>
         </div>
     </div>
+
+    {{-- Client Vendor Involvement Settings Modal --}}
+    <template x-teleport="body">
+    <div x-show="showInvolvementModal" x-cloak style="position:fixed;inset:0;z-index:60;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
+        <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:8px;padding:24px;max-width:480px;width:100%;">
+                <h3 style="font-size:15px;font-weight:600;margin-bottom:4px;">Client Vendor Involvement</h3>
+                <p style="font-size:12px;color:#78716C;margin-bottom:16px;">Controls how much your clients can see and do around vendor selection.</p>
+
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Involvement Level</label>
+                    <div class="krd-dropdown"
+                        x-data="{
+                            open: false,
+                            selected: {{ Js::from(['view_only' => 'View Only', 'approve_selections' => 'Approve Selections', 'full_participation' => 'Full Participation', 'none' => 'None']) }}[$wire.involvementLevel] ?? 'None',
+                            pick(label, value) { this.selected = label; this.open = false; $wire.set('involvementLevel', value); }
+                        }"
+                        x-on:click.outside="open = false">
+                        <button type="button" class="krd-dropdown-trigger" x-bind:class="{ open: open }" x-on:click="open = !open">
+                            <span x-text="selected"></span>
+                            <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <template x-if="open">
+                            <div class="krd-dropdown-menu">
+                                <div class="krd-dropdown-option" x-on:click="pick('None', 'none')">None — clients see nothing vendor-related</div>
+                                <div class="krd-dropdown-option" x-on:click="pick('View Only', 'view_only')">View Only — clients see confirmed vendors only</div>
+                                <div class="krd-dropdown-option" x-on:click="pick('Approve Selections', 'approve_selections')">Approve Selections — clients can approve/reject your suggestions</div>
+                                <div class="krd-dropdown-option" x-on:click="pick('Full Participation', 'full_participation')">Full Participation — clients can also suggest their own vendors</div>
+                            </div>
+                        </template>
+                    </div>
+                    @error('involvementLevel') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="krd-input-group" style="margin-bottom:0;">
+                    <label class="krd-label-text">Disclaimer for Client-Sourced Vendors <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                    <textarea wire:model="disclaimerText" class="krd-input" rows="4" placeholder="e.g. We cannot guarantee the quality or reliability of vendors sourced directly by the client..."></textarea>
+                    <span class="krd-input-hint">Shown to the client before they finalize a vendor they found themselves.</span>
+                </div>
+
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                    <button wire:click="saveInvolvementSettings" x-on:click="showInvolvementModal = false" class="krd-btn krd-btn-primary" style="flex:1;">Save</button>
+                    <button x-on:click="showInvolvementModal = false" class="krd-btn krd-btn-ghost" style="flex:1;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </template>
 
     {{-- Filters + View Toggle --}}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap;">

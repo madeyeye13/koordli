@@ -10,6 +10,7 @@ use App\Models\Tenant\User;
 use App\Models\Tenant\Vendor;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -153,14 +154,16 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
+        $tenantId = auth()->user()->tenant_id;
+
         $this->validate([
             'item_title'       => 'required|string|min:2|max:200',
             'item_start'       => 'nullable|date_format:H:i',
             'item_end'         => 'nullable|date_format:H:i',
             'item_status'      => 'required|in:pending,in_progress,done,delayed',
-            'item_assigned_to' => 'nullable|exists:users,id',
-            'item_vendor_id'   => 'nullable|exists:vendors,id',
-            'item_location_id' => 'nullable|exists:event_locations,id',
+            'item_assigned_to' => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenantId)],
+            'item_vendor_id'   => ['nullable', Rule::exists('vendors', 'id')->where('tenant_id', $tenantId)],
+            'item_location_id' => ['nullable', Rule::exists('event_locations', 'id')->where('tenant_id', $tenantId)],
         ]);
 
         $sortOrder = RunsheetItem::where('runsheet_id', $this->runsheet->id)->max('sort_order') + 1;

@@ -43,8 +43,10 @@ class ProcessReminders extends Command
                         $this->processVendorApplicationRule($rule, $tenant->id, $settings, $dispatcher);
                     } elseif ($rule->category === 'runsheets') {
                         $this->processRunsheetRule($rule, $tenant->id, $dispatcher);
+                    } elseif ($rule->category === 'rsvp') {
+                        $this->processRsvpRule($rule, $tenant->id, $settings, $dispatcher);
                     }
-                    // Remaining stage 5 modules (invoices, bookings, rsvp, support, vendor applications) added next
+                    // Remaining stage 5 modules (support, vendor applications) already added above
                 }
             }
         });
@@ -340,6 +342,74 @@ class ProcessReminders extends Command
         }
     }
 
+
+    /**
+     * Notifies the CLIENT, not staff — the one genuinely new notifiable
+     * case in this command. Every other branch here notifies a staff
+     * member (createdBy, assignedTo, tenant owner); RSVP deadlines are
+     * inherently client-relevant, so this deliberately breaks that pattern
+     * rather than notifying staff about the client's own deadline.
+     */
+    private function processRsvpRule($rule, int $tenantId, $settings, NotificationDispatchService $dispatcher): void
+    {
+        if ($settings->isWithinQuietHours() && $rule->priority !== 'critical') return;
+
+        $tenantModel = \App\Models\Central\Tenant::find($tenantId);
+        if (!$tenantModel || !$tenantModel->clientNotificationEnabled('rsvp')) return;
+
+        $forms = \App\Models\Tenant\RsvpForm::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->whereNotNull('deadline')
+            ->with('event')
+            ->get();
+
+        foreach ($forms as $form) {
+            $client = \App\Models\Tenant\ClientEventAccess::withoutGlobalScope('tenant')
+                ->where('event_id', $form->event_id)
+                ->where('tenant_id', $tenantId)
+                ->with('client')
+                ->first()?->client;
+
+            if (!$client) continue;
+
+            foreach ($rule->offsets as $offsetMinutes) {
+                $targetTime = $form->deadline->copy()->addMinutes($offsetMinutes);
+
+                if (!now()->between($targetTime, $targetTime->copy()->addMinutes(15))) continue;
+
+                $alreadySent = \App\Models\Tenant\ReminderLog::where('tenant_id', $tenantId)
+                    ->where('reminder_rule_id', $rule->id)
+                    ->where('subject_type', \App\Models\Tenant\RsvpForm::class)
+                    ->where('subject_id', $form->id)
+                    ->where('sent_at', '>=', $targetTime->copy()->subHours(1))
+                    ->exists();
+
+                if ($alreadySent) continue;
+
+                $remaining = $offsetMinutes <= -1440 ? '24 hours' : ($offsetMinutes <= -120 ? '2 hours' : 'soon');
+
+                $dispatcher->notify(
+                    notifiable: $client,
+                    category: 'rsvp',
+                    notificationType: 'rsvp_deadline_approaching',
+                    templateKey: $rule->template_key,
+                    placeholders: [
+                        'user_name'      => $client->name,
+                        'event_name'     => $form->event?->name ?? 'your event',
+                        'due_date'       => $form->deadline->format('D, d M Y'),
+                        'remaining_time' => $remaining,
+                    ],
+                    priority: $rule->priority,
+                    actionUrl: route('client.dashboard'),
+                    actionLabel: 'View Event',
+                    subject: $form,
+                    tenantId: $tenantId,
+                    reminderRuleId: $rule->id,
+                );
+            }
+        }
+    }
 
     private function processRunsheetRule($rule, int $tenantId, NotificationDispatchService $dispatcher): void
     {

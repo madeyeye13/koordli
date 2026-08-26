@@ -22,11 +22,12 @@ class CreatePlan extends Component
     public bool   $is_active     = true;
     public array  $features      = [];
 
-    // Limit fields
+        // Limit fields
     public string $max_events     = '';
     public string $max_staff      = '';
     public string $max_storage_mb = '';
     public string $max_guests     = '';
+    public string $max_moodboards = '';
 
     // Add feature modal
     public bool   $showAddFeature    = false;
@@ -50,6 +51,7 @@ class CreatePlan extends Component
             $this->max_staff      = $limits['max_staff'] == -1 ? '' : ($limits['max_staff'] ?? '');
             $this->max_storage_mb = $limits['max_storage_mb'] == -1 ? '' : ($limits['max_storage_mb'] ?? '');
             $this->max_guests     = $limits['max_guests'] == -1 ? '' : ($limits['max_guests'] ?? '');
+            $this->max_moodboards = ($limits['max_moodboards'] ?? -1) == -1 ? '' : $limits['max_moodboards'];
         }
     }
 
@@ -113,6 +115,7 @@ class CreatePlan extends Component
             'max_staff'      => $this->max_staff === '' ? -1 : (int) $this->max_staff,
             'max_storage_mb' => $this->max_storage_mb === '' ? -1 : (int) $this->max_storage_mb,
             'max_guests'     => $this->max_guests === '' ? -1 : (int) $this->max_guests,
+            'max_moodboards' => $this->max_moodboards === '' ? -1 : (int) $this->max_moodboards,
         ];
 
         $data = [

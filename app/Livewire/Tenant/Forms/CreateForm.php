@@ -187,6 +187,8 @@ class CreateForm extends Component
                 Storage::disk('public')->delete($this->form->hero_image_path);
             }
 
+            $heroImageSize = $this->hero_image->getSize();
+
             $path = $this->hero_image->storeAs(
                 'form-heroes',
                 Str::uuid() . '.' . $this->hero_image->getClientOriginalExtension(),
@@ -195,6 +197,7 @@ class CreateForm extends Component
 
             $data['hero_image_path'] = $path;
             $data['hero_image']      = Storage::disk('public')->url($path);
+            $data['hero_image_size'] = $heroImageSize;
             $this->hero_image_url    = $data['hero_image'];
             $this->hero_image        = null;
         }

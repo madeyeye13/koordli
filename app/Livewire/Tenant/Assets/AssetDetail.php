@@ -7,6 +7,7 @@ use App\Models\Tenant\AssetEventAssignment;
 use App\Models\Tenant\Event;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -55,7 +56,7 @@ class AssetDetail extends Component
         }
 
         $this->validate([
-            'assign_event_id' => 'required|exists:events,id',
+            'assign_event_id' => ['required', Rule::exists('events', 'id')->where('tenant_id', auth()->user()->tenant_id)],
         ]);
 
         $exists = AssetEventAssignment::where('asset_id', $this->asset->id)

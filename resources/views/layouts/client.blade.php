@@ -36,12 +36,19 @@
         }
     </style>
 
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+                @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
+
+    {{-- PWA --}}
+    <link rel="manifest" href="{{ route('pwa.manifest') }}">
+    <link rel="apple-touch-icon" href="{{ route('pwa.icon', ['size' => 180]) }}">
 
     <script>
         window.__currentUserId = {{ auth('client')->id() ?? 'null' }};
         window.__currentUserName = @js(auth('client')->user()->name ?? '');
+        window.__tenantWhiteLabel = {{ (auth('client')->user()?->tenant && app(\App\Services\FeatureGateService::class)->canAccess(auth('client')->user()->tenant, 'white_label')) ? 'true' : 'false' }};
+        window.__tenantSlug = @js(auth('client')->user()?->tenant?->slug ?? 'koordli');
+        window.__vapidPublicKey = @js(config('services.vapid.public_key'));
     </script>
 </head>
 <body class="krd-body h-full" x-cloak>

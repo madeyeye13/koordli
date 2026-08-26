@@ -13,3 +13,6 @@ Schedule::command('koordli:recheck-domains')->dailyAt('07:00');
 Schedule::command('koordli:close-inactive-chats')->everyFiveMinutes();
 Schedule::command('koordli:process-reminders')->everyFifteenMinutes();
 Schedule::command('koordli:send-digests')->hourly();
+Schedule::command('koordli:cleanup-pwa-icons')->weekly();
+Schedule::command('koordli:cleanup-chunked-upload-sessions')->daily();
+Schedule::command('koordli:cleanup-video-temp-files')->daily();

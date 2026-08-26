@@ -43,4 +43,13 @@ return [
         'processing_fixed' => env('PAYSTACK_PROCESSING_FIXED', 100),
     ],
 
+        'vapid' => [
+        'public_key'  => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject'     => env('VAPID_SUBJECT', 'mailto:support@koordli.com'),
+    ],
+
+    'pexels' => [
+        'key' => env('PEXELS_API_KEY'),
+    ],
 ];

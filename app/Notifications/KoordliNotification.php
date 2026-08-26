@@ -23,7 +23,12 @@ class KoordliNotification extends Notification
 
     public function via($notifiable): array
     {
-        $map = ['database' => 'database', 'mail' => 'mail', 'broadcast' => 'broadcast'];
+        $map = [
+            'database'  => 'database',
+            'mail'      => 'mail',
+            'broadcast' => 'broadcast',
+            'push'      => \App\Notifications\Channels\WebPushChannel::class,
+        ];
         return array_values(array_intersect_key($map, array_flip($this->channels)));
     }
 
@@ -63,5 +68,14 @@ class KoordliNotification extends Notification
             'body'              => $this->body,
             'action_url'        => $this->actionUrl,
         ]);
+    }
+
+    public function toPush($notifiable): array
+    {
+        return [
+            'title' => $this->subjectLine,
+            'body'  => $this->body,
+            'url'   => $this->actionUrl,
+        ];
     }
 }

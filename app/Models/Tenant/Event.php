@@ -20,6 +20,7 @@ class Event extends Model
         'date', 'start_time', 'end_date', 'end_time',
         'venue', 'location', 'max_guests', 'agreed_budget',
         'notes', 'settings', 'created_by', 'rsvp_enabled',
+        'client_vendor_involvement_override',
     ];
 
     protected $casts = [
@@ -137,8 +138,26 @@ class Event extends Model
         return $this->hasMany(Conversation::class);
     }
 
+    public function moodboards(): \Illuminate\Database\Eloquent\Relations\HasMany
+{
+    return $this->hasMany(\App\Models\Tenant\Moodboard::class);
+}
+
     public function clientAccess(): HasMany
     {
         return $this->hasMany(ClientEventAccess::class);
+    }
+
+    /**
+     * Resolves the effective client vendor involvement level for THIS
+     * event — the override if one is explicitly set, otherwise falls
+     * back to the tenant's default. This is the one method every part of
+     * the app should call instead of reading either column directly.
+     */
+    public function effectiveClientVendorInvolvementLevel(): string
+    {
+        return $this->client_vendor_involvement_override
+            ?? \App\Models\Central\Tenant::find($this->tenant_id)?->client_vendor_involvement_level
+            ?? 'none';
     }
 }

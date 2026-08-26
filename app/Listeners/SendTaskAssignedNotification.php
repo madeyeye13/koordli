@@ -12,8 +12,14 @@ class SendTaskAssignedNotification implements ShouldQueue
     {
         $task = $event->task;
 
+        if ($task->vendor_account_id) {
+            app(\App\Services\Notifications\VendorNotificationService::class)
+                ->notifyTaskAssigned($task);
+            return;
+        }
+
         if (!$task->assignedTo) {
-            return; // only staff (User) notifications for now — vendor notifications come in Stage 5
+            return;
         }
 
         app(NotificationDispatchService::class)->notify(

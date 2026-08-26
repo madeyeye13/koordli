@@ -24,6 +24,7 @@ class NotificationPreferences extends Component
         'rsvp'          => 'RSVP',
         'support'       => 'Support',
         'finance'       => 'Finance',
+        'documents'     => 'Media Library',
     ];
 
     public function mount(): void

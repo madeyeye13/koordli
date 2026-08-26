@@ -17,6 +17,8 @@
     </div>
 
     <div style="display: flex; align-items: center; gap: 12px;">
+        <livewire:client.notifications.notification-center />
+
         <button
             x-on:click="$store.theme.toggle()"
             style="background:none;border:none;cursor:pointer;color:#78716C;display:flex;align-items:center;padding:6px;">

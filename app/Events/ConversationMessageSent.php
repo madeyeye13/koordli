@@ -46,6 +46,7 @@ class ConversationMessageSent implements ShouldBroadcast
                 'mime_type' => str_starts_with($att->file_name, 'voice-note-') ? 'audio/webm' : $att->mime_type,
                 'is_audio'  => str_starts_with($att->mime_type ?? '', 'audio/') || str_starts_with($att->file_name, 'voice-note-'),
             ])->values(),
+            'shared_moodboard_html' => $this->message->sharedMoodboardCardHtml(),
         ];
     }
 }

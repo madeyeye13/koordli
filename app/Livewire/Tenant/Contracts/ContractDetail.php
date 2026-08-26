@@ -162,9 +162,13 @@ class ContractDetail extends Component
 
         $pdf = Pdf::loadView('pdf.vendor-contract-pdf', $this->pdfData())->setPaper('a4');
         $fileName = 'contracts/' . $this->contract->uuid . '.pdf';
-        Storage::disk('public')->put($fileName, $pdf->output());
+        $pdfOutput = $pdf->output();
+        Storage::disk('public')->put($fileName, $pdfOutput);
 
-        $this->contract->update(['unsigned_file_path' => $fileName]);
+        $this->contract->update([
+            'unsigned_file_path' => $fileName,
+            'unsigned_file_size' => strlen($pdfOutput),
+        ]);
 
         $signingUrl = route('public.contract.sign', $this->contract->signing_token);
 
@@ -181,6 +185,10 @@ class ContractDetail extends Component
         $this->contract->changeStatus('sent', 'Contract emailed to vendor with e-signature link.');
         $this->contract->refresh();
         event(new \App\Events\ContractSent($this->contract));
+
+        app(\App\Services\Notifications\VendorNotificationService::class)
+            ->notifyContractSent($this->contract);
+
         $this->showSendModal = false;
         $this->toastSuccess('Contract sent to vendor.');
     }
@@ -210,9 +218,13 @@ class ContractDetail extends Component
             'signedFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
+        $signedFileSize = $this->signedFile->getSize();
         $path = $this->signedFile->store('contracts/signed', 'public');
 
-        $this->contract->update(['signed_file_path' => $path]);
+        $this->contract->update([
+            'signed_file_path' => $path,
+            'signed_file_size' => $signedFileSize,
+        ]);
         $this->contract->changeStatus('signed', 'Signed copy uploaded.');
         $this->contract->refresh();
 

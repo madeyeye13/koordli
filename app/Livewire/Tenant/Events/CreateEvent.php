@@ -7,6 +7,7 @@ use App\Models\Tenant\EventType;
 use App\Models\Tenant\TenantEventStatus;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -31,6 +32,7 @@ class CreateEvent extends Component
     public ?float  $agreed_budget = null;
     public string  $notes         = '';
     public bool $rsvp_enabled = false;
+    public string $client_vendor_involvement_override = ''; // '' = inherit tenant default
 
     public ?string $eventSlug = null;
     public ?Event  $event     = null;
@@ -63,6 +65,7 @@ class CreateEvent extends Component
             $this->agreed_budget = $this->event->agreed_budget;
             $this->notes         = $this->event->notes ?? '';
             $this->rsvp_enabled  = (bool) $this->event->rsvp_enabled;
+            $this->client_vendor_involvement_override = $this->event->client_vendor_involvement_override ?? '';
         } else {
             $default         = TenantEventStatus::where('is_default', true)->first();
             $this->status_id = $default?->id;
@@ -78,10 +81,12 @@ class CreateEvent extends Component
             return;
         }
 
+        $tenantId = auth()->user()->tenant_id;
+
         $this->validate([
             'name'          => 'required|string|min:2|max:200',
-            'event_type_id' => 'nullable|exists:event_types,id',
-            'status_id'     => 'nullable|exists:tenant_event_statuses,id',
+            'event_type_id' => ['nullable', Rule::exists('event_types', 'id')->where('tenant_id', $tenantId)],
+            'status_id'     => ['nullable', Rule::exists('tenant_event_statuses', 'id')->where('tenant_id', $tenantId)],
             'date'          => 'nullable|date',
             'start_time'    => 'nullable',
             'end_date'      => 'nullable|date|after_or_equal:date',
@@ -95,6 +100,7 @@ class CreateEvent extends Component
             'agreed_budget' => 'nullable|numeric|min:0',
             'notes'         => 'nullable|string|max:2000',
             'rsvp_enabled'  => 'boolean',
+            'client_vendor_involvement_override' => 'nullable|in:none,view_only,approve_selections,full_participation',
         ]);
 
         // Plan gate: max guests
@@ -127,10 +133,25 @@ class CreateEvent extends Component
             'agreed_budget' => $this->agreed_budget,
             'notes'         => $this->notes ?: null,
             'rsvp_enabled'  => (bool) $this->rsvp_enabled,
+            'client_vendor_involvement_override' => $this->client_vendor_involvement_override ?: null,
         ];
 
         if ($this->event) {
+            $watchedFields = ['date', 'venue', 'location'];
+            $changed = [];
+            foreach ($watchedFields as $field) {
+                if ($this->event->{$field} != ($data[$field] ?? null)) {
+                    $changed[] = ucfirst($field);
+                }
+            }
+
             $this->event->update($data);
+
+            if (!empty($changed)) {
+                app(\App\Services\Notifications\ClientNotificationService::class)
+                    ->notifyEventDetailsChanged($this->event, $changed);
+            }
+
             $this->toastSuccess('Event updated successfully.');
             $this->redirect(route('tenant.events.show', $this->event->slug), navigate: true);
         } else {

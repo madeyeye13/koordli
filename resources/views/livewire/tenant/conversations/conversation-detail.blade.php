@@ -49,6 +49,9 @@
                             {!! $msg->renderedBody() !!}
                         </div>
                         @endif
+                        @if($msg->shared_moodboard_id)
+                            @include('partials.moodboard-share-card', ['moodboard' => $msg->sharedMoodboard, 'alignRight' => $isMe])
+                        @endif
                         @if($msg->attachments->isNotEmpty())
                         <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;{{ $isMe ? 'align-items:flex-end;' : '' }}">
                             @foreach($msg->attachments as $att)
@@ -100,6 +103,15 @@
                 </div>
                 @endif
                 @endif
+                @if($sharingMoodboardId)
+                @php $pendingBoard = \App\Models\Tenant\Moodboard::find($sharingMoodboardId); @endphp
+                @if($pendingBoard)
+                <div style="display:flex;align-items:center;justify-content:space-between;background:#F5F3FF;border-left:3px solid #7C3AED;padding:8px 12px;border-radius:6px;margin-bottom:10px;">
+                    <div style="font-size:12px;color:#57534E;">Sharing moodboard: <strong>{{ $pendingBoard->title }}</strong></div>
+                    <button wire:click="cancelShareMoodboard" style="background:none;border:none;color:#A8A29E;cursor:pointer;font-size:16px;">×</button>
+                </div>
+                @endif
+                @endif
                 <div style="height:16px;margin-bottom:4px;">
                     <span id="conv-typing-indicator" style="display:none;font-size:11px;color:#A8A29E;font-style:italic;"></span>
                 </div>
@@ -115,6 +127,7 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:10px;overflow-x:hidden;">
                     <div style="display:flex;align-items:center;gap:8px;position:relative;flex-wrap:wrap;max-width:100%;" x-data="emojiPicker('body')">
                         <button type="button" x-on:click="toggle()" style="background:none;border:1px solid #E7E5E4;border-radius:6px;width:34px;height:34px;cursor:pointer;font-size:16px;">😊</button>
+                        <button type="button" wire:click="openShareMoodboard" title="Share a moodboard" style="background:none;border:1px solid #E7E5E4;border-radius:6px;width:34px;height:34px;cursor:pointer;font-size:16px;">🖼️</button>
                         <div x-show="open" x-cloak x-on:click.outside="open = false"
                             style="position:absolute;bottom:40px;left:0;background:#fff;border:1px solid #E7E5E4;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:10px;width:260px;max-height:200px;overflow-y:auto;z-index:50;display:grid;grid-template-columns:repeat(8, 1fr);gap:4px;">
                             <template x-for="emoji in emojis" :key="emoji">
@@ -193,6 +206,34 @@
                 <button wire:click="removeParticipant" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
                 <button wire:click="$set('showRemoveModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
+        </div>
+    </div>
+    @endif
+
+    @if($showShareMoodboardModal)
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:8px;padding:24px;max-width:440px;width:100%;max-height:70vh;display:flex;flex-direction:column;">
+            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:12px;">Share a Moodboard</h3>
+            <div style="overflow-y:auto;flex:1;">
+                @forelse($shareableMoodboards as $board)
+                <div wire:click="selectMoodboardToShare({{ $board->id }})" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:6px;cursor:pointer;">
+                    <div style="width:44px;height:44px;background:#F5F5F4;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                        @if($board->coverDocument)
+                            <img src="{{ \Illuminate\Support\Facades\Storage::disk($board->coverDocument->disk)->url($board->coverDocument->path) }}" style="width:100%;height:100%;object-fit:cover;">
+                        @else
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#D6D3D1" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                        @endif
+                    </div>
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:#1C1917;">{{ $board->title }}</div>
+                        <div style="font-size:10.5px;color:#A8A29E;">{{ $board->statusLabel() }}</div>
+                    </div>
+                </div>
+                @empty
+                <p style="font-size:13px;color:#A8A29E;text-align:center;padding:20px;">No shareable moodboards for this event yet.</p>
+                @endforelse
+            </div>
+            <button wire:click="$set('showShareMoodboardModal', false)" class="krd-btn krd-btn-secondary" style="width:100%;margin-top:12px;">Cancel</button>
         </div>
     </div>
     @endif

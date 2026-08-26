@@ -20,11 +20,22 @@ class VendorEventAssignment extends Model
         'amount_paid',
         'status',
         'notes',
+        'selection_source',
+        'client_approval_status',
+        'client_approved_at',
+        'is_client_visible',
+        'client_can_view_pricing',
+        'payment_responsibility',
+        'disclaimer_acknowledged_at',
     ];
 
     protected $casts = [
-        'amount_agreed' => 'decimal:2',
-        'amount_paid'   => 'decimal:2',
+        'amount_agreed'              => 'decimal:2',
+        'amount_paid'                => 'decimal:2',
+        'client_approved_at'         => 'datetime',
+        'is_client_visible'          => 'boolean',
+        'client_can_view_pricing'    => 'boolean',
+        'disclaimer_acknowledged_at' => 'datetime',
     ];
 
     public function vendor(): BelongsTo
@@ -83,5 +94,52 @@ class VendorEventAssignment extends Model
     public function eventHasEnded(): bool
     {
         return $this->event?->date && $this->event->date->isPast();
+    }
+
+    /**
+     * Small badge helpers — used on both the tenant Event Detail card and
+     * the Vendor Directory, so staff browsing normally (not specifically
+     * checking a suggestions inbox) immediately sees which vendors were
+     * client-driven. Deliberately returns null for the ordinary
+     * planner_selected case (today's default) so nothing new renders for
+     * tenants who never use this feature.
+     */
+    public function selectionBadgeLabel(): ?string
+    {
+        return match($this->selection_source) {
+            'client_selected'   => "Client's Choice",
+            'planner_suggested' => 'Suggested by You, Approved',
+            'client_external'   => "Client's Own Vendor",
+            default              => null,
+        };
+    }
+
+    public function selectionBadgeColor(): string
+    {
+        return match($this->selection_source) {
+            'client_selected'   => '#7C3AED',
+            'planner_suggested' => '#3B82F6',
+            'client_external'   => '#F59E0B',
+            default              => '#A8A29E',
+        };
+    }
+
+    public function isPendingClientApproval(): bool
+    {
+        return $this->client_approval_status === 'pending';
+    }
+
+    public function paymentResponsibilityLabel(): string
+    {
+        return match($this->payment_responsibility) {
+            'client_pays_planner'      => 'Client pays via ' . (auth()->user()?->tenant->name ?? 'planner'),
+            'client_pays_vendor_direct' => 'Client pays vendor directly',
+            default                     => 'Paid from event budget',
+        };
+    }
+
+    public function needsDisclaimerAcknowledgment(): bool
+    {
+        return $this->selection_source === 'client_external' && !$this->disclaimer_acknowledged_at;
     }
 }

@@ -24,12 +24,11 @@ class RolePermissions extends Component
 
     public ?int $selectedRoleId = null;
 
-    public bool   $showRoleForm = false;
-    public ?int   $editingRoleId = null;
+    // Working state only for saveRole()/deleteRole() — modal open/close is
+    // now owned entirely by Alpine for instant response, so these are no
+    // longer read by the Blade view to control visibility.
+    public ?int $editingRoleId = null;
     public string $roleName = '';
-
-    public bool $showDeleteModal = false;
-    public ?int $deleteRoleId = null;
 
     private function tenantId(): int
     {
@@ -54,14 +53,6 @@ class RolePermissions extends Component
         $this->selectedRoleId = $firstRole?->id;
     }
 
-    /**
-     * Renderless: switching tabs is owned by Alpine on the client for
-     * instant visual feedback (per this app's Instant UI rule). This just
-     * keeps the server-side $selectedRoleId in sync in the background so
-     * subsequent actions (togglePermission) operate on the right role —
-     * it must never trigger a full re-render, or the tab switch delay
-     * comes right back.
-     */
     #[Renderless]
     public function selectRole(int $roleId): void
     {
@@ -83,25 +74,17 @@ class RolePermissions extends Component
         }
     }
 
-    public function showCreateRole(): void
+    /**
+     * Called via $wire.saveRole(...) directly from Alpine — the modal that
+     * collects the role id/name is Alpine-owned for instant open/close, so
+     * this receives the values as parameters instead of reading properties
+     * that used to be set by a wire:click open handler.
+     */
+    public function saveRole(?int $roleId, string $name): void
     {
-        $this->editingRoleId = null;
-        $this->roleName = '';
-        $this->showRoleForm = true;
-    }
-
-    public function showRenameRole(int $roleId): void
-    {
-        $role = Role::where('id', $roleId)->where('tenant_id', $this->tenantId())->first();
-        if (!$role || $role->is_system) return;
-
         $this->editingRoleId = $roleId;
-        $this->roleName = $role->name;
-        $this->showRoleForm = true;
-    }
+        $this->roleName = $name;
 
-    public function saveRole(): void
-    {
         $this->validate([
             'roleName' => 'required|string|min:2|max:60',
         ]);
@@ -151,34 +134,20 @@ class RolePermissions extends Component
             $this->toastSuccess('Role created. Set its permissions below.');
         }
 
-        $this->showRoleForm = false;
         $this->roleName = '';
         $this->editingRoleId = null;
     }
 
-    public function cancelRoleForm(): void
-    {
-        $this->showRoleForm = false;
-        $this->roleName = '';
-        $this->editingRoleId = null;
-    }
-
-    public function confirmDeleteRole(int $roleId): void
-    {
-        $role = Role::where('id', $roleId)->where('tenant_id', $this->tenantId())->first();
-        if (!$role || $role->is_system) return;
-
-        $this->deleteRoleId = $roleId;
-        $this->showDeleteModal = true;
-    }
-
-    public function deleteRole(): void
+    /**
+     * Same pattern as saveRole() — called via $wire.deleteRole(id) from
+     * Alpine, receiving the id directly instead of via a bound property.
+     */
+    public function deleteRole(int $roleId): void
     {
         $tenantId = $this->tenantId();
-        $role = Role::where('id', $this->deleteRoleId)->where('tenant_id', $tenantId)->first();
+        $role = Role::where('id', $roleId)->where('tenant_id', $tenantId)->first();
 
         if (!$role || $role->is_system) {
-            $this->showDeleteModal = false;
             return;
         }
 
@@ -188,13 +157,12 @@ class RolePermissions extends Component
 
         if ($staffCount > 0) {
             $this->toastError("This role has {$staffCount} staff member(s) assigned. Reassign them to a different role first.");
-            $this->showDeleteModal = false;
             return;
         }
 
         $role->delete();
 
-        if ($this->selectedRoleId === $this->deleteRoleId) {
+        if ($this->selectedRoleId === $roleId) {
             $this->selectedRoleId = Role::where('tenant_id', $tenantId)
                 ->where('guard_name', 'web')
                 ->orderByDesc('is_system')
@@ -202,15 +170,7 @@ class RolePermissions extends Component
                 ->first()?->id;
         }
 
-        $this->showDeleteModal = false;
-        $this->deleteRoleId = null;
         $this->toastSuccess('Role deleted.');
-    }
-
-    public function cancelDeleteRole(): void
-    {
-        $this->showDeleteModal = false;
-        $this->deleteRoleId = null;
     }
 
     private function currentRole(): ?Role
@@ -227,10 +187,6 @@ class RolePermissions extends Component
         $roles = Role::where('tenant_id', $tenantId)
             ->where('guard_name', 'web')
             ->with('permissions')
-            // FIX: the pivot column is `tenant_id`, not `team_id` — this
-            // tenant's PermissionSeeder configures team_foreign_key as
-            // 'tenant_id', so that's the physical column name in
-            // model_has_roles. Using 'team_id' silently matched zero rows.
             ->withCount(['users' => function ($q) use ($tenantId) {
                 $q->where('model_has_roles.tenant_id', $tenantId);
             }])
@@ -253,9 +209,6 @@ class RolePermissions extends Component
             return str($key)->replace('-', ' ')->title();
         });
 
-        // Payload for Alpine: every role's data, embedded once on initial
-        // load, so switching tabs afterward is a pure client-side operation
-        // with zero server round-trip (matches this app's Instant UI rule).
         $rolesData = $roles->mapWithKeys(function ($role) {
             return [
                 $role->id => [

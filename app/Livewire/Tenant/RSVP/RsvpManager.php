@@ -170,6 +170,8 @@ class RsvpManager extends Component
                 // Ensure directory exists
                 Storage::disk('public')->makeDirectory('rsvp-covers');
 
+                                  $coverImageSize = $this->cover_image->getSize();
+
                 $path = $this->cover_image->storeAs(
                     'rsvp-covers',
                     Str::uuid() . '.' . $this->cover_image->getClientOriginalExtension(),
@@ -183,6 +185,7 @@ class RsvpManager extends Component
 
                 $branding['cover_image_path'] = $path;
                 $branding['cover_image']      = Storage::disk('public')->url($path);
+                $branding['cover_image_size'] = $coverImageSize;
                 $this->cover_image_url        = $branding['cover_image'];
                 $this->cover_image            = null;
 

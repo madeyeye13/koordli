@@ -4,6 +4,23 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
+| PWA Routes — no guard restriction on the route itself; PwaController
+| resolves tenant from whichever guard is currently authenticated and
+| falls back to generic Koordli branding if none is.
+|--------------------------------------------------------------------------
+*/
+Route::get('/manifest.webmanifest', [\App\Http\Controllers\PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/pwa/icon/{size}.png', [\App\Http\Controllers\PwaController::class, 'icon'])
+    ->where('size', '[0-9]+')
+    ->name('pwa.icon');
+Route::get('/offline', [\App\Http\Controllers\PwaController::class, 'offline'])->name('pwa.offline');
+Route::get('/sw.js', [\App\Http\Controllers\PwaController::class, 'serviceWorker'])->name('pwa.sw');
+Route::post('/push/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.subscribe');
+Route::post('/push/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+Route::post('/media/upload/chunk', [\App\Http\Controllers\MediaUploadController::class, 'chunk'])->name('media.upload.chunk');
+Route::post('/media/upload/finalize', [\App\Http\Controllers\MediaUploadController::class, 'finalize'])->name('media.upload.finalize');
+/*
+|--------------------------------------------------------------------------
 | Platform Routes
 |--------------------------------------------------------------------------
 */
@@ -129,6 +146,11 @@ Route::prefix('client')->name('client.')->group(function () {
         });
 
         Route::get('/notifications/preferences', \App\Livewire\Client\NotificationPreferences::class)->name('notifications.preferences');
+        Route::get('/events/{slug}/media', \App\Livewire\Client\Documents\MediaLibraryClient::class)->name('events.media');
+        Route::get('/events/{slug}/vendors', \App\Livewire\Client\Vendors\VendorList::class)->name('events.vendors');
+        Route::get('/events/{slug}/moodboards', \App\Livewire\Client\Moodboards\MoodboardList::class)->name('moodboards.index');
+        Route::get('/moodboards/{id}', \App\Livewire\Client\Moodboards\MoodboardView::class)->name('moodboards.show');
+        Route::get('/profile', \App\Livewire\Client\Profile::class)->name('profile');
 
         Route::post('/logout', function () {
             Auth::guard('client')->logout();
@@ -277,6 +299,14 @@ Route::get('/consult/{slug}', \App\Livewire\Public\ConsultationForm::class)->nam
 // Vendor Contract e-signature
 Route::get('/contracts/sign/{token}', \App\Livewire\Public\VendorContractSign::class)->name('public.contract.sign');
 
+// Guest media upload (no login)
+Route::get('/media-upload/{token}', \App\Livewire\Public\MediaUploadPage::class)->name('public.media-upload');
+
+// Quick Access — permanent no-login links for staff/vendors
+Route::get('/quick-access/{token}', \App\Livewire\Public\QuickAccessPage::class)->name('public.quick-access');
+Route::post('/quick-access/{token}/update-task', [\App\Http\Controllers\QuickAccessController::class, 'updateTask'])->name('public.quick-access.update-task');
+Route::post('/quick-access/{token}/update-runsheet', [\App\Http\Controllers\QuickAccessController::class, 'updateRunsheet'])->name('public.quick-access.update-runsheet');
+
 /*
 |--------------------------------------------------------------------------
 | Tenant Routes
@@ -302,6 +332,17 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/events/{slug}/edit', \App\Livewire\Tenant\Events\CreateEvent::class)->name('tenant.events.edit');
         Route::get('/events/{slug}', \App\Livewire\Tenant\Events\EventDetail::class)->name('tenant.events.show');
         Route::get('/events/{slug}/budget', \App\Livewire\Tenant\Budget\EventBudget::class)->name('tenant.events.budget');
+        Route::get('/events/{slug}/media', \App\Livewire\Tenant\Documents\MediaLibrary::class)->name('tenant.events.media');
+        Route::get('/events/{slug}/vendor-suggestions', \App\Livewire\Tenant\Vendors\VendorSuggestions::class)->name('tenant.events.vendor-suggestions');
+        Route::get('/events/{slug}/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardList::class)->name('tenant.events.moodboards');
+        Route::get('/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardsHub::class)->name('tenant.moodboards.hub');
+        Route::get('/moodboards/pexels-search', [\App\Http\Controllers\MoodboardPexelsController::class, 'search'])->name('tenant.moodboards.pexels-search');
+        Route::get('/moodboards/{id}', \App\Livewire\Tenant\Moodboards\MoodboardEditor::class)->name('tenant.moodboards.edit');
+        Route::post('/moodboards/{moodboardId}/upload', [\App\Http\Controllers\MoodboardUploadController::class, 'upload'])->name('tenant.moodboards.upload');
+        Route::get('/moodboards/{id}/export', [\App\Http\Controllers\MoodboardExportController::class, 'export'])->name('tenant.moodboards.export');
+        Route::post('/moodboards/{moodboardId}/pexels-select', [\App\Http\Controllers\MoodboardPexelsController::class, 'select'])->name('tenant.moodboards.pexels-select');
+        Route::get('/media/download/{id}', [\App\Http\Controllers\MediaDownloadController::class, 'single'])->name('media.download');
+        Route::get('/media/download-bulk', [\App\Http\Controllers\MediaDownloadController::class, 'bulk'])->name('media.download.bulk');
 
         Route::get('/tasks', \App\Livewire\Tenant\Tasks\TaskCenter::class)->name('tenant.tasks');
         Route::get('/tasks/create', \App\Livewire\Tenant\Tasks\CreateTask::class)->name('tenant.tasks.create');
@@ -366,6 +407,12 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/assets/{id}', \App\Livewire\Tenant\Assets\AssetDetail::class)->name('tenant.assets.show');
 
         Route::get('/notifications/preferences', \App\Livewire\Tenant\Notifications\NotificationPreferences::class)->name('tenant.notifications.preferences');
+        Route::get('/client-notifications', \App\Livewire\Tenant\ClientNotificationSettings::class)->name('tenant.client-notifications');
+        Route::get('/quick-access', \App\Livewire\Tenant\QuickAccessAdmin::class)->name('tenant.quick-access');
+        Route::get('/clients', \App\Livewire\Tenant\Clients\ClientsList::class)->name('tenant.clients');
+        Route::get('/settings', \App\Livewire\Tenant\SettingsHub::class)->name('tenant.settings');
+        Route::get('/my-quick-access', \App\Livewire\Staff\QuickAccessSettings::class)->name('tenant.my-quick-access');
+        Route::get('/my-profile', \App\Livewire\Staff\Profile::class)->name('tenant.my-profile');
 
         Route::get('/conversations/{uuid}', \App\Livewire\Tenant\Conversations\ConversationDetail::class)->name('tenant.conversations.show');
 

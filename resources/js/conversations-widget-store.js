@@ -109,6 +109,18 @@ document.addEventListener('alpine:init', () => {
                 wrap.appendChild(bubble);
             }
 
+            // Deliberately a compact text link, NOT the full image card —
+            // this popup is a lightweight quick-glance surface (same
+            // treatment as plain attachment links below), not a place for
+            // a rich preview. "Open Full →" is how someone sees the real card.
+            if (e.shared_moodboard_title) {
+                var moodboardLink = document.createElement('a');
+                moodboardLink.href = '/moodboards/' + e.shared_moodboard_id;
+                moodboardLink.style.cssText = 'font-size:11px;background:#F5F3FF;padding:4px 10px;border-radius:6px;color:#7C3AED;text-decoration:none;display:inline-block;margin-top:2px;';
+                moodboardLink.textContent = '📋 Shared: ' + e.shared_moodboard_title;
+                wrap.appendChild(moodboardLink);
+            }
+
             if (e.attachments && e.attachments.length > 0) {
                 e.attachments.forEach(function (att) {
                     if (att.is_audio) {

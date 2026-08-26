@@ -115,6 +115,60 @@
                     </div>
                 </div>
 
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Who selected this vendor? <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
+                    <x-ui.dropdown wire="assign_selection_source" placeholder="You selected this vendor"
+                        selected="{{ match($assign_selection_source) {
+                            'client_selected' => 'Client selected this vendor (already vetted)',
+                            'planner_suggested' => 'You suggested it, client approved',
+                            'client_external' => 'Client\'s own vendor find',
+                            default => 'You selected this vendor',
+                        } }}">
+                        <div class="krd-dropdown-option {{ $assign_selection_source === 'planner_selected' ? 'selected' : '' }}" x-on:click="select('You selected this vendor', 'planner_selected')">
+                            You selected this vendor
+                        </div>
+                        <div class="krd-dropdown-option {{ $assign_selection_source === 'client_selected' ? 'selected' : '' }}" x-on:click="select('Client selected this vendor (already vetted)', 'client_selected')">
+                            Client selected this vendor (already vetted)
+                        </div>
+                        <div class="krd-dropdown-option {{ $assign_selection_source === 'planner_suggested' ? 'selected' : '' }}" x-on:click="select('You suggested it, client approved', 'planner_suggested')">
+                            You suggested it, client approved
+                        </div>
+                        <div class="krd-dropdown-option {{ $assign_selection_source === 'client_external' ? 'selected' : '' }}" x-on:click="select(&quot;Client's own vendor find&quot;, 'client_external')">
+                            Client's own vendor find
+                        </div>
+                    </x-ui.dropdown>
+                </div>
+
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;">
+                    <input type="checkbox" wire:model="assign_is_client_visible" style="accent-color:#7C3AED;">
+                    Show this vendor to the client
+                </label>
+
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;">
+                    <input type="checkbox" wire:model="assign_client_can_view_pricing" style="accent-color:#7C3AED;">
+                    Client can see the pricing
+                </label>
+
+                <div class="krd-input-group">
+                    <label class="krd-label-text">Who pays this vendor?</label>
+                    <x-ui.dropdown wire="assign_payment_responsibility" placeholder="Paid from event budget"
+                        selected="{{ match($assign_payment_responsibility) {
+                            'client_pays_planner' => 'Client pays you, you pay vendor',
+                            'client_pays_vendor_direct' => 'Client pays vendor directly',
+                            default => 'Paid from event budget',
+                        } }}">
+                        <div class="krd-dropdown-option {{ $assign_payment_responsibility === 'planner_pays_from_budget' ? 'selected' : '' }}" x-on:click="select('Paid from event budget', 'planner_pays_from_budget')">
+                            Paid from event budget
+                        </div>
+                        <div class="krd-dropdown-option {{ $assign_payment_responsibility === 'client_pays_planner' ? 'selected' : '' }}" x-on:click="select('Client pays you, you pay vendor', 'client_pays_planner')">
+                            Client pays you, you pay vendor
+                        </div>
+                        <div class="krd-dropdown-option {{ $assign_payment_responsibility === 'client_pays_vendor_direct' ? 'selected' : '' }}" x-on:click="select('Client pays vendor directly', 'client_pays_vendor_direct')">
+                            Client pays vendor directly
+                        </div>
+                    </x-ui.dropdown>
+                </div>
+
                 <div class="krd-input-group" style="margin-bottom:0;">
                     <label class="krd-label-text">Notes</label>
                     <input wire:model="assign_notes" type="text" class="krd-input" placeholder="e.g. 50% deposit paid, delivery at 8am..." />

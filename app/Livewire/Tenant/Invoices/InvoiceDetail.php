@@ -84,7 +84,9 @@ class InvoiceDetail extends Component
         ]);
 
         $receiptPath = null;
+        $receiptSize = null;
         if ($this->pay_receipt) {
+            $receiptSize = $this->pay_receipt->getSize();
             $receiptPath = $this->pay_receipt->store('invoice-payments', 'public');
         }
 
@@ -97,6 +99,7 @@ class InvoiceDetail extends Component
             'reference'         => $this->pay_reference ?: null,
             'notes'             => $this->pay_notes ?: null,
             'receipt_path'      => $receiptPath,
+            'receipt_size'      => $receiptSize,
         ]);
 
         $this->invoice->refresh();

@@ -24,6 +24,9 @@ class ConversationDetail extends Component
 
         public ?int $replyingToId = null;
 
+    public bool $showShareMoodboardModal = false;
+    public ?int $sharingMoodboardId = null;
+
     public bool  $selectMode = false;
     public array $selectedMessageIds = [];
 
@@ -98,6 +101,35 @@ class ConversationDetail extends Component
         $this->replyingToId = $messageId;
     }
 
+    public function openShareMoodboard(): void
+    {
+        $this->showShareMoodboardModal = true;
+    }
+
+    public function selectMoodboardToShare(int $moodboardId): void
+    {
+        $this->sharingMoodboardId = $moodboardId;
+        $this->showShareMoodboardModal = false;
+    }
+
+    public function cancelShareMoodboard(): void
+    {
+        $this->sharingMoodboardId = null;
+    }
+
+    /**
+     * True only if this conversation has NO client participant at all,
+     * OR the client-participant case where the moodboard is genuinely
+     * safe to show them — i.e. moodboards restricted to
+     * is_client_visible = true whenever any client is present. A staff-
+     * only or staff+vendor conversation may share any moodboard
+     * regardless of its client-visibility flag.
+     */
+    private function hasClientParticipant(): bool
+    {
+        return $this->conversation->participants->contains(fn($p) => $p->participant_type === 'client');
+    }
+
     public function cancelReply(): void
     {
         $this->replyingToId = null;
@@ -110,8 +142,8 @@ class ConversationDetail extends Component
             'attachments.*' => 'nullable|file|max:10240',
         ]);
 
-        if (empty(trim($this->body)) && empty($this->attachments)) {
-            $this->addError('body', 'Write a message or attach a file.');
+        if (empty(trim($this->body)) && empty($this->attachments) && !$this->sharingMoodboardId) {
+            $this->addError('body', 'Write a message, attach a file, or share a moodboard.');
             return;
         }
 
@@ -119,10 +151,13 @@ class ConversationDetail extends Component
             'tenant_id'            => auth()->user()->tenant_id,
             'conversation_id'      => $this->conversation->id,
             'reply_to_message_id'  => $this->replyingToId,
+            'shared_moodboard_id'  => $this->sharingMoodboardId,
             'sender_type'          => 'tenant_user',
             'sender_id'            => auth()->id(),
             'body'                 => $this->body ?: '',
         ]);
+
+        $this->sharingMoodboardId = null;
 
         // Resolve @mentions against CURRENT conversation participants only —
         // you can't mention someone who isn't actually in this conversation
@@ -162,6 +197,7 @@ class ConversationDetail extends Component
             'body'        => $message->body,
             'rendered'    => $message->renderedBody(),
             'created_at'  => $message->created_at->format('g:i A'),
+            'shared_moodboard_html' => $message->sharedMoodboardCardHtml(alignRight: true),
             'reply_to'    => $replyToSnippet ? [
                 'sender_name' => $replyToSnippet->senderName(),
                 'snippet'     => \Illuminate\Support\Str::limit($replyToSnippet->body, 60),
@@ -407,11 +443,25 @@ class ConversationDetail extends Component
             }
         }
 
+        $moodboardsQuery = \App\Models\Tenant\Moodboard::where('event_id', $event->id)
+            ->where('is_template', false);
+
+        // Client-safety gate: if ANY participant in this conversation is a
+        // client, only client-visible moodboards are selectable — prevents
+        // staff from accidentally exposing a private/internal board to a
+        // client who's part of this conversation.
+        if ($this->hasClientParticipant()) {
+            $moodboardsQuery->where('is_client_visible', true);
+        }
+
+        $shareableMoodboards = $moodboardsQuery->orderByDesc('updated_at')->get();
+
         return view('livewire.tenant.conversations.conversation-detail', [
-            'participantNames' => $participantNames,
-            'eligibleToAdd'    => $eligible,
-            'visibleMessages'  => $visibleMessages,
-            'isAdmin'          => $this->isTenantAdmin(),
+            'participantNames'    => $participantNames,
+            'eligibleToAdd'       => $eligible,
+            'visibleMessages'     => $visibleMessages,
+            'isAdmin'             => $this->isTenantAdmin(),
+            'shareableMoodboards' => $shareableMoodboards,
         ]);
     }
 }

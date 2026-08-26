@@ -10,6 +10,7 @@ use App\Models\Tenant\Vendor;
 use App\Models\Tenant\VendorEventAssignment;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -28,6 +29,14 @@ class VendorDetail extends Component
     public string $assign_notes       = '';
     public string $assign_amount_paid = '';
     public string $assign_status      = 'pending';
+
+    // Advanced client-involvement fields — all default to today's implicit
+    // behavior (planner_selected, not visible to client, budget-paid) so a
+    // staff member who never touches these gets identical results to before.
+    public string $assign_selection_source          = 'planner_selected';
+    public bool   $assign_is_client_visible          = false;
+    public bool   $assign_client_can_view_pricing    = false;
+    public string $assign_payment_responsibility     = 'planner_pays_from_budget';
 
 
     public array $assignConflicts = [];
@@ -106,7 +115,7 @@ class VendorDetail extends Component
         }
 
         $this->validate([
-            'assign_event_id' => 'required|exists:events,id',
+            'assign_event_id' => ['required', Rule::exists('events', 'id')->where('tenant_id', auth()->user()->tenant_id)],
             'assign_amount'   => 'nullable|numeric|min:0',
             'assign_status'   => 'required|in:pending,confirmed,cancelled',
             'assign_notes'    => 'nullable|string|max:500',
@@ -122,14 +131,21 @@ class VendorDetail extends Component
         }
 
         $assignment = VendorEventAssignment::create([
-            'tenant_id'     => auth()->user()->tenant_id,
-            'vendor_id'     => $this->vendor->id,
-            'event_id'      => $this->assign_event_id,
-            'amount_agreed' => $this->assign_amount ?: 0,
-            'amount_paid'   => $this->assign_amount_paid ?: 0,
-            'status'        => $this->assign_status,
-            'notes'         => $this->assign_notes ?: null,
+            'tenant_id'                => auth()->user()->tenant_id,
+            'vendor_id'                => $this->vendor->id,
+            'event_id'                 => $this->assign_event_id,
+            'amount_agreed'            => $this->assign_amount ?: 0,
+            'amount_paid'              => $this->assign_amount_paid ?: 0,
+            'status'                   => $this->assign_status,
+            'notes'                    => $this->assign_notes ?: null,
+            'selection_source'         => $this->assign_selection_source,
+            'is_client_visible'        => $this->assign_is_client_visible,
+            'client_can_view_pricing'  => $this->assign_client_can_view_pricing,
+            'payment_responsibility'   => $this->assign_payment_responsibility,
         ]);
+
+        app(\App\Services\Notifications\VendorNotificationService::class)
+            ->notifyBookingCreated($assignment);
 
         // Notify vendor of the new assignment (auto-create portal account if none exists yet)
         if (!empty($this->vendor->email)) {
@@ -253,12 +269,22 @@ class VendorDetail extends Component
 
         $assign = VendorEventAssignment::find($this->editAssignId);
         if ($assign) {
+            $previousStatus = $assign->status;
+
             $assign->update([
                 'amount_agreed' => $this->editAmountAgreed ?: 0,
                 'amount_paid'   => $this->editAmountPaid ?: 0,
                 'status'        => $this->editStatus,
                 'notes'         => $this->editNotes ?: null,
             ]);
+
+            if ($assign->status !== $previousStatus) {
+                app(\App\Services\Notifications\ClientNotificationService::class)
+                    ->notifyVendorBookingChanged($assign);
+
+                app(\App\Services\Notifications\VendorNotificationService::class)
+                    ->notifyBookingStatusChanged($assign);
+            }
         }
 
         $this->vendor->load('eventAssignments.event');

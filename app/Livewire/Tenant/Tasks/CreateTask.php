@@ -10,6 +10,7 @@ use App\Models\Tenant\TenantTaskCategory;
 use App\Models\Tenant\User;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -22,10 +23,11 @@ class CreateTask extends Component
     public ?int    $event_id        = null;
     public ?int    $task_category_id = null;
     public ?int    $assigned_to     = null;
-    public string  $priority        = 'normal';
+        public string  $priority        = 'normal';
     public string  $status          = 'todo';
     public string  $due_date        = '';
     public string  $description     = '';
+    public bool    $is_client_visible = false;
 
     public ?int    $taskId          = null;
     public ?Task   $task            = null;
@@ -53,6 +55,7 @@ class CreateTask extends Component
             $this->status           = $this->task->status->value;
             $this->due_date         = $this->task->due_date?->format('Y-m-d') ?? '';
             $this->description      = $this->task->description ?? '';
+            $this->is_client_visible = (bool) $this->task->is_client_visible;
         }
 
         if ($eventId) {
@@ -115,15 +118,18 @@ class CreateTask extends Component
             }
         }
 
+        $tenantId = auth()->user()->tenant_id;
+
         $this->validate([
             'title'            => 'required|string|min:2|max:300',
-            'event_id'         => 'nullable|exists:events,id',
-            'task_category_id' => 'nullable|exists:tenant_task_categories,id',
-            'assigned_to'      => 'nullable|exists:users,id',
+            'event_id'         => ['nullable', Rule::exists('events', 'id')->where('tenant_id', $tenantId)],
+            'task_category_id' => ['nullable', Rule::exists('tenant_task_categories', 'id')->where('tenant_id', $tenantId)],
+            'assigned_to'      => ['nullable', Rule::exists('users', 'id')->where('tenant_id', $tenantId)],
             'priority'         => 'required|in:low,normal,high,urgent',
             'status'           => 'required|in:todo,in_progress,blocked,done,cancelled',
             'due_date'         => 'nullable|date',
             'description'      => 'nullable|string|max:2000',
+            'is_client_visible' => 'boolean',
         ]);
 
         $data = [
@@ -135,6 +141,7 @@ class CreateTask extends Component
             'status'           => $this->status,
             'due_date'         => $this->due_date ?: null,
             'description'      => $this->description ?: null,
+            'is_client_visible' => $this->is_client_visible,
         ];
 
         if ($this->task) {

@@ -103,6 +103,13 @@
                     </x-ui.dropdown>
                 </div>
 
+                @if($event_id)
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:16px;">
+                    <input type="checkbox" wire:model="is_client_visible" style="accent-color:#7C3AED;">
+                    Notify the client when this task is completed
+                </label>
+                @endif
+
                 {{-- Category + Assigned To --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group" style="margin-bottom:0;">
