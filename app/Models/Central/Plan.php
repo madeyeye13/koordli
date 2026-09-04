@@ -9,7 +9,7 @@ class Plan extends Model
 {
     protected $fillable = [
         'name', 'slug', 'price', 'billing_cycle', 'trial_days',
-        'features', 'limits', 'is_active', 'is_featured',
+        'features', 'limits', 'is_active', 'is_featured', 'is_contact_only',
         'annual_discount_percent', 'allowed_cycles',
     ];
 
@@ -19,6 +19,7 @@ class Plan extends Model
         'allowed_cycles'         => 'array',
         'is_active'              => 'boolean',
         'is_featured'            => 'boolean',
+        'is_contact_only'        => 'boolean',
         'annual_discount_percent'=> 'decimal:2',
     ];
 
@@ -61,5 +62,15 @@ class Plan extends Model
             ->where('billing_cycle', $cycle)
             ->where('is_active', true)
             ->first();
+    }
+
+    public function hasTrial(): bool
+    {
+        return $this->trial_days > 0;
+    }
+
+    public function isSelfServe(): bool
+    {
+        return !$this->is_contact_only;
     }
 }

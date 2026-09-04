@@ -29,6 +29,11 @@
             <div style="font-size:20px;font-weight:700;color:#F59E0B;">{{ $symbol }}{{ number_format($totalActual, 2) }}</div>
             <div style="font-size:11px;color:#A8A29E;margin-top:2px;">On vendors & costs</div>
         </div>
+        <div class="krd-card" style="padding:16px;border-left:3px solid {{ $totalNetPosition >= 0 ? '#10B981' : '#EF4444' }};">
+            <div class="krd-label" style="margin-bottom:6px;">Your Net Position</div>
+            <div style="font-size:20px;font-weight:700;color:{{ $totalNetPosition >= 0 ? '#10B981' : '#EF4444' }};">{{ $totalNetPosition < 0 ? '-' : '' }}{{ $symbol }}{{ number_format(abs($totalNetPosition), 2) }}</div>
+            <div style="font-size:11px;color:#A8A29E;margin-top:2px;">{{ $symbol }}{{ number_format($totalFeeRevenue, 2) }} fee revenue across all events</div>
+        </div>
     </div>
 
     {{-- Search --}}
@@ -53,7 +58,7 @@
                             <th style="text-align:right;">Collected</th>
                             <th style="text-align:right;">Outstanding</th>
                             <th style="text-align:right;">Actual Spent</th>
-                            <th style="text-align:right;">Profit</th>
+                            <th style="text-align:right;">Net Position</th>
                             <th>Payment Status</th>
                             <th></th>
                         </tr>
@@ -66,7 +71,7 @@
                             $collected   = $b->totalClientPaid();
                             $outstanding = $b->clientOutstanding();
                             $actual      = $b->totalActual();
-                            $profit      = $b->grossProfit();
+                            $profit      = $b->plannerNetPosition();
                             $sym         = \App\Helpers\CurrencyHelper::symbol($b->currency ?? 'NGN');
                         @endphp
                         <tr>
@@ -116,7 +121,7 @@
                 $collected   = $b->totalClientPaid();
                 $outstanding = $b->clientOutstanding();
                 $actual      = $b->totalActual();
-                $profit      = $b->grossProfit();
+                $profit      = $b->plannerNetPosition();
                 $sym         = \App\Helpers\CurrencyHelper::symbol($b->currency ?? 'NGN');
             @endphp
             <div class="krd-card" style="padding:16px;">
@@ -147,7 +152,7 @@
                         <div style="font-size:14px;font-weight:700;color:{{ $outstanding > 0 ? '#EF4444' : '#10B981' }};">{{ $sym }}{{ number_format($outstanding, 2) }}</div>
                     </div>
                     <div>
-                        <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Profit</div>
+                        <div style="font-size:10px;color:#A8A29E;margin-bottom:2px;">Net Position</div>
                         <div style="font-size:14px;font-weight:700;color:{{ $profit >= 0 ? '#10B981' : '#EF4444' }};">{{ $profit < 0 ? '-' : '+' }}{{ $sym }}{{ number_format(abs($profit), 2) }}</div>
                     </div>
                 </div>
@@ -205,7 +210,7 @@
 }
 
 @media (min-width: 768px) {
-    .krd-budget-summary-grid { grid-template-columns: repeat(4, 1fr); }
+    .krd-budget-summary-grid { grid-template-columns: repeat(5, 1fr); }
     #budget-overview-desktop { display: block !important; }
     #budget-overview-mobile  { display: none !important; }
 }

@@ -28,6 +28,8 @@ class Tenant extends Model
         'client_vendor_involvement_level',
         'vendor_disclaimer_text',
         'client_notification_settings',
+        'industry_profile_id',
+        'client_financial_visibility',
     ];
 
     protected $casts = [
@@ -35,6 +37,7 @@ class Tenant extends Model
         'domain_verified_at'           => 'datetime',
         'domain_last_checked_at'       => 'datetime',
         'client_notification_settings' => 'array',
+        'client_financial_visibility'  => 'array',
     ];
 
     /**
@@ -48,6 +51,19 @@ class Tenant extends Model
     {
         $settings = $this->client_notification_settings ?? [];
         return $settings[$category] ?? true;
+    }
+
+    /**
+     * Sensitive financial fields default to FALSE (hidden) unless the
+     * planner explicitly turns them on — deliberately the opposite
+     * default of client notifications, since financial detail is more
+     * sensitive by nature. Basic figures (their own balance) default true.
+     */
+    public function clientFinancialVisible(string $field): bool
+    {
+        $settings = $this->client_financial_visibility ?? [];
+        $safeDefaults = ['balance' => true];
+        return $settings[$field] ?? ($safeDefaults[$field] ?? false);
     }
 
     public function industryProfile(): \Illuminate\Database\Eloquent\Relations\BelongsTo

@@ -3,6 +3,7 @@
 namespace App\Livewire\Platform\Tenants;
 
 use App\Models\Central\Tenant;
+use App\Models\Tenant\User as TenantUser;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -18,6 +19,9 @@ class TenantList extends Component
     public ?int   $viewing  = null; // tenant ID being viewed
     public bool   $showSuspendModal = false;
     public ?int   $suspendId = null;
+    public bool   $showDeleteModal = false;
+    public ?int   $deleteId = null;
+    public string $deleteConfirmText = '';
 
     public function updatedSearch(): void
     {
@@ -69,6 +73,59 @@ class TenantList extends Component
     {
         $this->showSuspendModal = false;
         $this->suspendId        = null;
+    }
+
+    public function confirmDelete(int $id): void
+    {
+        $this->deleteId          = $id;
+        $this->deleteConfirmText = '';
+        $this->showDeleteModal   = true;
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->showDeleteModal   = false;
+        $this->deleteId          = null;
+        $this->deleteConfirmText = '';
+    }
+
+    /**
+     * Requires typing the company's exact name before deletion actually
+     * proceeds — this is a genuinely irreversible action wiping an
+     * entire tenant's data (every event, staff member, client, vendor,
+     * task, moodboard, checklist — everything), so a plain "Yes/No"
+     * confirmation isn't a strong enough safeguard for something this
+     * destructive. Matches the same weight this action deserves at the
+     * platform level.
+     */
+    public function delete(): void
+    {
+        $tenant = Tenant::find($this->deleteId);
+
+        if (!$tenant) {
+            $this->cancelDelete();
+            return;
+        }
+
+        if ($this->deleteConfirmText !== $tenant->name) {
+            $this->addError('deleteConfirmText', 'Company name does not match.');
+            return;
+        }
+
+        TenantUser::withoutGlobalScopes()
+            ->where('tenant_id', $tenant->id)
+            ->delete();
+
+        $tenant->delete();
+
+        $this->toastSuccess('Company permanently deleted.');
+        $this->showDeleteModal = false;
+        $this->deleteId        = null;
+        $this->deleteConfirmText = '';
+
+        if ($this->viewing === $tenant->id) {
+            $this->viewing = null;
+        }
     }
 
     public function render()

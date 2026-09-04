@@ -83,7 +83,7 @@
         </div>
     </template>
 
-    <template x-if="view === 'items'">
+    <template x-if="view === 'items' && currentAction !== 'update_checklist'">
         <div style="display:flex;flex-direction:column;gap:10px;">
             <template x-if="currentItems.length === 0">
                 <div class="krd-card" style="padding:32px;text-align:center;color:#A8A29E;font-size:13px;">Nothing here yet.</div>
@@ -102,6 +102,25 @@
                         </template>
                     </div>
                 </div>
+            </template>
+        </div>
+    </template>
+
+    <template x-if="view === 'items' && currentAction === 'update_checklist'">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <template x-if="currentItems.length === 0">
+                <div class="krd-card" style="padding:32px;text-align:center;color:#A8A29E;font-size:13px;">Nothing here yet.</div>
+            </template>
+            <template x-for="it in currentItems" :key="it.id">
+                <button x-on:click="toggleChecklistItem(it)" class="krd-card" style="padding:14px;display:flex;align-items:center;gap:12px;text-align:left;border:none;cursor:pointer;width:100%;">
+                    <span :style="it.is_completed ? 'width:20px;height:20px;border-radius:5px;background:#10B981;flex-shrink:0;display:flex;align-items:center;justify-content:center;' : 'width:20px;height:20px;border-radius:5px;border:2px solid #D6D3D1;flex-shrink:0;'">
+                        <svg x-show="it.is_completed" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+                    </span>
+                    <div>
+                        <div :style="it.is_completed ? 'font-size:13.5px;font-weight:500;color:#A8A29E;text-decoration:line-through;' : 'font-size:13.5px;font-weight:500;color:#1C1917;'" x-text="it.title"></div>
+                        <div style="font-size:10.5px;color:#A8A29E;margin-top:2px;" x-text="it.phase"></div>
+                    </div>
+                </button>
             </template>
         </div>
     </template>
@@ -186,6 +205,22 @@ function quickAccessApp() {
             if (this.view === 'events') { this.view = 'menu'; return; }
             if (this.view === 'delay_note') { this.view = 'items'; return; }
             this.view = 'menu';
+        },
+
+        toggleChecklistItem(item) {
+            const previous = item.is_completed;
+            item.is_completed = !item.is_completed; // optimistic — instant
+
+            fetch(`/quick-access/${this.token}/update-checklist`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({ item_id: item.id }),
+            })
+            .then(res => { if (!res.ok) throw new Error(); this.showToast('Updated ✓'); })
+            .catch(() => { item.is_completed = previous; this.showToast('Could not save — please try again.'); });
         },
 
         setStatus(item, status) {

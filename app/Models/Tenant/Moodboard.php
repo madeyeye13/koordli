@@ -15,7 +15,7 @@ class Moodboard extends Model
     protected $fillable = [
         'tenant_id', 'event_id', 'title', 'description', 'status',
         'cover_document_id', 'is_client_visible',
-        'is_template', 'template_source_id', 'event_type_id',
+        'is_template', 'template_source_id', 'industry_profile_id',
         'created_by',
     ];
 
@@ -38,9 +38,9 @@ class Moodboard extends Model
         return $this->belongsTo(Event::class);
     }
 
-    public function eventType(): BelongsTo
+    public function industryProfile(): BelongsTo
     {
-        return $this->belongsTo(EventType::class);
+        return $this->belongsTo(\App\Models\Central\IndustryProfile::class);
     }
 
     public function coverDocument(): BelongsTo

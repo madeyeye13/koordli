@@ -49,6 +49,9 @@ class QuickAccessService
             if (app(PermissionService::class)->userCan($person, 'runsheet.manage')) {
                 $menu[] = ['key' => 'update_runsheet', 'label' => 'Update Runsheet Item'];
             }
+            if (app(PermissionService::class)->userCan($person, 'checklists.manage')) {
+                $menu[] = ['key' => 'update_checklist', 'label' => 'Complete Checklist Item'];
+            }
         } elseif ($link->person_type === VendorAccount::class) {
             // Ownership-gated, not permission-gated — matches real vendor
             // access today (see note in the prior message).
@@ -126,6 +129,51 @@ class QuickAccessService
         }
 
         return collect();
+    }
+
+    /**
+     * Only ever the STAFF path — Checklist has no vendor involvement
+     * anywhere in its design, matching the menuFor() gating above.
+     * Excludes items already converted to a Task: a converted item's
+     * completion is driven entirely by its linked Task's own status
+     * (see ChecklistItem::syncCompletionFromTask()), so allowing a
+     * direct toggle here would create two competing sources of truth
+     * for the same completion state.
+     */
+    public function checklistItemsFor(QuickAccessLink $link, int $eventId): Collection
+    {
+        $checklist = \App\Models\Tenant\Checklist::where('event_id', $eventId)
+            ->where('tenant_id', $link->tenant_id)
+            ->first();
+
+        if (!$checklist) return collect();
+
+        return \App\Models\Tenant\ChecklistItem::where('checklist_id', $checklist->id)
+            ->whereNull('task_id')
+            ->orderBy('phase')
+            ->orderBy('sort_order')
+            ->get();
+    }
+
+    public function toggleChecklistItem(QuickAccessLink $link, int $itemId): array
+    {
+        $item = \App\Models\Tenant\ChecklistItem::where('id', $itemId)
+            ->where('tenant_id', $link->tenant_id)
+            ->whereNull('task_id')
+            ->first();
+
+        if (!$item) {
+            return ['ok' => false, 'error' => 'Checklist item not found.'];
+        }
+
+        $item->update([
+            'is_completed' => !$item->is_completed,
+            'completed_at' => !$item->is_completed ? now() : null,
+        ]);
+
+        $this->logAction($link, $item, 'checklist_item_toggled', ($item->is_completed ? 'Marked complete' : 'Marked incomplete') . ' via quick access');
+
+        return ['ok' => true];
     }
 
     public function runsheetItemsFor(QuickAccessLink $link, int $eventId): Collection

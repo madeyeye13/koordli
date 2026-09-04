@@ -29,6 +29,25 @@ class QuickAccessController extends Controller
             : response()->json(['error' => $result['error']], 422);
     }
 
+    public function updateChecklist(Request $request, string $token)
+    {
+        $service = app(QuickAccessService::class);
+        $link = $service->findValidLink($token);
+        if (!$link) return response()->json(['error' => 'Invalid link.'], 404);
+
+        if ($link->pin_enabled && !session()->get('qa_pin_verified_' . $link->id, false)) {
+            return response()->json(['error' => 'Please re-verify your PIN.'], 403);
+        }
+
+        $data = $request->validate(['item_id' => 'required|integer']);
+
+        $result = $service->toggleChecklistItem($link, $data['item_id']);
+
+        return $result['ok']
+            ? response()->json(['success' => true])
+            : response()->json(['error' => $result['error']], 422);
+    }
+
     public function updateRunsheet(Request $request, string $token)
     {
         $service = app(QuickAccessService::class);

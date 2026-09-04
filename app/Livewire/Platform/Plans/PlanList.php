@@ -81,7 +81,8 @@ class PlanList extends Component
     public function render()
     {
         return view('livewire.platform.plans.plan-list', [
-            'plans' => Plan::orderBy('created_at')->get(),
+            'plans'       => Plan::with('prices')->orderBy('created_at')->get(),
+            'baseCurrency'=> \App\Models\Central\BillingSetting::get('base_currency', 'NGN'),
         ]);
     }
 }

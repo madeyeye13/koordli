@@ -27,7 +27,7 @@
 
     .lp-wrap { font-family: 'Satoshi', sans-serif; color: var(--lp-text); overflow-x: hidden; background: var(--lp-bg); transition: background 200ms, color 200ms; }
     .lp-container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
-    .lp-serif { font-family: 'Fraunces', serif; }
+    .lp-serif { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
 
     /* Nav */
     .lp-nav { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--lp-bg) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--lp-border); }
@@ -54,6 +54,12 @@
     .lp-hero-title .accent { color: var(--lp-accent); }
     .lp-hero-sub { font-size: clamp(15px, 2.5vw, 18px); color: var(--lp-text-muted); max-width: 600px; margin: 0 auto 32px; line-height: 1.6; padding: 0 8px; }
     .lp-hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+    .lp-hero-rotate { display: inline-block; opacity: 0; transform: translateY(6px); transition: opacity 0.4s ease, transform 0.4s ease; }
+    .lp-hero-rotate-visible { opacity: 1; transform: translateY(0); }
+    .lp-mockup-steps { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; padding: 0 12px; }
+    .lp-mockup-step { font-size: 11px; font-weight: 600; color: #78716C; padding: 5px 12px; border-radius: 16px; background: #F5F5F4; white-space: nowrap; }
+    .lp-mockup-step.active { color: var(--lp-accent); background: var(--lp-accent-bg); }
+    .lp-mockup-step-arrow { color: #A8A29E; font-size: 11px; }
 
     /* Dashboard mockup */
     .lp-mockup-frame { max-width: 1000px; margin: 0 auto; border-radius: 14px 14px 0 0; overflow: hidden; border: 1px solid var(--lp-border); box-shadow: 0 30px 80px -20px rgba(28,25,23,0.25); }
@@ -62,10 +68,24 @@
     .lp-mockup-mobile-cols { display: grid; grid-template-columns: 160px 1fr; gap: 0; background: var(--lp-card-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--lp-border); min-height: 340px; }
 
     /* Trusted by */
-    .lp-trusted { padding: 44px 20px; text-align: center; }
+    .lp-trusted { padding: 44px 0; text-align: center; }
     .lp-trusted-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lp-text-faint); margin-bottom: 22px; }
-    .lp-trusted-logos { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; align-items: center; opacity: 0.55; }
-    .lp-trusted-logo { font-size: 16px; font-weight: 700; color: var(--lp-text-faint); letter-spacing: -0.02em; }
+
+    /* Seamless infinite marquee — the track holds the logo list TWICE
+       back-to-back; animating it exactly -50% loops perfectly with no
+       visible jump, since the second copy lines up exactly where the
+       first one started. */
+    .lp-trusted-marquee { overflow: hidden; mask-image: linear-gradient(to right, transparent, black 64px, black calc(100% - 64px), transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 64px, black calc(100% - 64px), transparent); }
+    .lp-trusted-track { display: flex; width: max-content; animation: lp-marquee 28s linear infinite; }
+    .lp-trusted-track:hover { animation-play-state: paused; }
+    .lp-trusted-group { display: flex; align-items: center; gap: 40px; padding-right: 40px; flex-shrink: 0; }
+    .lp-trusted-logo { font-size: 16px; font-weight: 700; color: var(--lp-text-faint); letter-spacing: -0.02em; opacity: 0.55; white-space: nowrap; }
+    .lp-trusted-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--lp-border); flex-shrink: 0; }
+
+    @keyframes lp-marquee {
+        from { transform: translateX(0); }
+        to   { transform: translateX(-50%); }
+    }
 
     /* Section headers */
     .lp-section { padding: 72px 20px; }
@@ -232,8 +252,23 @@
     {{-- Hero --}}
     <section class="lp-hero">
         <div class="lp-hero-badge lp-animate">⚡ Now supporting Bookings, Contracts & E-Signatures</div>
-        <h1 class="lp-hero-title lp-serif lp-animate">
-            The operating system for <span class="accent">event businesses</span>
+        <h1 class="lp-hero-title lp-serif lp-animate"
+            x-data="{
+                words: ['Event Businesses', 'Wedding Planners', 'Corporate Planners', 'Conference Organizers', 'Churches & Ministries'],
+                index: 0,
+                visible: true,
+                init() {
+                    setInterval(() => {
+                        this.visible = false;
+                        setTimeout(() => {
+                            this.index = (this.index + 1) % this.words.length;
+                            this.visible = true;
+                        }, 400);
+                    }, 2800);
+                }
+            }">
+            The Operating System For
+            <span class="accent lp-hero-rotate" :class="visible && 'lp-hero-rotate-visible'" x-text="words[index]"></span>
         </h1>
         <p class="lp-hero-sub lp-animate">
             Koordli brings your clients, vendors, contracts, tasks, and event-day execution into one platform — replacing scattered WhatsApp threads, spreadsheets, and paper runsheets.
@@ -284,17 +319,32 @@
                 </div>
             </div>
         </div>
+
+        <div class="lp-mockup-steps lp-animate">
+            <span class="lp-mockup-step active">① Create Event</span>
+            <span class="lp-mockup-step-arrow">→</span>
+            <span class="lp-mockup-step">② Invite Vendors</span>
+            <span class="lp-mockup-step-arrow">→</span>
+            <span class="lp-mockup-step">③ Track Budget</span>
+            <span class="lp-mockup-step-arrow">→</span>
+            <span class="lp-mockup-step">④ Run the Day</span>
+        </div>
     </section>
 
     {{-- Trusted By --}}
     <section class="lp-trusted lp-animate">
         <div class="lp-trusted-label">Built for event businesses of every kind</div>
-        <div class="lp-trusted-logos">
-            <span class="lp-trusted-logo">Wedding Planners</span>
-            <span class="lp-trusted-logo">Corporate Events</span>
-            <span class="lp-trusted-logo">Conferences</span>
-            <span class="lp-trusted-logo">Churches</span>
-            <span class="lp-trusted-logo">Award Ceremonies</span>
+        <div class="lp-trusted-marquee">
+            <div class="lp-trusted-track">
+                @for ($i = 0; $i < 2; $i++)
+                <div class="lp-trusted-group">
+                    @foreach(['Wedding Planners', 'Corporate Events', 'Conferences', 'Churches', 'Award Ceremonies', 'Production Companies', 'Exhibitions'] as $logo)
+                    <span class="lp-trusted-logo">{{ $logo }}</span>
+                    <span class="lp-trusted-dot"></span>
+                    @endforeach
+                </div>
+                @endfor
+            </div>
         </div>
     </section>
 
@@ -302,7 +352,7 @@
     <section class="lp-section lp-section-alt">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">The Problem</div>
-            <h2 class="lp-section-title lp-serif lp-animate">Running events shouldn't mean chasing information everywhere</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">Running Events Shouldn't Mean Chasing Information Everywhere</h2>
             <p class="lp-section-sub lp-animate">Most event businesses run on a patchwork of tools that were never built for this work.</p>
 
             <div class="lp-problem-grid">
@@ -654,17 +704,28 @@
                     @if($plan->is_featured)<div class="lp-pricing-badge">Most Popular</div>@endif
                     <div class="lp-pricing-name">{{ $plan->name }}</div>
 
-                    @if($monthlyPricing)
-                    <div x-show="cycle === 'monthly'">
-                        <div class="lp-pricing-price">{{ \App\Helpers\CurrencyHelper::symbol($monthlyPricing['currency']) }}{{ number_format($monthlyPricing['amount'], 0) }}</div>
-                        <div class="lp-pricing-period">per month · {{ $monthlyPricing['currency'] }}</div>
-                    </div>
-                    @endif
-                    @if($annualPricing)
-                    <div x-show="cycle === 'annual'" x-cloak>
-                        <div class="lp-pricing-price">{{ \App\Helpers\CurrencyHelper::symbol($annualPricing['currency']) }}{{ number_format($annualPricing['amount'], 0) }}</div>
-                        <div class="lp-pricing-period">per year · {{ $annualPricing['currency'] }}</div>
-                    </div>
+                    @if($plan->is_contact_only)
+                    <div class="lp-pricing-price" style="font-size: 0.6em;">Custom pricing</div>
+                    <div class="lp-pricing-period">Talk to our team</div>
+                    @else
+                        @if($monthlyPricing)
+                        <div x-show="cycle === 'monthly'">
+                            <div class="lp-pricing-price">{{ \App\Helpers\CurrencyHelper::symbol($monthlyPricing['currency']) }}{{ number_format($monthlyPricing['amount'], 0) }}</div>
+                            <div class="lp-pricing-period">per month · {{ $monthlyPricing['currency'] }}</div>
+                        </div>
+                        @endif
+                        @if($annualPricing)
+                        <div x-show="cycle === 'annual'" x-cloak>
+                            <div class="lp-pricing-price">{{ \App\Helpers\CurrencyHelper::symbol($annualPricing['currency']) }}{{ number_format($annualPricing['amount'], 0) }}</div>
+                            <div class="lp-pricing-period">per year · {{ $annualPricing['currency'] }}</div>
+                        </div>
+                        @endif
+
+                        @if($plan->trial_days > 0)
+                        <div style="display:flex;align-items:center;gap:6px;margin:10px 0;font-size:12.5px;font-weight:600;color:#059669;">
+                            <span>✓</span> {{ $plan->trial_days }}-day free trial · no card required
+                        </div>
+                        @endif
                     @endif
 
                     @if(!empty($plan->limits))
@@ -676,7 +737,13 @@
                     @endif
 
                     <a href="{{ route('register') }}" wire:navigate class="lp-btn {{ $plan->is_featured ? 'lp-btn-primary' : 'lp-btn-secondary' }}" style="width:100%;">
-                        Get Started →
+                        @if($plan->is_contact_only)
+                            Contact Us →
+                        @elseif($plan->trial_days > 0)
+                            Start Free Trial →
+                        @else
+                            Subscribe Now →
+                        @endif
                     </a>
                 </div>
                 @endforeach

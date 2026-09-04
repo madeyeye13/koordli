@@ -158,8 +158,20 @@ public function updateStatus(int $id, string $status): void
             ->orderBy('due_date')
             ->paginate(20);
 
+        // Read-only reverse lookup — Task itself has zero knowledge that
+        // Checklist exists (no column, no relation on the Task model).
+        // This is purely TaskCenter choosing to query ChecklistItem for
+        // display purposes, keyed by task_id, for whichever tasks are
+        // visible on THIS page only — cheap, and never touches Task's
+        // own schema or model.
+        $checklistOriginsByTaskId = \App\Models\Tenant\ChecklistItem::whereIn('task_id', $tasks->pluck('id'))
+            ->with('checklist.event')
+            ->get()
+            ->keyBy('task_id');
+
         return view('livewire.tenant.tasks.task-center', [
-            'tasks'        => $tasks,
+            'tasks'                    => $tasks,
+            'checklistOriginsByTaskId' => $checklistOriginsByTaskId,
             'events'       => Event::orderBy('date')->get(['id', 'name', 'slug']),
             'users'        => User::where('is_active', true)->get(['id', 'name']),
             'categories'   => TenantTaskCategory::orderBy('sort_order')->get(),

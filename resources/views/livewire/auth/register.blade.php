@@ -125,14 +125,14 @@
 
             {{-- Error --}}
             @if($error)
-            <div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#DC2626;">
+            <div x-data x-init="setTimeout(() => $el.remove(), 5000)" role="alert" style="background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#DC2626;">
                 {{ $error }}
             </div>
             @endif
 
             {{-- Success --}}
             @if($success)
-            <div style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#065F46;">
+            <div x-data x-init="setTimeout(() => $el.remove(), 5000)" role="status" style="background:#D1FAE5;border:1px solid #6EE7B7;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#065F46;">
                 {{ $success }}
             </div>
             @endif
@@ -156,14 +156,18 @@
                 @error('company_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
             </div>
 
-            <div class="krd-input-group">
+            <div
+                class="krd-input-group"
+                x-data="{ selected: {{ $industry_profile_id ?? 'null' }} }"
+            >
                 <label class="krd-label-text">What best describes your business?</label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     @foreach($industryProfiles as $profile)
-                    <div wire:click="selectIndustryProfile({{ $profile->id }})"
-                        style="
-                            border: 1.5px solid {{ $industry_profile_id === $profile->id ? '#7C3AED' : '#E7E5E4' }};
-                            background: {{ $industry_profile_id === $profile->id ? '#F5F3FF' : '#fff' }};
+                    <div
+                        x-on:click="selected = {{ $profile->id }}; $wire.selectIndustryProfile({{ $profile->id }})"
+                        :style="`
+                            border: 1.5px solid ${selected === {{ $profile->id }} ? '#7C3AED' : '#E7E5E4'};
+                            background: ${selected === {{ $profile->id }} ? '#F5F3FF' : '#fff'};
                             border-radius: 8px;
                             padding: 10px 12px;
                             cursor: pointer;
@@ -171,7 +175,8 @@
                             display: flex;
                             align-items: center;
                             gap: 8px;
-                        ">
+                        `"
+                    >
                         <span style="font-size:16px;">{{ $profile->icon }}</span>
                         <span style="font-size:12.5px;font-weight:500;color:#1C1917;">{{ $profile->name }}</span>
                     </div>
@@ -278,14 +283,11 @@
 
             <div class="krd-input-group">
                 <label class="krd-label-text">Password</label>
-                <div style="position: relative;">
-                    <input wire:model="password" type="{{ $showPassword ? 'text' : 'password' }}" class="krd-input @error('password') krd-input-error @enderror" placeholder="Min 8 characters" autocomplete="new-password" style="padding-right: 44px;" />
-                    <button type="button" wire:click="togglePassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#A8A29E;display:flex;align-items:center;padding:0;">
-                        @if($showPassword)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        @else
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        @endif
+                <div x-data="{ visible: false }" style="position: relative;">
+                    <input wire:model="password" x-bind:type="visible ? 'text' : 'password'" class="krd-input @error('password') krd-input-error @enderror" placeholder="Min 8 characters" autocomplete="new-password" style="padding-right: 44px;" />
+                    <button type="button" x-on:click="visible = !visible" x-bind:aria-label="visible ? 'Hide password' : 'Show password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#A8A29E;display:flex;align-items:center;padding:0;">
+                        <svg x-show="visible" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        <svg x-show="!visible" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
                 @error('password') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
@@ -294,14 +296,11 @@
 
             <div class="krd-input-group">
                 <label class="krd-label-text">Confirm Password</label>
-                <div style="position: relative;">
-                    <input wire:model="password_confirmation" type="{{ $showPasswordConfirm ? 'text' : 'password' }}" class="krd-input" placeholder="Repeat your password" autocomplete="new-password" style="padding-right: 44px;" />
-                    <button type="button" wire:click="togglePasswordConfirm" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#A8A29E;display:flex;align-items:center;padding:0;">
-                        @if($showPasswordConfirm)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                        @else
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        @endif
+                <div x-data="{ visible: false }" style="position: relative;">
+                    <input wire:model="password_confirmation" x-bind:type="visible ? 'text' : 'password'" class="krd-input" placeholder="Repeat your password" autocomplete="new-password" style="padding-right: 44px;" />
+                    <button type="button" x-on:click="visible = !visible" x-bind:aria-label="visible ? 'Hide password' : 'Show password'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#A8A29E;display:flex;align-items:center;padding:0;">
+                        <svg x-show="visible" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        <svg x-show="!visible" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
                 </div>
             </div>
@@ -406,6 +405,10 @@
                 <span wire:loading wire:target="verifyCode">Verifying...</span>
             </button>
 
+            <button wire:click="backToAccount" wire:loading.attr="disabled" type="button" style="display:block;width:100%;background:none;border:none;color:#7C3AED;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:16px;">
+                ← Back to account details
+            </button>
+
             {{-- Resend with real countdown --}}
             <div
                 style="text-align:center;font-size:12px;color:#A8A29E;"
@@ -456,7 +459,6 @@
             <div style="display:flex;flex-direction:column;gap:12px;">
                 @foreach($plans as $plan)
                 <div
-                    wire:click="selectPlan({{ $plan->id }})"
                     style="
                         border: 2px solid {{ $selected_plan_id === $plan->id ? '#7C3AED' : ($plan->is_featured ? '#DDD6FE' : '#E7E5E4') }};
                         border-radius: 8px;
@@ -473,16 +475,46 @@
                     </div>
                     @endif
 
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
                         <div style="font-size:14px;font-weight:600;color:#1C1917;">{{ $plan->name }}</div>
-                        <div style="font-size:13px;font-weight:600;color:#7C3AED;">
-                            @if($plan->trial_days > 0)
-                                Free for {{ $plan->trial_days }} days
-                            @else
-                                Contact us
-                            @endif
+                        @if($plan->is_contact_only)
+                        <div style="font-size:13px;font-weight:600;color:#7C3AED;">Contact us</div>
+                        @elseif(isset($pricingData[$plan->id]))
+                        <div style="font-size:13px;font-weight:600;color:#1C1917;">
+                            {{ \App\Helpers\CurrencyHelper::symbol($pricingData[$plan->id]['currency']) }}{{ number_format($pricingData[$plan->id]['amount'], 2) }}/mo
                         </div>
+                        @endif
                     </div>
+
+                    @if(!$plan->is_contact_only)
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;" x-on:click.stop>
+                        @if($plan->trial_days > 0)
+                        <button
+                            type="button"
+                            wire:click="selectPlan({{ $plan->id }}, 'trial')"
+                            wire:loading.attr="disabled"
+                            wire:target="selectPlan({{ $plan->id }}, 'trial')"
+                            class="krd-btn krd-btn-sm {{ $selected_plan_id === $plan->id ? 'krd-btn-primary' : 'krd-btn-secondary' }}"
+                        >
+                            <span wire:loading.remove wire:target="selectPlan({{ $plan->id }}, 'trial')">Start {{ $plan->trial_days }}-day free trial</span>
+                            <span wire:loading wire:target="selectPlan({{ $plan->id }}, 'trial')">Starting...</span>
+                        </button>
+                        @endif
+
+                        @if(isset($pricingData[$plan->id]))
+                        <button
+                            type="button"
+                            wire:click="selectPlan({{ $plan->id }}, 'subscribe')"
+                            wire:loading.attr="disabled"
+                            wire:target="selectPlan({{ $plan->id }}, 'subscribe')"
+                            class="krd-btn krd-btn-sm krd-btn-primary"
+                        >
+                            <span wire:loading.remove wire:target="selectPlan({{ $plan->id }}, 'subscribe')">Subscribe now</span>
+                            <span wire:loading wire:target="selectPlan({{ $plan->id }}, 'subscribe')">Redirecting...</span>
+                        </button>
+                        @endif
+                    </div>
+                    @endif
 
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
                         @foreach(($plan->features ?? []) as $key => $value)
@@ -510,31 +542,87 @@
                 <p style="font-size: 13px; color: #78716C;">Help us personalise your experience. Takes 30 seconds.</p>
             </div>
 
-            <div class="krd-input-group">
+            <div
+                class="krd-input-group"
+                x-data="{
+                    open: false,
+                    options: [
+                        { value: 'google',     label: 'Google Search' },
+                        { value: 'instagram',  label: 'Instagram' },
+                        { value: 'twitter',    label: 'Twitter / X' },
+                        { value: 'linkedin',   label: 'LinkedIn' },
+                        { value: 'referral',   label: 'Referred by someone' },
+                        { value: 'facebook',   label: 'Facebook' },
+                        { value: 'whatsapp',   label: 'WhatsApp' },
+                        { value: 'other',      label: 'Other' },
+                    ],
+                    selected: '{{ $heard_from }}',
+                    get selectedLabel() {
+                        const f = this.options.find(o => o.value === this.selected);
+                        return f ? f.label : 'Select an option';
+                    },
+                    pick(value) {
+                        this.selected = value;
+                        this.open = false;
+                        $wire.set('heard_from', value);
+                    }
+                }"
+                x-on:click.outside="open = false"
+            >
                 <label class="krd-label-text">How did you hear about Koordli?</label>
-                <select wire:model="heard_from" class="krd-input" style="cursor:pointer;">
-                    <option value="">Select an option</option>
-                    <option value="google">Google Search</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="twitter">Twitter / X</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="referral">Referred by someone</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="other">Other</option>
-                </select>
+                <div class="krd-dropdown">
+                    <button type="button" class="krd-dropdown-trigger" x-bind:class="{ open: open }" x-on:click="open = !open">
+                        <span x-text="selectedLabel" :style="selected === '' ? 'color:#A8A29E' : ''"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <template x-if="open">
+                        <div class="krd-dropdown-menu">
+                            <template x-for="option in options" :key="option.value">
+                                <div class="krd-dropdown-option" :class="selected === option.value ? 'selected' : ''" x-text="option.label" x-on:click="pick(option.value)"></div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            <div class="krd-input-group">
+            <div
+                class="krd-input-group"
+                x-data="{
+                    open: false,
+                    options: [
+                        { value: 'just-me', label: 'Just me' },
+                        { value: '2-5',     label: '2 – 5' },
+                        { value: '6-10',    label: '6 – 10' },
+                        { value: '11-20',   label: '11 – 20' },
+                        { value: '20+',     label: '20+' },
+                    ],
+                    selected: '{{ $team_size }}',
+                    get selectedLabel() {
+                        const f = this.options.find(o => o.value === this.selected);
+                        return f ? f.label : 'Select an option';
+                    },
+                    pick(value) {
+                        this.selected = value;
+                        this.open = false;
+                        $wire.set('team_size', value);
+                    }
+                }"
+                x-on:click.outside="open = false"
+            >
                 <label class="krd-label-text">How many team members do you have?</label>
-                <select wire:model="team_size" class="krd-input" style="cursor:pointer;">
-                    <option value="">Select an option</option>
-                    <option value="just-me">Just me</option>
-                    <option value="2-5">2 – 5</option>
-                    <option value="6-10">6 – 10</option>
-                    <option value="11-20">11 – 20</option>
-                    <option value="20+">20+</option>
-                </select>
+                <div class="krd-dropdown">
+                    <button type="button" class="krd-dropdown-trigger" x-bind:class="{ open: open }" x-on:click="open = !open">
+                        <span x-text="selectedLabel" :style="selected === '' ? 'color:#A8A29E' : ''"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <template x-if="open">
+                        <div class="krd-dropdown-menu">
+                            <template x-for="option in options" :key="option.value">
+                                <div class="krd-dropdown-option" :class="selected === option.value ? 'selected' : ''" x-text="option.label" x-on:click="pick(option.value)"></div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
             </div>
 
             <div class="krd-input-group" style="margin-bottom: 24px;">

@@ -136,10 +136,16 @@ class MoodboardList extends Component
             ->orderByDesc('created_at')
             ->get();
 
+        $tenantProfileId = auth()->user()->tenant->industry_profile_id;
+
+        $isFullService = \App\Models\Central\IndustryProfile::find($tenantProfileId)?->key === 'full_service';
+
         $templates = Moodboard::where('tenant_id', auth()->user()->tenant_id)
             ->where('is_template', true)
-            ->where(function ($q) {
-                $q->whereNull('event_type_id')->orWhere('event_type_id', $this->event->event_type_id);
+            ->when($tenantProfileId && !$isFullService, function ($q) use ($tenantProfileId) {
+                $q->where(function ($sub) use ($tenantProfileId) {
+                    $sub->whereNull('industry_profile_id')->orWhere('industry_profile_id', $tenantProfileId);
+                });
             })
             ->get(['id', 'title']);
 

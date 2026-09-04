@@ -48,6 +48,8 @@ class BudgetOverview extends Component
         $totalActual      = $allBudgets->sum(fn($b) => $b->totalActual());
         $totalCollected   = $allBudgets->sum(fn($b) => $b->totalClientPaid());
         $totalOutstanding = $allBudgets->sum(fn($b) => $b->clientOutstanding());
+        $totalFeeRevenue  = $allBudgets->sum(fn($b) => $b->feeRevenueCollected());
+        $totalBorneCost   = $allBudgets->sum(fn($b) => $b->plannerBorneCost());
 
         return view('livewire.tenant.budget.budget-overview', [
             'eventsWithBudget'    => $eventsWithBudget,
@@ -57,6 +59,8 @@ class BudgetOverview extends Component
             'totalActual'         => $totalActual,
             'totalCollected'      => $totalCollected,
             'totalOutstanding'    => $totalOutstanding,
+            'totalFeeRevenue'     => $totalFeeRevenue,
+            'totalNetPosition'    => $totalFeeRevenue - $totalBorneCost,
             'symbol'              => CurrencyHelper::forTenant(),
         ]);
     }

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Central\BillingSetting;
 use App\Models\Central\FeatureFlag;
 use App\Models\Central\Plan;
 use App\Models\Central\PlanFeature;
@@ -11,6 +12,7 @@ class PlanSeeder extends Seeder
 {
     public function run(): void
     {
+        $defaultTrialDays = (int) BillingSetting::get('default_trial_days', 30);
         // ── Feature Flags ──────────────────────────────────────────
         $flags = [
             ['key' => 'max_events',        'label' => 'Maximum Events',          'description' => 'Maximum number of active events'],

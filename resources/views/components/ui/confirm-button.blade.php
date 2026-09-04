@@ -1,9 +1,13 @@
 {{-- resources/views/components/ui/confirm-button.blade.php --}}
-@props(['action', 'message', 'label', 'class' => 'krd-btn krd-btn-danger krd-btn-sm', 'loadingLabel' => '...'])
+@props(['action', 'message', 'label' => '', 'class' => 'krd-btn krd-btn-danger krd-btn-sm', 'loadingLabel' => '...', 'icon' => null])
 <div x-data="{ open: false }" style="display:inline-block;">
-    <button type="button" x-on:click="open = true" {{ $attributes->merge(['class' => $class]) }} wire:loading.attr="disabled" wire:target="{{ $action }}">
+    <button type="button" x-on:click="open = true" {{ $attributes->merge(['class' => $class]) }}>
+        @if($icon)
+        {!! $icon !!}
+        @else
         <span wire:loading.remove wire:target="{{ $action }}">{{ $label }}</span>
         <span wire:loading wire:target="{{ $action }}">{{ $loadingLabel }}</span>
+        @endif
     </button>
     <template x-teleport="body">
     <div x-show="open" x-cloak style="position:fixed;inset:0;z-index:70;">

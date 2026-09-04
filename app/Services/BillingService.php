@@ -58,10 +58,11 @@ class BillingService
         $country         = $tenant->country ?? 'NG';
         $isInternational = !in_array(strtoupper($country), ['NG']);
 
-        // Get base NGN price
+        // Get base price — always the MONTHLY row, annual is derived below (never stored
+        // as its own row, to avoid double-applying the ×12 multiplier).
         $basePrice = PlanPrice::where('plan_id', $plan->id)
             ->where('currency', $baseCurrency)
-            ->where('billing_cycle', $cycle)
+            ->where('billing_cycle', 'monthly')
             ->where('is_active', true)
             ->first();
 

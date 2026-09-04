@@ -1,7 +1,7 @@
+<div x-data="floatingConversationsData()" @if(!$hasAnyConversation) style="display:none;" @endif>
 @if($hasAnyConversation)
 <script type="application/json" id="floating-conversations-initial-data">{!! json_encode($initialList) !!}</script>
 
-<div x-data="floatingConversationsData()">
     <div wire:ignore>
         <button x-on:click="togglePanel()" style="position:fixed;bottom:24px;right:24px;z-index:70;width:56px;height:56px;border-radius:50%;background:#1C1917;color:#fff;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:22px;">
             💬
@@ -73,7 +73,6 @@
             </div>
         </div>
     </div>
-</div>
 
 <script>
 function floatingConversationsData() {
@@ -237,3 +236,4 @@ function floatingConversationsData() {
 }
 </script>
 @endif
+</div>

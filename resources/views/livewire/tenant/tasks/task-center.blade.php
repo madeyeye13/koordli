@@ -258,6 +258,15 @@
                 @if($task->category)
                 <span style="font-size:11px;color:#A8A29E;">{{ $task->category->name }}</span>
                 @endif
+
+                @php $checklistOrigin = $checklistOriginsByTaskId->get($task->id); @endphp
+                @if($checklistOrigin)
+                <a href="{{ route('tenant.events.checklist', $checklistOrigin->checklist->event->slug) }}" wire:navigate
+                    style="font-size:11px;color:#7C3AED;text-decoration:none;display:flex;align-items:center;gap:4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    From Checklist — {{ $checklistOrigin->phaseEnum()->label() }}
+                </a>
+                @endif
             </div>
 
             {{-- Mobile-only actions (shown below meta on small screens) --}}

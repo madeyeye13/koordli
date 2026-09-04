@@ -143,6 +143,11 @@ class Event extends Model
     return $this->hasMany(\App\Models\Tenant\Moodboard::class);
 }
 
+public function checklist(): \Illuminate\Database\Eloquent\Relations\HasOne
+{
+    return $this->hasOne(\App\Models\Tenant\Checklist::class);
+}
+
     public function clientAccess(): HasMany
     {
         return $this->hasMany(ClientEventAccess::class);

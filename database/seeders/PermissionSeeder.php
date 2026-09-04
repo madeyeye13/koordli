@@ -82,6 +82,7 @@ class PermissionSeeder extends Seeder
             // Budget
             'budget.view',
             'budget.manage',
+            'budget.client-visibility.manage',
 
             // Guests
             'guests.view',        // full record, includes email/phone
@@ -145,9 +146,13 @@ class PermissionSeeder extends Seeder
             // Client account management (this new tenant-side Clients page)
             'clients.manage',
 
-            // Moodboards
+                        // Moodboards
             'moodboards.view',
             'moodboards.manage',
+
+            // Event Checklists
+            'checklists.view',
+            'checklists.manage',
 
             // Vendor self (for vendor role)
             'vendor.profile.manage',
@@ -205,7 +210,9 @@ class PermissionSeeder extends Seeder
                 'quick-access.manage',
                 'clients.manage',
                 'moodboards.view', 'moodboards.manage',
+                'checklists.view', 'checklists.manage',
                 'budget.view',
+                'budget.client-visibility.manage',
                 'guests.view', 'guests.create', 'guests.edit', 'guests.checkin',
                 'rsvp.view', 'rsvp.manage',
                 'runsheet.view', 'runsheet.manage',
@@ -237,6 +244,7 @@ class PermissionSeeder extends Seeder
                 'guests.view', 'guests.checkin',
                 'assets.manage', // day-of-event logistics ownership, per confirmed answer
                 'moodboards.view', // reference-only — operations doesn't create creative direction, just reads it
+                'checklists.view', 'checklists.manage', // operations owns day-of/logistics execution — this fits their existing runsheet/asset ownership better than view-only
             ],
 
             'social_media_manager' => [

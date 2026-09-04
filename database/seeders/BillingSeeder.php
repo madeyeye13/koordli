@@ -72,6 +72,7 @@ class BillingSeeder extends Seeder
             ['key' => 'flutterwave_public_key',  'value' => '',         'type' => 'string',  'label' => 'Flutterwave Public Key',     'description' => 'From Flutterwave dashboard'],
             ['key' => 'enabled_gateways',        'value' => '["paystack","flutterwave"]', 'type' => 'json', 'label' => 'Enabled Gateways', 'description' => 'Which payment gateways are active'],
             ['key' => 'frankfurter_cache_hours', 'value' => '24',       'type' => 'integer', 'label' => 'Exchange Rate Cache (hours)', 'description' => 'How long to cache Frankfurter exchange rates'],
+            ['key' => 'default_trial_days',      'value' => '14',       'type' => 'integer', 'label' => 'Default Trial Days',          'description' => 'Trial length applied when seeding a new plan that doesn\'t specify its own trial_days'],
         ];
 
         foreach ($settings as $setting) {

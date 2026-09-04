@@ -8,10 +8,11 @@
 
 <div
     class="krd-dropdown"
+    wire:key="krd-dropdown-{{ $wire }}-{{ md5($selected) }}"
     x-data="krdDropdown({
-        wire: '{{ $wire }}',
-        selected: '{{ $selected }}',
-        placeholder: '{{ $placeholder }}'
+        wire: @js($wire),
+        selected: @js($selected),
+        placeholder: @js($placeholder)
     })"
     x-on:click.outside="open = false"
     @if($maxWidth) style="max-width:{{ $maxWidth }};" @endif
@@ -31,15 +32,13 @@
         </svg>
     </button>
 
-    <template x-if="open">
-        <div class="krd-dropdown-menu">
-            @if($placeholder)
-            <div class="krd-dropdown-option" x-on:click="clear()">
-                {{ $placeholder }}
-            </div>
-            @endif
-            {{ $slot }}
+    <div x-show="open" x-cloak class="krd-dropdown-menu">
+        @if($placeholder)
+        <div class="krd-dropdown-option" x-on:click="clear()">
+            {{ $placeholder }}
         </div>
-    </template>
+        @endif
+        {{ $slot }}
+    </div>
 
 </div>

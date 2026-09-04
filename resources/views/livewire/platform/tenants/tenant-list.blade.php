@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ showSuspendModal: false, showDeleteModal: @entangle('showDeleteModal').live }">
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
@@ -100,12 +100,17 @@
                                     Activate
                                 </button>
                                 @else
-                                <button wire:click="confirmSuspend({{ $tenant->id }})"
+                                <button x-on:click="showSuspendModal = true; $wire.suspendId = {{ $tenant->id }}"
                                     class="krd-btn krd-btn-sm"
                                     style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
                                     Suspend
                                 </button>
                                 @endif
+                                <button x-on:click="showDeleteModal = true; $wire.confirmDelete({{ $tenant->id }})"
+                                    title="Delete company"
+                                    style="background:none;border:none;color:#DC2626;cursor:pointer;padding:4px;display:flex;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -167,12 +172,17 @@
                     Activate
                 </button>
                 @else
-                <button wire:click="confirmSuspend({{ $tenant->id }})"
+                <button x-on:click="showSuspendModal = true; $wire.suspendId = {{ $tenant->id }}"
                     class="krd-btn krd-btn-sm"
                     style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
                     Suspend
                 </button>
                 @endif
+                <button x-on:click="showDeleteModal = true; $wire.confirmDelete({{ $tenant->id }})"
+                    class="krd-btn krd-btn-sm"
+                    style="background:none;border:1px solid #FECACA;color:#DC2626;">
+                    Delete
+                </button>
             </div>
         </div>
         @empty
@@ -248,11 +258,16 @@
                 Activate Company
             </button>
             @else
-            <button wire:click="confirmSuspend({{ $viewingTenant->id }})"
+            <button x-on:click="showSuspendModal = true; $wire.suspendId = {{ $viewingTenant->id }}"
                 class="krd-btn krd-btn-danger">
                 Suspend Company
             </button>
             @endif
+            <button x-on:click="showDeleteModal = true; $wire.confirmDelete({{ $viewingTenant->id }})"
+                class="krd-btn"
+                style="background:none;border:1px solid #FECACA;color:#DC2626;">
+                Delete Company
+            </button>
         </div>
     </div>
 
@@ -261,8 +276,8 @@
     @endif
 
     {{-- Suspend Modal --}}
-    @if($showSuspendModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <template x-teleport="body">
+    <div x-show="showSuspendModal" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div style="background:#fff;border-radius:8px;padding:28px;max-width:400px;width:100%;">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Suspend Company?</h3>
             <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
@@ -270,12 +285,31 @@
                 You can reactivate them at any time.
             </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="suspend" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Suspend</button>
-                <button wire:click="cancelSuspend" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button wire:click="suspend" x-on:click="showSuspendModal = false" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Suspend</button>
+                <button type="button" x-on:click="showSuspendModal = false" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
+    </template>
+
+    {{-- Delete Modal — requires typing the exact company name --}}
+    <template x-teleport="body">
+    <div x-cloak x-bind:style="showDeleteModal ? 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;' : 'display:none;'">
+        <div style="background:#fff;border-radius:8px;padding:28px;max-width:420px;width:100%;box-sizing:border-box;margin:0 auto;align-self:center;">
+            <h3 style="font-size:16px;font-weight:600;color:#DC2626;margin-bottom:8px;">Permanently Delete Company?</h3>
+            <p style="font-size:13px;color:#78716C;margin-bottom:16px;line-height:1.6;">
+                This <strong>cannot be undone</strong>. Every event, task, moodboard, checklist, staff member, client, and vendor record belonging to this company will be permanently erased.
+            </p>
+            <label class="krd-label-text">Type the company name to confirm:</label>
+            <input wire:model="deleteConfirmText" type="text" class="krd-input @error('deleteConfirmText') krd-input-error @enderror" placeholder="Exact company name" style="margin-bottom:4px;">
+            @error('deleteConfirmText') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button wire:click="delete" class="krd-btn krd-btn-danger" style="flex:1;">Delete Permanently</button>
+                <button type="button" x-on:click="showDeleteModal = false; $wire.cancelDelete()" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    </template>
 
 </div>
 

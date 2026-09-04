@@ -29,6 +29,7 @@ class EventBudget extends Component
     public string $newActual     = '';
     public string $newPaid       = '';
     public string $newNotes      = '';
+    public string $newResponsibleParty = 'client_budget';
 
     // Edit budget item
     public ?int   $editItemId    = null;
@@ -37,6 +38,7 @@ class EventBudget extends Component
     public string $editActual    = '';
     public string $editPaid      = '';
     public string $editNotes     = '';
+    public string $editResponsibleParty = 'client_budget';
 
     // Client payment
     public bool   $showPaymentForm    = false;
@@ -44,6 +46,14 @@ class EventBudget extends Component
     public string $paymentDescription = '';
     public string $paymentDate        = '';
     public string $paymentMethod      = 'transfer';
+    public string $paymentPurpose     = 'unspecified';
+
+    // Professional fee
+    public bool   $showFeeForm  = false;
+    public string $feeType      = 'fixed';
+    public string $feeAmount    = '';
+    public string $feeNote      = '';
+    public string $feeSource    = 'on_top';
 
     // Delete item
     public bool $showDeleteModal   = false;
@@ -123,10 +133,12 @@ class EventBudget extends Component
             'actual'    => $this->newActual ?: 0,
             'paid'      => $this->newPaid ?: 0,
             'notes'     => $this->newNotes ?: null,
+            'responsible_party' => $this->newResponsibleParty,
         ]);
 
         $this->reload();
         $this->reset(['newCategory', 'newEstimated', 'newActual', 'newPaid', 'newNotes', 'showAddForm']);
+        $this->newResponsibleParty = 'client_budget';
         $this->toastSuccess('Budget item added.');
     }
 
@@ -142,6 +154,7 @@ class EventBudget extends Component
         $this->editActual    = $item->actual;
         $this->editPaid      = $item->paid;
         $this->editNotes     = $item->notes ?? '';
+        $this->editResponsibleParty = $item->effectiveResponsibleParty();
     }
 
     public function saveEdit(): void
@@ -166,11 +179,12 @@ class EventBudget extends Component
                 'actual'    => $this->editActual ?: 0,
                 'paid'      => $this->editPaid ?: 0,
                 'notes'     => $this->editNotes ?: null,
+                'responsible_party' => $this->editResponsibleParty,
             ]);
         }
 
         $this->reload();
-        $this->reset(['editItemId', 'editCategory', 'editEstimated', 'editActual', 'editPaid', 'editNotes']);
+        $this->reset(['editItemId', 'editCategory', 'editEstimated', 'editActual', 'editPaid', 'editNotes', 'editResponsibleParty']);
         $this->toastSuccess('Budget item updated.');
     }
 
@@ -229,15 +243,16 @@ class EventBudget extends Component
             'description'    => $this->paymentDescription ?: null,
             'paid_on'        => $this->paymentDate,
             'payment_method' => $this->paymentMethod,
+            'purpose'        => $this->paymentPurpose,
         ]);
 
-        app(\App\Services\Notifications\ClientNotificationService::class)
-            ->notifyPaymentRecorded($payment);
+        app(\App\Services\Notifications\ClientNotificationService::class)->notifyPaymentRecorded($payment);
 
         $this->reload();
-        $this->reset(['paymentAmount', 'paymentDescription', 'paymentMethod', 'showPaymentForm']);
+        $this->reset(['paymentAmount', 'paymentDescription', 'paymentMethod', 'paymentPurpose', 'showPaymentForm']);
         $this->paymentDate   = now()->format('Y-m-d');
         $this->paymentMethod = 'transfer';
+        $this->paymentPurpose = 'unspecified';
         $this->toastSuccess('Payment recorded.');
     }
 
@@ -302,6 +317,63 @@ class EventBudget extends Component
         return \App\Helpers\CurrencyHelper::symbol(
             $this->budget?->currency ?? auth()->user()->tenant->billing_currency ?? 'NGN'
         );
+    }
+
+    public function openFeeForm(): void
+    {
+        if (!$this->requireManage()) return;
+
+        $budget = $this->getOrCreateBudget();
+        $this->feeType   = $budget->fee_type ?: 'fixed';
+        $this->feeAmount = $budget->fee_amount !== null ? (string) $budget->fee_amount : '';
+        $this->feeNote   = $budget->fee_note ?? '';
+        $this->feeSource = $budget->fee_source ?: 'on_top';
+        $this->showFeeForm = true;
+    }
+
+        /**
+     * Sums confirmed RsvpResponse rows (each including its own
+     * plus_one_count), NOT Guest.rsvp_status — confirmed via direct
+     * inspection that RsvpFormPage (the real public submission flow)
+     * never touches Guest at all. Guest.rsvp_status is a separate,
+     * manually-managed field with no connection to actual public RSVPs.
+     */
+    public function confirmedGuestCount(): int
+    {
+        return \App\Models\Tenant\RsvpResponse::where('event_id', $this->event->id)
+            ->where('status', 'confirmed')
+            ->get()
+            ->sum(fn($r) => $r->attendeeCount());
+    }
+
+    /**
+     * Stores ONE confirmed number, regardless of fee_type. fee_type is
+     * purely a label for the planner's own reporting/organization — it
+     * never drives a live recalculation. If a planner used the
+     * calculator helper client-side to arrive at this number, that
+     * happened before this method was ever called; this just persists
+     * whatever figure they confirmed.
+     */
+    public function saveFee(): void
+    {
+        if (!$this->requireManage()) return;
+
+        $this->validate([
+            'feeAmount' => 'required|numeric|min:0',
+            'feeSource' => 'required|in:on_top,from_budget',
+        ], [], ['feeAmount' => 'fee amount']);
+
+        $budget = $this->getOrCreateBudget();
+        $budget->update([
+            'fee_type'   => $this->feeType,
+            'fee_amount' => $this->feeAmount,
+            'fee_note'   => $this->feeNote ?: null,
+            'fee_source' => $this->feeSource,
+        ]);
+
+        $this->budget = $budget->fresh(['items', 'clientPayments']);
+        $this->showFeeForm = false;
+        $this->toastSuccess('Professional fee saved.');
     }
 
     public function render()

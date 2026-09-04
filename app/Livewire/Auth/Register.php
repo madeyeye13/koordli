@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Stevebauman\Location\Facades\Location;
 
@@ -51,6 +52,13 @@ class Register extends Component
     public string $error     = '';
     public string $success   = '';
 
+    public function clearMessages(): void
+    {
+        $this->error   = '';
+        $this->success = '';
+    }
+
+    #[Renderless]
     public function selectIndustryProfile(int $profileId): void
     {
         $this->industry_profile_id = $profileId;
@@ -58,6 +66,25 @@ class Register extends Component
 
     public function mount(): void
     {
+        $savedRegistration = session('registration.wizard');
+
+        if (is_array($savedRegistration)) {
+            if (!empty($savedRegistration['tenant_id']) && !Tenant::find($savedRegistration['tenant_id'])) {
+                session()->forget('registration.wizard');
+                $savedRegistration = null;
+            }
+        }
+
+        if (is_array($savedRegistration)) {
+            foreach ($savedRegistration as $property => $value) {
+                if (property_exists($this, $property)) {
+                    $this->{$property} = $value;
+                }
+            }
+
+            return;
+        }
+
         // Auto-detect country from IP
         try {
             $location = Location::get(request()->ip());
@@ -72,6 +99,29 @@ class Register extends Component
         if (empty($this->country)) {
             $this->country = 'NG';
         }
+    }
+
+    private function saveRegistrationState(): void
+    {
+        session()->put('registration.wizard', [
+            'step'                => $this->step,
+            'company_name'        => $this->company_name,
+            'industry_profile_id' => $this->industry_profile_id,
+            'country'             => $this->country,
+            'name'                => $this->name,
+            'email'               => $this->email,
+            'password'            => $this->password,
+            'password_confirmation' => $this->password_confirmation,
+            'agreed_to_terms'     => $this->agreed_to_terms,
+            'code_digits'         => $this->code_digits,
+            'codeVerified'        => $this->codeVerified,
+            'resendCooldown'      => $this->resendCooldown,
+            'tenant_id'           => $this->tenant_id,
+            'selected_plan_id'    => $this->selected_plan_id,
+            'heard_from'          => $this->heard_from,
+            'team_size'           => $this->team_size,
+            'event_types'         => $this->event_types,
+        ]);
     }
 
     public function updatedCountry(): void
@@ -118,6 +168,7 @@ class Register extends Component
         $this->sendVerificationCode();
         $this->error = '';
         $this->step  = 2;
+        $this->saveRegistrationState();
     }
 
     // ── Send/Resend Code ──────────────────────────────────────
@@ -156,6 +207,20 @@ class Register extends Component
         $this->sendVerificationCode();
         $this->success = 'A new code has been sent to your email.';
         $this->error   = '';
+        $this->saveRegistrationState();
+    }
+
+    public function backToAccount(): void
+    {
+        if ($this->step !== 2) {
+            return;
+        }
+
+        $this->step        = 1;
+        $this->code_digits = ['', '', '', '', '', ''];
+        $this->error       = '';
+        $this->success     = '';
+        $this->saveRegistrationState();
     }
 
     // ── Step 2 Verify ─────────────────────────────────────────
@@ -216,39 +281,93 @@ class Register extends Component
             $this->codeVerified = true;
             $this->error        = '';
             $this->step         = 3;
+            $this->saveRegistrationState();
 
         } catch (\Exception $e) {
             $this->error = 'Something went wrong creating your account. Please try again.';
         }
     }
 
-    // ── Step 3 Select Plan ────────────────────────────────────
-    public function selectPlan(int $planId): void
+            // ── Step 3 Select Plan ────────────────────────────────────
+    public function selectPlan(int $planId, string $intent = 'trial'): void
     {
         $plan = Plan::find($planId);
-        if (!$plan) return;
-
-        $this->selected_plan_id = $planId;
+        if (!$plan || $plan->is_contact_only) return;
 
         $tenant = Tenant::find($this->tenant_id);
-        if ($tenant) {
+        if (!$tenant) return;
+
+        $this->selected_plan_id = $planId;
+        $this->error = '';
+
+        if ($intent === 'trial') {
+            if (!$plan->hasTrial()) {
+                $this->error = 'This plan does not offer a free trial. Please choose "Subscribe now" instead.';
+                return;
+            }
+
             $tenant->update(['plan_id' => $planId]);
-            $trialDays = $plan->trial_days ?? 30;
+
             DB::table('subscriptions')->insert([
                 'tenant_id'            => $tenant->id,
                 'plan_id'              => $planId,
                 'status'               => 'trial',
-                'trial_ends_at'        => now()->addDays($trialDays),
+                'trial_ends_at'        => now()->addDays($plan->trial_days),
                 'current_period_start' => now(),
-                'current_period_end'   => now()->addDays($trialDays),
+                'current_period_end'   => now()->addDays($plan->trial_days),
                 'currency'             => $tenant->billing_currency,
                 'amount'               => 0,
                 'created_at'           => now(),
                 'updated_at'           => now(),
             ]);
+
+                        $owner = \App\Models\Tenant\User::withoutGlobalScope('tenant')
+                ->where('tenant_id', $tenant->id)
+                ->orderBy('id')
+                ->first();
+
+            if ($owner) {
+                \App\Jobs\SendTrialStartedJob::dispatch(
+                    $owner->email,
+                    $owner->name,
+                    $tenant->name,
+                    $plan->name,
+                    $plan->trial_days,
+                    now()->addDays($plan->trial_days)->format('D, d M Y'),
+                    route('tenant.dashboard'),
+                );
+            }
+
+            $this->step = 4;
+            $this->saveRegistrationState();
+            return;
         }
 
-        $this->step = 4;
+        if ($intent === 'subscribe') {
+            $baseCurrency = \App\Models\Central\BillingSetting::get('base_currency', 'NGN');
+            if (!$plan->getPriceFor($baseCurrency, 'monthly')) {
+                $this->error = 'This plan is not available for direct subscription yet. Please contact us.';
+                return;
+            }
+
+            $tenant->update(['plan_id' => $planId]);
+
+            $billing = app(\App\Services\BillingService::class);
+            $pricing = $billing->getPriceForTenant($plan, $tenant, 'monthly');
+            $gateway = $pricing['gateway'];
+
+            $result = $gateway === 'paystack'
+                ? $billing->initializePaystackPayment($tenant, $plan, 'monthly', $pricing)
+                : $billing->initializeFlutterwavePayment($tenant, $plan, 'monthly', $pricing);
+
+            if (!$result['success']) {
+                $this->error = $result['message'] ?? 'Could not start payment. Please try again.';
+                return;
+            }
+
+            $this->saveRegistrationState();
+            $this->redirect($result['authorization_url']);
+        }
     }
 
     // ── Step 4 Onboarding (skippable) ────────────────────────
@@ -267,6 +386,7 @@ class Register extends Component
             $user->update(['last_login_at' => now()]);
         }
 
+        session()->forget('registration.wizard');
         $this->redirect(route('tenant.onboarding'), navigate: true);
     }
 
@@ -282,12 +402,34 @@ class Register extends Component
             $this->selected_plan_id = $plans->first()->id;
         }
 
+        $pricingData = [];
+
+        if ($this->step === 3) {
+            $billing      = app(\App\Services\BillingService::class);
+            $baseCurrency = \App\Models\Central\BillingSetting::get('base_currency', 'NGN');
+            $currency     = $this->getCurrency();
+
+            foreach ($plans as $plan) {
+                if ($plan->is_contact_only) continue;
+
+                $monthlyPrice = $plan->getPriceFor($baseCurrency, 'monthly');
+                if (!$monthlyPrice) continue;
+
+                $amount = $currency !== $baseCurrency
+                    ? $billing->convertAmount((float) $monthlyPrice->amount, $baseCurrency, $currency)
+                    : (float) $monthlyPrice->amount;
+
+                $pricingData[$plan->id] = ['amount' => $amount, 'currency' => $currency];
+            }
+        }
+
         $industryProfiles = \App\Models\Central\IndustryProfile::where('is_active', true)
             ->orderBy('sort_order')
             ->get();
 
         return view('livewire.auth.register', [
             'plans'             => $plans,
+            'pricingData'       => $pricingData,
             'countries'         => CurrencyHelper::countries(),
             'currency'          => $this->getCurrency(),
             'industryProfiles'  => $industryProfiles,

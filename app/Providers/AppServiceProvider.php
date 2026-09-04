@@ -76,12 +76,8 @@ class AppServiceProvider extends ServiceProvider
         );
 
         \Illuminate\Support\Facades\Event::listen(
-            \App\Events\BookingSubmitted::class,
-            \App\Listeners\LogBookingActivity::class,
-        );
-        \Illuminate\Support\Facades\Event::listen(
-            \App\Events\RsvpSubmitted::class,
-            \App\Listeners\LogRsvpActivity::class,
+            \App\Events\PlannerFeeFullyCollected::class,
+            \App\Listeners\SendFeeFullyCollectedNotification::class,
         );
 
         \Illuminate\Support\Facades\Event::listen(
@@ -92,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
             \App\Events\RsvpSubmitted::class,
             \App\Listeners\LogRsvpActivity::class,
         );
+
 
         \Illuminate\Support\Facades\Event::listen(
             \App\Events\SupportTicketCreated::class,

@@ -149,6 +149,8 @@ Route::prefix('client')->name('client.')->group(function () {
         Route::get('/events/{slug}/media', \App\Livewire\Client\Documents\MediaLibraryClient::class)->name('events.media');
         Route::get('/events/{slug}/vendors', \App\Livewire\Client\Vendors\VendorList::class)->name('events.vendors');
         Route::get('/events/{slug}/moodboards', \App\Livewire\Client\Moodboards\MoodboardList::class)->name('moodboards.index');
+        Route::get('/events/{slug}/checklist', \App\Livewire\Client\Checklists\ChecklistView::class)->name('checklist.index');
+        Route::get('/events/{slug}/budget', \App\Livewire\Client\Budget\ClientBudgetView::class)->name('budget.show');
         Route::get('/moodboards/{id}', \App\Livewire\Client\Moodboards\MoodboardView::class)->name('moodboards.show');
         Route::get('/profile', \App\Livewire\Client\Profile::class)->name('profile');
 
@@ -306,6 +308,7 @@ Route::get('/media-upload/{token}', \App\Livewire\Public\MediaUploadPage::class)
 Route::get('/quick-access/{token}', \App\Livewire\Public\QuickAccessPage::class)->name('public.quick-access');
 Route::post('/quick-access/{token}/update-task', [\App\Http\Controllers\QuickAccessController::class, 'updateTask'])->name('public.quick-access.update-task');
 Route::post('/quick-access/{token}/update-runsheet', [\App\Http\Controllers\QuickAccessController::class, 'updateRunsheet'])->name('public.quick-access.update-runsheet');
+Route::post('/quick-access/{token}/update-checklist', [\App\Http\Controllers\QuickAccessController::class, 'updateChecklist'])->name('public.quick-access.update-checklist');
 
 /*
 |--------------------------------------------------------------------------
@@ -335,7 +338,10 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/events/{slug}/media', \App\Livewire\Tenant\Documents\MediaLibrary::class)->name('tenant.events.media');
         Route::get('/events/{slug}/vendor-suggestions', \App\Livewire\Tenant\Vendors\VendorSuggestions::class)->name('tenant.events.vendor-suggestions');
         Route::get('/events/{slug}/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardList::class)->name('tenant.events.moodboards');
+        Route::get('/events/{slug}/checklist', \App\Livewire\Tenant\Checklists\ChecklistPage::class)->name('tenant.events.checklist');
+        Route::get('/checklists/{id}/export', [\App\Http\Controllers\ChecklistExportController::class, 'export'])->name('tenant.checklists.export');
         Route::get('/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardsHub::class)->name('tenant.moodboards.hub');
+        Route::get('/checklists', \App\Livewire\Tenant\Checklists\ChecklistsHub::class)->name('tenant.checklists.hub');
         Route::get('/moodboards/pexels-search', [\App\Http\Controllers\MoodboardPexelsController::class, 'search'])->name('tenant.moodboards.pexels-search');
         Route::get('/moodboards/{id}', \App\Livewire\Tenant\Moodboards\MoodboardEditor::class)->name('tenant.moodboards.edit');
         Route::post('/moodboards/{moodboardId}/upload', [\App\Http\Controllers\MoodboardUploadController::class, 'upload'])->name('tenant.moodboards.upload');
@@ -375,7 +381,6 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
 
         Route::get('/billing', \App\Livewire\Tenant\Billing\BillingDashboard::class)->name('tenant.billing');
         Route::get('/billing/upgrade', \App\Livewire\Tenant\Billing\UpgradePage::class)->name('tenant.billing.upgrade');
-        Route::get('/billing/callback/{gateway}', \App\Livewire\Tenant\Billing\BillingCallback::class)->name('tenant.billing.callback');
 
         // RSVP Management
         Route::get('/events/{slug}/rsvp', \App\Livewire\Tenant\Rsvp\RsvpManager::class)->name('tenant.events.rsvp');
@@ -408,6 +413,7 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
 
         Route::get('/notifications/preferences', \App\Livewire\Tenant\Notifications\NotificationPreferences::class)->name('tenant.notifications.preferences');
         Route::get('/client-notifications', \App\Livewire\Tenant\ClientNotificationSettings::class)->name('tenant.client-notifications');
+        Route::get('/client-financial-visibility', \App\Livewire\Tenant\ClientFinancialVisibilitySettings::class)->name('tenant.client-financial-visibility');
         Route::get('/quick-access', \App\Livewire\Tenant\QuickAccessAdmin::class)->name('tenant.quick-access');
         Route::get('/clients', \App\Livewire\Tenant\Clients\ClientsList::class)->name('tenant.clients');
         Route::get('/settings', \App\Livewire\Tenant\SettingsHub::class)->name('tenant.settings');
@@ -521,6 +527,12 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');
+
+    // Outside auth.tenant/tenant.active on purpose: a brand-new registrant paying mid-registration
+    // isn't logged in yet when the gateway redirects back. BillingCallback branches internally on
+    // auth()->check() to resolve the correct tenant for both the "new registration" and "existing
+    // tenant upgrading" cases.
+    Route::get('/billing/callback/{gateway}', \App\Livewire\Tenant\Billing\BillingCallback::class)->name('tenant.billing.callback');
 
 });
 

@@ -35,9 +35,11 @@ class LandingPage extends Component
                 if ($cycle === 'monthly' && !$plan->allowsMonthly()) continue;
                 if ($cycle === 'annual' && !$plan->allowsAnnual()) continue;
 
+                // Always price off the MONTHLY row — annual is derived (monthly × 12 × discount)
+                // below, never stored as its own row, to avoid double-applying ×12.
                 $basePrice = \App\Models\Central\PlanPrice::where('plan_id', $plan->id)
                     ->where('currency', 'NGN')
-                    ->where('billing_cycle', $cycle)
+                    ->where('billing_cycle', 'monthly')
                     ->where('is_active', true)
                     ->first();
 

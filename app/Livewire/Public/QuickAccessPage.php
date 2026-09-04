@@ -97,6 +97,14 @@ class QuickAccessPage extends Component
                             'status'     => $i->status->value,
                             'start_time' => $i->start_time?->format('g:i A'),
                         ])->values();
+                    } elseif ($key === 'update_checklist') {
+                        $items = $service->checklistItemsFor($this->link, $event->id);
+                        $itemsByActionEvent["{$key}:{$event->id}"] = $items->map(fn($i) => [
+                            'id'          => $i->id,
+                            'title'       => $i->title,
+                            'is_completed' => $i->is_completed,
+                            'phase'       => $i->phaseEnum()->label(),
+                        ])->values();
                     }
                 }
             }

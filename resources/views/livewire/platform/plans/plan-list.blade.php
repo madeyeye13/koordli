@@ -48,6 +48,19 @@
                         · {{ $plan->trial_days }}-day trial
                         @endif
                     </div>
+                    @php $monthlyPrice = $plan->prices->firstWhere(fn($p) => $p->currency === $baseCurrency && $p->billing_cycle === 'monthly' && $p->is_active); @endphp
+                    <div style="margin-top:6px;">
+                        @if($plan->is_contact_only)
+                            <span class="krd-badge krd-badge-stone">Contact Us</span>
+                        @elseif($monthlyPrice)
+                            <span style="font-size:13px;font-weight:700;color:#1C1917;">{{ \App\Helpers\CurrencyHelper::symbol($baseCurrency) }}{{ number_format($monthlyPrice->amount, 2) }}/mo</span>
+                            @if($plan->annual_discount_percent > 0)
+                            <span style="font-size:11px;color:#059669;font-weight:500;"> · {{ rtrim(rtrim(number_format($plan->annual_discount_percent, 2), '0'), '.') }}% off annual</span>
+                            @endif
+                        @else
+                            <span class="krd-badge" style="background:#FEF3C7;color:#92400E;">No price set</span>
+                        @endif
+                    </div>
                 </div>
                 @if($plan->is_active)
                 <span class="krd-badge krd-badge-green">Active</span>

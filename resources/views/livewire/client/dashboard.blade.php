@@ -48,6 +48,12 @@
                     <a href="{{ route('client.moodboards.index', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                         Moodboards
                     </a>
+                    <a href="{{ route('client.checklist.index', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Checklist
+                    </a>
+                    <a href="{{ route('client.budget.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
+                        Budget
+                    </a>
                     @if($event->effectiveClientVendorInvolvementLevel() !== 'none')
                     <a href="{{ route('client.events.vendors', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                         Vendors

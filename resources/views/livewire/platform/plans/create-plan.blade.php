@@ -74,6 +74,39 @@
                 </div>
             </div>
 
+            {{-- Pricing & Availability --}}
+            <div class="krd-card" style="padding:24px;">
+                <div class="krd-label" style="margin-bottom:16px;">Pricing & Availability</div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #E7E5E4;">
+                    <div>
+                        <div style="font-size:13px;font-weight:500;color:#1C1917;">Contact Us only</div>
+                        <div style="font-size:12px;color:#A8A29E;margin-top:2px;">No self-serve price — visitors are told to contact you instead of subscribing directly.</div>
+                    </div>
+                    <input wire:model.live="is_contact_only" type="checkbox" style="width:16px;height:16px;accent-color:#7C3AED;cursor:pointer;" />
+                </div>
+
+                @if(!$is_contact_only)
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="krd-input-group">
+                        <label class="krd-label-text">Monthly Price ({{ \App\Models\Central\BillingSetting::get('base_currency', 'NGN') }})</label>
+                        <input wire:model="monthly_price" type="number" min="0" step="0.01" class="krd-input @error('monthly_price') krd-input-error @enderror" placeholder="e.g. 15000" />
+                        @error('monthly_price') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="krd-input-group" style="margin-bottom:0;">
+                        <label class="krd-label-text">Annual Discount %</label>
+                        <input wire:model="annual_discount_percent" type="number" min="0" max="100" step="0.01" class="krd-input @error('annual_discount_percent') krd-input-error @enderror" placeholder="e.g. 20" />
+                        @error('annual_discount_percent') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+                <span class="krd-input-hint" style="margin-top:8px;display:block;">
+                    Set in your platform's base currency. Other currencies are converted automatically at checkout using live exchange rates. Annual price is calculated automatically (monthly × 12 × discount) — don't enter it separately.
+                </span>
+                @else
+                <p style="font-size:12px;color:#A8A29E;">Price fields are hidden while Contact Us is enabled.</p>
+                @endif
+            </div>
+
             {{-- Limits --}}
             <div class="krd-card" style="padding:24px;">
                 <div class="krd-label" style="margin-bottom:16px;">Usage Limits</div>

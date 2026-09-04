@@ -501,14 +501,14 @@ class MoodboardEditor extends Component
         $this->validate(['templateTitle' => 'required|string|max:150']);
 
         $template = Moodboard::create([
-            'tenant_id'     => $this->moodboard->tenant_id,
-            'event_id'      => null,
-            'title'         => $this->templateTitle,
-            'description'   => $this->moodboard->description,
-            'status'        => 'draft',
-            'is_template'   => true,
-            'event_type_id' => $this->moodboard->event?->event_type_id,
-            'created_by'    => auth()->id(),
+            'tenant_id'            => $this->moodboard->tenant_id,
+            'event_id'             => null,
+            'title'                => $this->templateTitle,
+            'description'          => $this->moodboard->description,
+            'status'               => 'draft',
+            'is_template'          => true,
+            'industry_profile_id'  => auth()->user()->tenant->industry_profile_id,
+            'created_by'           => auth()->id(),
         ]);
 
         $sectionMap = [];

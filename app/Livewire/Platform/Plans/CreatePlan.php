@@ -20,6 +20,9 @@ class CreatePlan extends Component
     public string $billing_cycle = 'monthly';
     public int    $trial_days    = 0;
     public bool   $is_active     = true;
+    public bool   $is_contact_only = false;
+    public string $monthly_price   = '';
+    public string $annual_discount_percent = '';
     public array  $features      = [];
 
         // Limit fields
@@ -45,7 +48,12 @@ class CreatePlan extends Component
             $this->billing_cycle  = $plan->billing_cycle;
             $this->trial_days     = $plan->trial_days;
             $this->is_active      = $plan->is_active;
-            $this->features       = $plan->features ?? [];
+            $this->is_contact_only = $plan->is_contact_only;
+            $this->annual_discount_percent = $plan->annual_discount_percent ? (string) $plan->annual_discount_percent : '';
+            $baseCurrency          = \App\Models\Central\BillingSetting::get('base_currency', 'NGN');
+            $monthlyPrice          = $plan->prices()->where('currency', $baseCurrency)->where('billing_cycle', 'monthly')->first();
+            $this->monthly_price   = $monthlyPrice ? (string) $monthlyPrice->amount : '';
+            $this->features        = $plan->features ?? [];
             $limits               = $plan->limits ?? [];
             $this->max_events     = $limits['max_events'] == -1 ? '' : ($limits['max_events'] ?? '');
             $this->max_staff      = $limits['max_staff'] == -1 ? '' : ($limits['max_staff'] ?? '');
@@ -101,13 +109,18 @@ class CreatePlan extends Component
         $this->features[$key] = $value;
     }
 
-    public function save(): void
+        public function save(): void
     {
         $this->validate([
-            'name'          => 'required|string|max:100',
-            'slug'          => 'required|string|max:100',
-            'billing_cycle' => 'required|in:monthly,annual,lifetime,trial',
-            'trial_days'    => 'required|integer|min:0',
+            'name'                     => 'required|string|max:100',
+            'slug'                     => 'required|string|max:100',
+            'billing_cycle'            => 'required|in:monthly,annual,lifetime,trial',
+            'trial_days'               => 'required|integer|min:0',
+            'is_contact_only'          => 'boolean',
+            'monthly_price'            => $this->is_contact_only ? 'nullable' : 'required|numeric|min:0',
+            'annual_discount_percent'  => 'nullable|numeric|min:0|max:100',
+        ], [
+            'monthly_price.required'   => 'Enter a monthly price, or switch this plan to Contact Us.',
         ]);
 
         $limits = [
@@ -119,22 +132,50 @@ class CreatePlan extends Component
         ];
 
         $data = [
-            'name'          => $this->name,
-            'slug'          => $this->slug,
-            'billing_cycle' => $this->billing_cycle,
-            'trial_days'    => $this->trial_days,
-            'is_active'     => $this->is_active,
-            'features'      => $this->features,
-            'limits'        => $limits,
+            'name'                    => $this->name,
+            'slug'                    => $this->slug,
+            'billing_cycle'           => $this->billing_cycle,
+            'trial_days'              => $this->trial_days,
+            'is_active'               => $this->is_active,
+            'is_contact_only'         => $this->is_contact_only,
+            'annual_discount_percent' => $this->annual_discount_percent === '' ? 0 : $this->annual_discount_percent,
+            'features'                => $this->features,
+            'limits'                  => $limits,
         ];
 
         if ($this->planId) {
-            Plan::find($this->planId)->update($data);
+            $plan = Plan::find($this->planId);
+            $plan->update($data);
+        } else {
+            $plan = Plan::create($data);
+        }
+
+        $this->syncMonthlyPrice($plan);
+
+        if ($this->planId) {
             $this->toastSuccess('Plan updated successfully.');
         } else {
-            Plan::create($data);
             $this->toastSuccess('Plan created successfully.');
             $this->redirect(route('platform.plans'), navigate: true);
+        }
+    }
+
+    private function syncMonthlyPrice(Plan $plan): void
+    {
+        $baseCurrency = \App\Models\Central\BillingSetting::get('base_currency', 'NGN');
+
+        if (!$this->is_contact_only && $this->monthly_price !== '') {
+            \App\Models\Central\PlanPrice::updateOrCreate(
+                ['plan_id' => $plan->id, 'currency' => $baseCurrency, 'billing_cycle' => 'monthly'],
+                ['amount' => (float) $this->monthly_price, 'is_active' => true]
+            );
+        } else {
+            // Contact-only or price cleared — deactivate any existing price so it can't leak
+            // through into the registration/landing pricing calculations.
+            \App\Models\Central\PlanPrice::where('plan_id', $plan->id)
+                ->where('currency', $baseCurrency)
+                ->where('billing_cycle', 'monthly')
+                ->update(['is_active' => false]);
         }
     }
 

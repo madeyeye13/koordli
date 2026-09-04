@@ -149,6 +149,16 @@
                 Moodboards
             </a>
             @endif
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'checklists.view'))
+            <a href="{{ route('tenant.checklists.hub') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.checklists.hub') || request()->routeIs('tenant.events.checklist') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+                Checklists
+            </a>
+            @endif
         </div>
 
         <div class="krd-nav-section">
@@ -179,6 +189,16 @@
                     <path d="M9 12l2 2 4-4"/><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.6 0 3.1.42 4.4 1.15"/>
                 </svg>
                 Roles & Permissions
+            </a>
+            @endif
+            @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'budget.client-visibility.manage'))
+            <a href="{{ route('tenant.client-financial-visibility') }}"
+                class="krd-nav-item {{ request()->routeIs('tenant.client-financial-visibility') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                </svg>
+                Client Financial Visibility
             </a>
             @endif
             @if(app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'client-notifications.manage'))
