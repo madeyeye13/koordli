@@ -839,15 +839,17 @@ if ('serviceWorker' in navigator) {
     if (typeof window.__vapidPublicKey === 'undefined' || !window.__vapidPublicKey) return;
     if (typeof window.__currentUserId === 'undefined' || window.__currentUserId === null) return;
 
-    const dismissKey = 'krd-push-prompt-dismissed';
-    if (localStorage.getItem(dismissKey) === 'true') return;
+    const previewPrompts = new URLSearchParams(window.location.search).get('preview-prompts') === '1';
+    const identity = [window.__tenantSlug || 'koordli', window.__currentUserId].join('-');
+    const dismissKey = 'krd-push-prompt-dismissed-v2-' + identity;
+    if (!previewPrompts && sessionStorage.getItem(dismissKey) === 'true') return;
 
     navigator.serviceWorker.ready.then((registration) => {
         registration.pushManager.getSubscription().then((existing) => {
-            if (existing) return; // already subscribed, nothing to prompt
+            if (existing && !previewPrompts) return; // already subscribed, nothing to prompt
             if (Notification.permission === 'denied') return; // respect a prior explicit "no"
 
-            showPushPrompt(registration);
+            showPushPrompt(registration, existing);
         });
     });
 
@@ -858,8 +860,9 @@ if ('serviceWorker' in navigator) {
         return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
     }
 
-    function showPushPrompt(registration) {
+    function showPushPrompt(registration, existing) {
         const banner = document.createElement('div');
+        banner.id = 'krd-push-prompt';
         banner.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
         banner.innerHTML = `
             <span style="flex:1;line-height:1.5;">Enable notifications to get instant updates for tasks, messages, and reminders.</span>
@@ -871,13 +874,13 @@ if ('serviceWorker' in navigator) {
         document.body.appendChild(banner);
 
         banner.querySelector('#krd-push-dismiss').addEventListener('click', () => {
-            localStorage.setItem(dismissKey, 'true');
+            sessionStorage.setItem(dismissKey, 'true');
             banner.remove();
         });
 
         banner.querySelector('#krd-push-enable').addEventListener('click', () => {
-            subscribe(registration);
-            localStorage.setItem(dismissKey, 'true');
+            if (!existing) subscribe(registration);
+            sessionStorage.setItem(dismissKey, 'true');
             banner.remove();
         });
     }
@@ -900,6 +903,94 @@ if ('serviceWorker' in navigator) {
             // Permission denied or subscribe failed — fail silently, this
             // is a progressive enhancement, never block the app.
         });
+    }
+})();
+
+// ── PWA: Add to Home Screen Prompt ──────────────────────────────────
+// Two genuinely different paths, since browsers don't agree on this:
+// Chrome/Android/Desktop fire a real beforeinstallprompt event we can
+// hook a custom-styled button into. iOS Safari NEVER fires this event
+// at all — Apple provides no programmatic install API — so iOS gets a
+// separate banner with manual "Tap Share, then Add to Home Screen"
+// instructions instead. Both share the same dismiss-once pattern
+// already used by the push-notification prompt above.
+(function () {
+    const previewPrompts = new URLSearchParams(window.location.search).get('preview-prompts') === '1';
+    const dismissKey = 'krd-pwa-install-dismissed';
+    if (!previewPrompts && localStorage.getItem(dismissKey) === 'true') return;
+
+    // Already installed? The app runs in standalone display mode —
+    // nothing to prompt for.
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+    if (isStandalone && !previewPrompts) return;
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+    let deferredPrompt = null;
+    let bannerShown = false;
+
+    if (!isIOS) {
+        // Chrome/Android/Desktop path — wait for the real browser event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallBanner(false);
+        });
+    } else {
+        // iOS path — no event to wait for, just show instructions once
+        // the page has settled, so it doesn't compete with the initial
+        // page load.
+        setTimeout(() => showInstallBanner(true), previewPrompts ? 300 : 2500);
+    }
+
+    if (!isIOS && previewPrompts) {
+        setTimeout(() => showInstallBanner(false), 300);
+    }
+
+    function showInstallBanner(isIOSInstructions) {
+        if (bannerShown || document.getElementById('krd-pwa-install-prompt')) return;
+        bannerShown = true;
+        const banner = document.createElement('div');
+        banner.id = 'krd-pwa-install-prompt';
+        banner.style.cssText = 'position:fixed;bottom:96px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+
+        if (isIOSInstructions) {
+            banner.innerHTML = `
+                <span style="flex:1;line-height:1.5;">Install Koordli on your home screen: tap <strong>Share</strong> ⬆️, then <strong>Add to Home Screen</strong>.</span>
+                <button id="krd-pwa-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;flex-shrink:0;">Got it</button>
+            `;
+        } else {
+            banner.innerHTML = `
+                <span style="flex:1;line-height:1.5;">Install Koordli as an app for quicker access and a full-screen experience.</span>
+                <div style="display:flex;gap:6px;flex-shrink:0;">
+                    <button id="krd-pwa-install" style="background:#7C3AED;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Install</button>
+                    <button id="krd-pwa-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Not now</button>
+                </div>
+            `;
+        }
+
+        document.body.appendChild(banner);
+
+        banner.querySelector('#krd-pwa-dismiss').addEventListener('click', () => {
+            localStorage.setItem(dismissKey, 'true');
+            banner.remove();
+        });
+
+        const installBtn = banner.querySelector('#krd-pwa-install');
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                banner.remove();
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                // Whether accepted or dismissed, don't ask again this
+                // session — the native browser prompt already gave them
+                // the real choice.
+                localStorage.setItem(dismissKey, 'true');
+                deferredPrompt = null;
+            });
+        }
     }
 })();
 

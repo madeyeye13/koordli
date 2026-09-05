@@ -54,7 +54,8 @@ class GuestList extends Component
             403
         );
 
-        $this->event = Event::where('slug', $slug)->firstOrFail();
+        $this->event = Event::where('tenant_id', auth()->user()->tenant_id)
+            ->where('slug', $slug)->firstOrFail();
         $this->expectedGuests = $this->event->max_guests ?? '';
     }
 
@@ -109,7 +110,7 @@ class GuestList extends Component
             return;
         }
 
-        $guest = Guest::find($id);
+        $guest = Guest::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($id);
         if (!$guest) return;
         $this->editId       = $id;
         $this->editName     = $guest->name;
@@ -132,7 +133,7 @@ class GuestList extends Component
             'editPhone' => 'nullable|string|max:20',
         ]);
 
-        Guest::find($this->editId)?->update([
+        Guest::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($this->editId)?->update([
             'name'     => $this->editName,
             'email'    => $this->editEmail ?: null,
             'phone'    => $this->editPhone ?: null,
@@ -157,7 +158,7 @@ class GuestList extends Component
             return;
         }
 
-        Guest::find($id)?->update(['rsvp_status' => $status]);
+        Guest::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($id)?->update(['rsvp_status' => $status]);
         $this->toastSuccess('RSVP status updated.');
     }
 
@@ -169,7 +170,7 @@ class GuestList extends Component
             return;
         }
 
-        $guest = Guest::find($id);
+        $guest = Guest::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($id);
         if (!$guest) return;
         $guest->update([
             'checked_in'    => !$guest->checked_in,
@@ -197,7 +198,7 @@ class GuestList extends Component
             return;
         }
 
-        Guest::find($this->deleteId)?->delete();
+        Guest::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
         $this->toastSuccess('Guest removed.');

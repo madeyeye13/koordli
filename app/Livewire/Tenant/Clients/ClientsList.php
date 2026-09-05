@@ -37,7 +37,7 @@ class ClientsList extends Component
     {
         if (!$this->requireManage()) return;
 
-        $event = Event::find($eventId);
+        $event = Event::where('tenant_id', auth()->user()->tenant_id)->find($eventId);
         if (!$event) return;
 
         $result = app(ClientInviteService::class)->inviteForEvent($event, auth()->id());
@@ -59,7 +59,7 @@ class ClientsList extends Component
     {
         if (!$this->requireManage()) return;
 
-        ClientEventAccess::find($accessId)?->delete();
+        ClientEventAccess::where('tenant_id', auth()->user()->tenant_id)->find($accessId)?->delete();
         $this->toastSuccess('Access revoked.');
     }
 

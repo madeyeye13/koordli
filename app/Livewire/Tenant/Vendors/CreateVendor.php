@@ -40,7 +40,7 @@ class CreateVendor extends Component
         );
 
         if ($id) {
-            $this->vendor             = Vendor::findOrFail($id);
+            $this->vendor             = Vendor::where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
             $this->vendorId           = $id;
             $this->name               = $this->vendor->name;
             $this->vendor_category_id = $this->vendor->vendor_category_id;
@@ -68,7 +68,11 @@ class CreateVendor extends Component
 
         $this->validate([
             'name'               => 'required|string|min:2|max:200',
-            'vendor_category_id' => 'nullable|exists:vendor_categories,id',
+            'vendor_category_id' => [
+                'nullable',
+                \Illuminate\Validation\Rule::exists('vendor_categories', 'id')
+                    ->where('tenant_id', auth()->user()->tenant_id),
+            ],
             'contact_name'       => 'nullable|string|max:200',
             'phone'              => 'nullable|string|max:30',
             'email'              => 'nullable|email|max:200',
@@ -109,7 +113,7 @@ class CreateVendor extends Component
     public function render()
     {
         return view('livewire.tenant.vendors.create-vendor', [
-            'categories' => VendorCategory::orderBy('sort_order')->get(),
+            'categories' => VendorCategory::where('tenant_id', auth()->user()->tenant_id)->orderBy('sort_order')->get(),
         ]);
     }
 }

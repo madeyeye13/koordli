@@ -61,7 +61,7 @@ class TaskCenter extends Component
             return;
         }
 
-        $task = Task::find($id);
+        $task = Task::where('tenant_id', auth()->user()->tenant_id)->find($id);
         if ($task) {
             $task->update(['status' => TaskStatus::Done->value]);
             $this->toastSuccess('Task marked as done.');
@@ -76,7 +76,7 @@ public function updateStatus(int $id, string $status): void
         return;
     }
 
-    $task = Task::find($id);
+    $task = Task::where('tenant_id', auth()->user()->tenant_id)->find($id);
     if ($task) {
         $task->update(['status' => $status]);
         $this->toastSuccess('Status updated.');
@@ -102,7 +102,7 @@ public function updateStatus(int $id, string $status): void
             return;
         }
 
-        $task = Task::find($this->deleteId);
+        $task = Task::where('tenant_id', auth()->user()->tenant_id)->find($this->deleteId);
         if ($task) {
             $task->delete();
             $this->toastSuccess('Task deleted.');
@@ -125,8 +125,10 @@ public function updateStatus(int $id, string $status): void
         );
 
         $userId = auth()->id();
+        $tenantId = auth()->user()->tenant_id;
 
-        $query = Task::with(['event', 'assignedTo', 'category'])
+        $query = Task::where('tenant_id', $tenantId)
+            ->with(['event', 'assignedTo', 'category'])
             ->when($this->search, fn($q) =>
                 $q->where('title', 'like', '%' . $this->search . '%')
                   ->orWhere('description', 'like', '%' . $this->search . '%')
@@ -164,7 +166,8 @@ public function updateStatus(int $id, string $status): void
         // display purposes, keyed by task_id, for whichever tasks are
         // visible on THIS page only — cheap, and never touches Task's
         // own schema or model.
-        $checklistOriginsByTaskId = \App\Models\Tenant\ChecklistItem::whereIn('task_id', $tasks->pluck('id'))
+        $checklistOriginsByTaskId = \App\Models\Tenant\ChecklistItem::where('tenant_id', $tenantId)
+            ->whereIn('task_id', $tasks->pluck('id'))
             ->with('checklist.event')
             ->get()
             ->keyBy('task_id');
@@ -172,16 +175,16 @@ public function updateStatus(int $id, string $status): void
         return view('livewire.tenant.tasks.task-center', [
             'tasks'                    => $tasks,
             'checklistOriginsByTaskId' => $checklistOriginsByTaskId,
-            'events'       => Event::orderBy('date')->get(['id', 'name', 'slug']),
-            'users'        => User::where('is_active', true)->get(['id', 'name']),
-            'categories'   => TenantTaskCategory::orderBy('sort_order')->get(),
+            'events'       => Event::where('tenant_id', $tenantId)->orderBy('date')->get(['id', 'name', 'slug']),
+            'users'        => User::where('tenant_id', $tenantId)->where('is_active', true)->get(['id', 'name']),
+            'categories'   => TenantTaskCategory::where('tenant_id', $tenantId)->orderBy('sort_order')->get(),
             'statuses'     => TaskStatus::cases(),
             'priorities'   => TaskPriority::cases(),
-            'allCount'     => Task::count(),
-            'eventCount'   => Task::eventTasks()->count(),
-            'companyCount' => Task::companyTasks()->count(),
-            'mineCount'    => Task::forUser($userId)->count(),
-            'overdueCount' => Task::overdue()->count(),
+            'allCount'     => Task::where('tenant_id', $tenantId)->count(),
+            'eventCount'   => Task::where('tenant_id', $tenantId)->eventTasks()->count(),
+            'companyCount' => Task::where('tenant_id', $tenantId)->companyTasks()->count(),
+            'mineCount'    => Task::where('tenant_id', $tenantId)->forUser($userId)->count(),
+            'overdueCount' => Task::where('tenant_id', $tenantId)->overdue()->count(),
         ]);
     }
 }

@@ -169,7 +169,7 @@ class RunsheetManager extends Component
         $sortOrder = RunsheetItem::where('runsheet_id', $this->runsheet->id)->max('sort_order') + 1;
 
         if ($this->editItemId) {
-            RunsheetItem::find($this->editItemId)?->update([
+            RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($this->editItemId)?->update([
                 'title'             => $this->item_title,
                 'description'       => $this->item_desc ?: null,
                 'start_time'        => $this->item_start ?: null,
@@ -208,7 +208,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        $item = RunsheetItem::find($id);
+        $item = RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($id);
         if (!$item) return;
 
         $this->editItemId      = $id;
@@ -228,7 +228,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        $item = RunsheetItem::find($id);
+        $item = RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($id);
         $item?->update(['status' => $status]);
 
         if ($status === 'delayed' && $item) {
@@ -243,7 +243,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        $item = RunsheetItem::find($id);
+        $item = RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($id);
         if (!$item) return;
         $prev = RunsheetItem::where('runsheet_id', $item->runsheet_id)
             ->where('sort_order', '<', $item->sort_order)
@@ -259,7 +259,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        $item = RunsheetItem::find($id);
+        $item = RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($id);
         if (!$item) return;
         $next = RunsheetItem::where('runsheet_id', $item->runsheet_id)
             ->where('sort_order', '>', $item->sort_order)
@@ -283,7 +283,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        RunsheetItem::find($this->deleteItemId)?->delete();
+        RunsheetItem::where('tenant_id', auth()->user()->tenant_id)->where('runsheet_id', $this->runsheet->id)->find($this->deleteItemId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteItemId    = null;
         $this->refreshRunsheet();
@@ -302,7 +302,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        $location = \App\Models\Tenant\EventLocation::find($id);
+        $location = \App\Models\Tenant\EventLocation::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($id);
         if (!$location) return;
 
         $this->editLocationId   = $id;
@@ -332,7 +332,7 @@ class RunsheetManager extends Component
         ];
 
         if ($this->editLocationId) {
-            \App\Models\Tenant\EventLocation::find($this->editLocationId)?->update($data);
+            \App\Models\Tenant\EventLocation::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($this->editLocationId)?->update($data);
             $this->toastSuccess('Location updated.');
         } else {
             $data['sort_order'] = \App\Models\Tenant\EventLocation::where('event_id', $this->event->id)->max('sort_order') + 1;
@@ -356,7 +356,7 @@ class RunsheetManager extends Component
     {
         if (!$this->requireManage()) return;
 
-        \App\Models\Tenant\EventLocation::find($this->deleteLocationId)?->delete();
+        \App\Models\Tenant\EventLocation::where('tenant_id', auth()->user()->tenant_id)->where('event_id', $this->event->id)->find($this->deleteLocationId)?->delete();
         $this->showDeleteLocationModal = false;
         $this->deleteLocationId        = null;
         $this->event->refresh();

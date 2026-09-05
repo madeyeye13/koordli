@@ -25,13 +25,16 @@
             {{-- Status Filter --}}
             <x-ui.dropdown
                 wire="statusFilter"
+                value="{{ $statusFilter }}"
                 placeholder="All statuses"
                 selected="{{ $statusFilter ? ($statuses->firstWhere('id', (int)$statusFilter)?->name ?? 'All statuses') : 'All statuses' }}"
                 max-width="180px"
             >
                 @foreach($statuses as $status)
                 <div
-                    class="krd-dropdown-option {{ $statusFilter == $status->id ? 'selected' : '' }}"
+                    wire:key="event-status-filter-option-{{ $status->id }}"
+                    class="krd-dropdown-option"
+                    x-bind:class="value == '{{ $status->id }}' ? 'selected' : ''"
                     x-on:click="select('{{ $status->name }}', '{{ $status->id }}')"
                 >
                     <span style="width:8px;height:8px;border-radius:50%;background:{{ $status->color }};flex-shrink:0;display:inline-block;"></span>
@@ -43,13 +46,16 @@
             {{-- Type Filter --}}
             <x-ui.dropdown
                 wire="typeFilter"
+                value="{{ $typeFilter }}"
                 placeholder="All types"
                 selected="{{ $typeFilter ? ($types->firstWhere('id', (int)$typeFilter)?->name ?? 'All types') : 'All types' }}"
                 max-width="180px"
             >
                 @foreach($types as $type)
                 <div
-                    class="krd-dropdown-option {{ $typeFilter == $type->id ? 'selected' : '' }}"
+                    wire:key="event-type-filter-option-{{ $type->id }}"
+                    class="krd-dropdown-option"
+                    x-bind:class="value == '{{ $type->id }}' ? 'selected' : ''"
                     x-on:click="select('{{ $type->name }}', '{{ $type->id }}')"
                 >
                     <span style="width:8px;height:8px;border-radius:50%;background:{{ $type->color }};flex-shrink:0;display:inline-block;"></span>

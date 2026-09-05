@@ -17,7 +17,7 @@
     </div>
 
     {{-- Navigation --}}
-    <nav style="flex: 1; padding: 8px 0; overflow-y: auto;"
+    <nav id="tenant-sidebar-nav" style="flex: 1; padding: 8px 0; overflow-y: auto;"
      x-on:click="if (window.innerWidth < 768) sidebarOpen = false">
 
         <div class="krd-nav-section">
@@ -230,6 +230,12 @@
                 Billing
             </a>
 
+            <a href="{{ route('docs') }}" target="_blank" class="krd-nav-item">
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Documentation
+            </a>
             <a href="{{ route('tenant.notifications.preferences') }}"
                 class="krd-nav-item {{ request()->routeIs('tenant.notifications.preferences') ? 'active' : '' }}"
                 wire:navigate>
@@ -300,15 +306,46 @@
                     {{ auth()->user()?->tenant?->name }}
                 </div>
             </div>
-            <form method="POST" action="{{ route('tenant.logout') }}">
+            <form id="tenant-logout-form" method="POST" action="{{ route('tenant.logout') }}"
+                x-data="{ confirmOpen: false, submitting: false }"
+                x-on:submit.prevent="confirmOpen = true">
                 @csrf
-                <button type="submit" style="background:none;border:none;cursor:pointer;color:#A8A29E;padding:4px;display:flex;" title="Sign out">
+                <button type="submit" style="background:none;border:none;cursor:pointer;color:#A8A29E;padding:4px;display:flex;" title="Sign out" aria-label="Sign out">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
                     </svg>
                 </button>
+
+                <template x-teleport="body">
+                    <div x-show="confirmOpen" x-cloak
+                        style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;"
+                        x-transition.opacity>
+                        <div style="position:absolute;inset:0;background:rgba(28,25,23,0.42);" x-on:click="confirmOpen = false"></div>
+                        <div style="position:relative;width:100%;max-width:360px;background:#fff;border:1px solid #E7E5E4;border-radius:10px;padding:24px;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100">
+                            <div style="width:38px;height:38px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                            </div>
+                            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:6px;">Sign out of Koordli?</h3>
+                            <p style="font-size:13px;line-height:1.6;color:#78716C;margin-bottom:20px;">You will need to sign in again to access this workspace.</p>
+                            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                                <button type="button" class="krd-btn krd-btn-secondary" x-on:click="confirmOpen = false">Cancel</button>
+                                <button type="button" class="krd-btn" style="background:#DC2626;color:#fff;border-color:#DC2626;"
+                                    x-on:click="submitting = true; document.getElementById('tenant-logout-form').classList.add('tenant-logout-fading'); setTimeout(() => document.getElementById('tenant-logout-form').submit(), 180)">
+                                    Sign out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </form>
         </div>
     </div>
 
 </div>
+
+<style>
+#tenant-logout-form.tenant-logout-fading { opacity:0; transition:opacity 180ms ease; }
+</style>

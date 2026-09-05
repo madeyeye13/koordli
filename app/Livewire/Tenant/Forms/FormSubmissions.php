@@ -30,7 +30,7 @@ class FormSubmissions extends Component
             403
         );
 
-        $this->form = Form::with('fields')->findOrFail($id);
+        $this->form = Form::where('tenant_id', auth()->user()->tenant_id)->with('fields')->findOrFail($id);
     }
 
     public function confirmDelete(int $id): void
@@ -52,7 +52,7 @@ class FormSubmissions extends Component
             return;
         }
 
-        FormSubmission::find($this->deleteId)?->delete();
+        FormSubmission::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
         $this->toastSuccess('Submission deleted.');
@@ -65,20 +65,20 @@ class FormSubmissions extends Component
             return;
         }
 
-        ConsultationBooking::find($bookingId)?->update(['status' => $status]);
+        ConsultationBooking::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($bookingId)?->update(['status' => $status]);
         $this->toastSuccess('Booking status updated.');
     }
 
     public function render()
     {
-        $submissions = FormSubmission::where('form_id', $this->form->id)
+        $submissions = FormSubmission::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->with(['values.field'])
             ->orderByDesc('submitted_at')
             ->get();
 
         $bookings = $this->form->type === 'consultation'
-            ? ConsultationBooking::where('form_id', $this->form->id)
+            ? ConsultationBooking::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)
                 ->orderByDesc('booking_date')
                 ->get()
             : collect();

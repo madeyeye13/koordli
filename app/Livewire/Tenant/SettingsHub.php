@@ -16,6 +16,7 @@ class SettingsHub extends Component
 
         $cards = [
             ['label' => 'My Profile', 'desc' => 'Update your name and change your password.', 'route' => 'tenant.my-profile', 'visible' => true],
+            ['label' => 'Branding', 'desc' => 'Change your logo and workspace brand colors.', 'route' => 'tenant.branding-settings', 'visible' => true],
             ['label' => 'My Quick Access Link', 'desc' => 'Manage your personal no-login link.', 'route' => 'tenant.my-quick-access', 'visible' => app(\App\Services\FeatureGateService::class)->canAccess($user->tenant, 'quick_access_links')],
             ['label' => 'Domain Settings', 'desc' => 'Custom subdomain and domain configuration.', 'route' => 'tenant.domain-settings', 'visible' => $can('domain-settings.manage')],
             ['label' => 'Clients', 'desc' => 'View and manage client access to your events.', 'route' => 'tenant.clients', 'visible' => $can('clients.manage')],

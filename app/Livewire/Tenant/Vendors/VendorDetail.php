@@ -69,7 +69,7 @@ class VendorDetail extends Component
             403
         );
 
-        $this->vendor = Vendor::with([
+        $this->vendor = Vendor::where('tenant_id', auth()->user()->tenant_id)->with([
             'category',
             'eventAssignments.event',
             'eventAssignments.reviews',

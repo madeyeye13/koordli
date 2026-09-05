@@ -310,9 +310,9 @@
                 <input wire:model="agreed_to_terms" type="checkbox" id="terms" style="width:15px;height:15px;margin-top:2px;accent-color:#7C3AED;flex-shrink:0;cursor:pointer;" />
                 <label for="terms" style="font-size:12px;color:#57534E;line-height:1.6;cursor:pointer;">
                     By registering, you agree to our
-                    <a href="#" style="color:#7C3AED;text-decoration:none;font-weight:500;">Terms & Conditions</a>
+                    <a href="{{ route('terms') }}" target="_blank" rel="noopener" style="color:#7C3AED;text-decoration:none;font-weight:500;">Terms & Conditions</a>
                     and
-                    <a href="#" style="color:#7C3AED;text-decoration:none;font-weight:500;">Privacy Policy</a>.
+                    <a href="{{ route('privacy') }}" target="_blank" rel="noopener" style="color:#7C3AED;text-decoration:none;font-weight:500;">Privacy Policy</a>.
                 </label>
             </div>
             @error('agreed_to_terms') <div style="font-size:11px;color:#EF4444;margin-bottom:12px;">{{ $message }}</div> @enderror

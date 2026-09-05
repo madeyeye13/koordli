@@ -41,7 +41,7 @@ class AssetList extends Component
             return;
         }
 
-        Asset::find($this->deleteId)?->delete();
+        Asset::where('tenant_id', auth()->user()->tenant_id)->find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId = null;
         $this->toastSuccess(term_title('asset', 'Asset') . ' deleted.');
@@ -54,14 +54,15 @@ class AssetList extends Component
             403
         );
 
-        $assets = Asset::with(['category'])
+        $tenantId = auth()->user()->tenant_id;
+        $assets = Asset::where('tenant_id', $tenantId)->with(['category'])
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->categoryFilter, fn($q) => $q->where('asset_category_id', $this->categoryFilter))
             ->orderBy('name')
             ->get();
 
-        $categories = AssetCategory::orderBy('sort_order')->get();
+        $categories = AssetCategory::where('tenant_id', $tenantId)->orderBy('sort_order')->get();
 
         return view('livewire.tenant.assets.asset-list', compact('assets', 'categories'));
     }

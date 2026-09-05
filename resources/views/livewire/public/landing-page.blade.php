@@ -1,4 +1,8 @@
 <div>
+@php
+    $landingFaviconPath = \App\Models\Central\PlatformSetting::get('site_favicon');
+    $landingFaviconVersion = $landingFaviconPath ? \Illuminate\Support\Facades\Storage::disk('public')->lastModified($landingFaviconPath) : null;
+@endphp
 <style>
     :root {
         --lp-bg: #FAFAF9;
@@ -25,18 +29,25 @@
         --lp-accent-border: #4C1D95;
     }
 
-    .lp-wrap { font-family: 'Satoshi', sans-serif; color: var(--lp-text); overflow-x: hidden; background: var(--lp-bg); transition: background 200ms, color 200ms; }
+    .lp-wrap { font-family: 'Satoshi', sans-serif; color: var(--lp-text); overflow-x: hidden; background: var(--lp-bg); transition: background 200ms, color 200ms; padding-top: 68px; }
     .lp-container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
     .lp-serif { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
 
     /* Nav */
-    .lp-nav { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--lp-bg) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--lp-border); }
+    .lp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; background: color-mix(in srgb, var(--lp-bg) 88%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--lp-border); }
     .lp-nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; max-width: 1180px; margin: 0 auto; gap: 12px; }
+    .lp-logo { display: inline-flex; align-items: center; gap: 9px; color: var(--lp-text); text-decoration: none; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+    .lp-logo-mark { width: 28px; height: 28px; object-fit: contain; border-radius: 7px; flex-shrink: 0; }
+    .lp-logo-fallback { display: block; background: var(--lp-accent); transform: rotate(24deg); }
     .lp-nav-links { display: flex; gap: 28px; align-items: center; }
     .lp-nav-link { font-size: 14px; color: var(--lp-text-muted); text-decoration: none; font-weight: 500; }
     .lp-nav-link:hover { color: var(--lp-text); }
     .lp-nav-cta { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+    .lp-nav-cta .lp-btn-primary { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+    .lp-nav-cta .lp-btn-primary:hover { background: #6D28D9; border-color: #6D28D9; opacity: 1; }
     .lp-theme-toggle { background: none; border: 1.5px solid var(--lp-border); border-radius: 8px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--lp-text-muted); flex-shrink: 0; }
+    .lp-menu-toggle { display: none; background: none; border: 1.5px solid var(--lp-border); border-radius: 8px; width: 40px; height: 40px; align-items: center; justify-content: center; cursor: pointer; color: var(--lp-text); }
+    .lp-mobile-menu { display: none; }
 
     /* Buttons */
     .lp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; border: none; transition: all 150ms; white-space: nowrap; }
@@ -48,12 +59,25 @@
     .lp-btn-sm-mobile { padding: 9px 14px; font-size: 12px; }
 
     /* Hero */
-    .lp-hero { padding: 80px 20px 0; text-align: center; }
-    .lp-hero-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--lp-accent-bg); border: 1px solid var(--lp-accent-border); color: var(--lp-accent); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; margin-bottom: 24px; }
-    .lp-hero-title { font-size: clamp(30px, 7vw, 62px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; max-width: 900px; margin: 0 auto 20px; }
-    .lp-hero-title .accent { color: var(--lp-accent); }
-    .lp-hero-sub { font-size: clamp(15px, 2.5vw, 18px); color: var(--lp-text-muted); max-width: 600px; margin: 0 auto 32px; line-height: 1.6; padding: 0 8px; }
+    /* Full-bleed violet gradient hero — deep violet through violet-blue,
+       always this palette regardless of the site's own light/dark toggle,
+       since a gradient hero reads as a deliberate design choice, not a
+       theme-dependent one. */
+    .lp-hero-outer {
+        width: 100%;
+        background: linear-gradient(160deg, #4C1D95 0%, #6D28D9 35%, #7C3AED 60%, #4338CA 100%);
+        overflow: hidden;
+    }
+    .lp-hero { padding: 80px 20px 56px; text-align: center; position: relative; z-index: 1; }
+    .lp-hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; margin-bottom: 24px; backdrop-filter: blur(6px); white-space: nowrap; max-width: 100%; }
+    .lp-hero-title { font-size: clamp(30px, 7vw, 62px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; max-width: 900px; margin: 0 auto 20px; color: #fff; }
+    .lp-hero-title .accent { color: #FDE68A; }
+    .lp-hero-sub { font-size: clamp(15px, 2.5vw, 18px); color: rgba(255,255,255,0.82); max-width: 600px; margin: 0 auto 32px; line-height: 1.6; padding: 0 8px; }
     .lp-hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+    .lp-hero-ctas .lp-btn-primary { background: #fff; color: #7C3AED; transition: background 150ms ease, color 150ms ease; }
+    .lp-hero-ctas .lp-btn-primary:hover { background: #FDE68A; color: #4C1D95; opacity: 1; }
+    .lp-hero-ctas .lp-btn-secondary { background: rgba(255,255,255,0.08); color: #fff; border: 1.5px solid rgba(255,255,255,0.35); backdrop-filter: blur(6px); }
+    .lp-hero-ctas .lp-btn-secondary:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.5); }
     .lp-hero-rotate { display: inline-block; opacity: 0; transform: translateY(6px); transition: opacity 0.4s ease, transform 0.4s ease; }
     .lp-hero-rotate-visible { opacity: 1; transform: translateY(0); }
     .lp-mockup-steps { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; padding: 0 12px; }
@@ -183,15 +207,46 @@
         .lp-footer-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 767px) {
+        .lp-nav-inner { padding: 12px 16px; }
+        .lp-nav-links, .lp-nav-cta { display: none; }
+        .lp-menu-toggle { display: flex; }
+        .lp-nav.menu-open .lp-mobile-menu { display: flex; }
+        .lp-mobile-menu { flex-direction: column; gap: 4px; padding: 10px 16px 16px; border-top: 1px solid var(--lp-border); background: var(--lp-bg); }
+        .lp-mobile-menu-link { display: block; padding: 11px 4px; color: var(--lp-text-muted); text-decoration: none; font-size: 14px; font-weight: 500; }
+        .lp-mobile-menu-link:hover { color: var(--lp-text); }
+        .lp-mobile-menu-actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--lp-border); }
+        .lp-mobile-menu-actions .lp-theme-toggle { display: flex; }
+        .lp-mobile-menu-actions .lp-btn { flex: 1; }
+        .lp-hero { padding-top: 108px; }
         .lp-nav-links { display: none; }
         .lp-mockup-mobile-cols { grid-template-columns: 1fr; }
         .lp-mockup-mobile-cols > div:first-child { display: none; }
-        .lp-hero { padding: 56px 16px 0; }
+        .lp-hero { padding: 56px 16px 44px; }
+    }
+    @media (max-width: 400px) {
+        .lp-hero-badge { font-size: 10.5px; padding: 6px 10px; gap: 5px; }
+
+        /* CTA buttons — never wrap their text, tighten padding slightly
+           so "Start Free Trial →" and "See How It Works" both sit
+           comfortably on one line each when stacked. */
+        .lp-hero-ctas .lp-btn { white-space: nowrap; padding: 13px 20px; font-size: 13.5px; }
+
+        /* Dashboard mockup — tighter padding/type throughout so the
+           3-column stat cards and list rows don't feel squeezed at
+           this width. Nothing structural changes, just scale. */
+        .lp-mockup-frame [style*="padding:18px"] { padding: 13px !important; }
+        .lp-mockup-frame [style*="grid-template-columns:repeat(3,1fr)"] { gap: 6px !important; }
+        .lp-mockup-frame [style*="font-size:18px"] { font-size: 15px !important; }
+        .lp-mockup-frame [style*="font-size:14px"] { font-size: 12.5px !important; }
+        .lp-mockup-frame [style*="font-size:11px"] { font-size: 10px !important; }
+        .lp-mockup-frame [style*="font-size:11.5px"] { font-size: 10.5px !important; }
+        .lp-mockup-frame [style*="font-size:10.5px"] { font-size: 9.5px !important; }
+        .lp-mockup-frame [style*="font-size:9px"] { font-size: 8.5px !important; }
         .lp-section { padding: 56px 16px; }
         .lp-final-cta-outer { padding: 64px 16px; }
         .lp-footer-grid { grid-template-columns: 1fr; text-align: left; }
         .lp-nav-cta .lp-btn-secondary { display: none; }
-        .lp-hero-ctas .lp-btn { width: 100%; }
+        .lp-hero-ctas .lp-btn { width: calc(100% - 20px); margin: 0 10px; }
         .lp-hero-ctas { flex-direction: column; }
         .lp-trusted-logos { gap: 20px; }
         .lp-trusted-logo { font-size: 13px; }
@@ -207,6 +262,7 @@
 <div class="lp-wrap"
     x-data="{
         dark: localStorage.getItem('krd-dark') === 'true',
+        mobileMenuOpen: false,
         cycle: '{{ $billingCycle }}',
         toggleDark() {
             this.dark = !this.dark;
@@ -230,9 +286,16 @@
 >
 
     {{-- Nav --}}
-    <nav class="lp-nav">
+    <nav class="lp-nav" :class="{ 'menu-open': mobileMenuOpen }">
         <div class="lp-nav-inner">
-            <x-ui.logo color="auto" />
+            <a href="{{ route('landing') }}" class="lp-logo">
+                @if($landingFaviconPath)
+                <img class="lp-logo-mark" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($landingFaviconPath) }}?v={{ $landingFaviconVersion }}" alt="{{ $siteName ?? 'Koordli' }} logo">
+                @else
+                <span class="lp-logo-mark lp-logo-fallback"></span>
+                @endif
+                {{ $siteName ?? 'Koordli' }}
+            </a>
             <div class="lp-nav-links">
                 <a href="#features" class="lp-nav-link">Features</a>
                 <a href="#pricing" class="lp-nav-link">Pricing</a>
@@ -246,10 +309,27 @@
                 <a href="{{ route('tenant.login') }}" class="lp-btn lp-btn-secondary lp-btn-sm-mobile" wire:navigate>Sign In</a>
                 <a href="{{ route('register') }}" class="lp-btn lp-btn-primary lp-btn-sm-mobile" wire:navigate>Start Free Trial</a>
             </div>
+            <button class="lp-menu-toggle" type="button" x-on:click="mobileMenuOpen = !mobileMenuOpen" :aria-expanded="mobileMenuOpen.toString()" aria-label="Toggle navigation menu">
+                <svg x-show="!mobileMenuOpen" xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <svg x-show="mobileMenuOpen" x-cloak xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+        </div>
+        <div class="lp-mobile-menu" x-show="mobileMenuOpen" x-cloak x-transition.opacity>
+            <a href="#features" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">Features</a>
+            <a href="#pricing" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">Pricing</a>
+            <a href="#faq" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">FAQ</a>
+            <div class="lp-mobile-menu-actions">
+                <button class="lp-theme-toggle" type="button" x-on:click="toggleDark()" :aria-label="dark ? 'Switch to light mode' : 'Switch to dark mode'">
+                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                    <svg x-show="dark" x-cloak xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                </button>
+                <a href="{{ route('register') }}" class="lp-btn lp-btn-primary" wire:navigate x-on:click="mobileMenuOpen = false">Start Trial</a>
+            </div>
         </div>
     </nav>
 
     {{-- Hero --}}
+    <div class="lp-hero-outer">
     <section class="lp-hero">
         <div class="lp-hero-badge lp-animate">⚡ Now supporting Bookings, Contracts & E-Signatures</div>
         <h1 class="lp-hero-title lp-serif lp-animate"
@@ -284,37 +364,79 @@
                 <div class="lp-mockup-dot" style="background:#F59E0B;"></div>
                 <div class="lp-mockup-dot" style="background:#10B981;"></div>
             </div>
-            <div style="background:var(--lp-bg);padding:20px;">
+            <div style="background:#FAFAF9;padding:20px;"
+                x-data="{
+                    screen: 0,
+                    screens: ['dashboard', 'budget', 'tasks'],
+                    init() { setInterval(() => { this.screen = (this.screen + 1) % this.screens.length; }, 4000); }
+                }">
                 <div class="lp-mockup-mobile-cols">
                     <div style="background:#fff;border-right:1px solid #E7E5E4;padding:16px 12px;">
                         <div style="font-size:13px;font-weight:800;color:#1C1917;margin-bottom:20px;padding:0 4px;">Koordli</div>
-                        @foreach(['📊 Dashboard' => true, '📅 Events' => false, '✓ Tasks' => false, '👥 Vendors' => false, '💰 Budget' => false, '📝 Contracts' => false] as $item => $active)
-                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;color:{{ $active ? '#7C3AED' : '#78716C' }};background:{{ $active ? '#F5F3FF' : 'transparent' }};font-weight:{{ $active ? '600' : '400' }};">{{ $item }}</div>
-                        @endforeach
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;transition:all 250ms ease;"
+                            :style="screens[screen] === 'dashboard' ? 'color:#7C3AED;background:#F5F3FF;font-weight:600;' : 'color:#78716C;background:transparent;font-weight:400;'">📊 Dashboard</div>
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;color:#78716C;">📅 Events</div>
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;transition:all 250ms ease;"
+                            :style="screens[screen] === 'tasks' ? 'color:#7C3AED;background:#F5F3FF;font-weight:600;' : 'color:#78716C;background:transparent;font-weight:400;'">✓ Tasks</div>
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;color:#78716C;">👥 Vendors</div>
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;transition:all 250ms ease;"
+                            :style="screens[screen] === 'budget' ? 'color:#7C3AED;background:#F5F3FF;font-weight:600;' : 'color:#78716C;background:transparent;font-weight:400;'">💰 Budget</div>
+                        <div style="font-size:11px;padding:8px 10px;border-radius:6px;margin-bottom:2px;color:#78716C;">📝 Contracts</div>
                     </div>
-                    <div style="padding:18px;background:#fff;">
-                        <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Good morning, Amara 👋</div>
-                        <div style="font-size:11px;color:#A8A29E;margin-bottom:16px;">Here's what's happening today</div>
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
-                            <div style="background:#F5F3FF;border-radius:8px;padding:10px;">
-                                <div style="font-size:9px;color:#7C3AED;font-weight:600;">EVENTS</div>
-                                <div style="font-size:18px;font-weight:800;color:#1C1917;">12</div>
+
+                    <div style="position:relative;background:#fff;min-height:280px;">
+
+                        {{-- Screen 1: Dashboard --}}
+                        <div x-show="screens[screen] === 'dashboard'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" style="padding:18px;position:absolute;inset:0;">
+                            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Good morning, Amara 👋</div>
+                            <div style="font-size:11px;color:#A8A29E;margin-bottom:16px;">Here's what's happening today</div>
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;">
+                                <div style="background:#F5F3FF;border-radius:8px;padding:10px;">
+                                    <div style="font-size:9px;color:#7C3AED;font-weight:600;">EVENTS</div>
+                                    <div style="font-size:18px;font-weight:800;color:#1C1917;">12</div>
+                                </div>
+                                <div style="background:#F0FDF4;border-radius:8px;padding:10px;">
+                                    <div style="font-size:9px;color:#10B981;font-weight:600;">TASKS DUE</div>
+                                    <div style="font-size:18px;font-weight:800;color:#1C1917;">5</div>
+                                </div>
+                                <div style="background:#FFFBEB;border-radius:8px;padding:10px;">
+                                    <div style="font-size:9px;color:#F59E0B;font-weight:600;">BUDGET</div>
+                                    <div style="font-size:18px;font-weight:800;color:#1C1917;">₦2.4M</div>
+                                </div>
                             </div>
-                            <div style="background:#F0FDF4;border-radius:8px;padding:10px;">
-                                <div style="font-size:9px;color:#10B981;font-weight:600;">TASKS DUE</div>
-                                <div style="font-size:18px;font-weight:800;color:#1C1917;">5</div>
-                            </div>
-                            <div style="background:#FFFBEB;border-radius:8px;padding:10px;">
-                                <div style="font-size:9px;color:#F59E0B;font-weight:600;">BUDGET</div>
-                                <div style="font-size:18px;font-weight:800;color:#1C1917;">₦2.4M</div>
+                            <div style="border:1px solid #E7E5E4;border-radius:8px;padding:12px;">
+                                <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:#1C1917;">Upcoming Events</div>
+                                @foreach(['Adaeze & Chuka Wedding — Aug 15','CenBa Awards Night — Sep 2','Corporate Retreat — Sep 20'] as $e)
+                                <div style="font-size:10.5px;color:#57534E;padding:6px 0;border-bottom:1px solid #F5F5F4;">{{ $e }}</div>
+                                @endforeach
                             </div>
                         </div>
-                        <div style="border:1px solid #E7E5E4;border-radius:8px;padding:12px;">
-                            <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:#1C1917;">Upcoming Events</div>
-                            @foreach(['Adaeze & Chuka Wedding — Aug 15','CenBa Awards Night — Sep 2','Corporate Retreat — Sep 20'] as $e)
-                            <div style="font-size:10.5px;color:#57534E;padding:6px 0;border-bottom:1px solid #F5F5F4;">{{ $e }}</div>
+
+                        {{-- Screen 2: Budget --}}
+                        <div x-show="screens[screen] === 'budget'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" style="padding:18px;position:absolute;inset:0;">
+                            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Adaeze & Chuka Wedding</div>
+                            <div style="font-size:11px;color:#A8A29E;margin-bottom:16px;">Event Budget</div>
+                            <div style="display:flex;justify-content:space-between;font-size:12px;padding:10px 0;border-bottom:1px solid #F5F5F4;"><span style="color:#78716C;">Agreed Budget</span><span style="font-weight:700;color:#1C1917;">₦3,000,000</span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:12px;padding:10px 0;border-bottom:1px solid #F5F5F4;"><span style="color:#78716C;">Client Paid</span><span style="font-weight:700;color:#10B981;">₦2,040,000</span></div>
+                            <div style="display:flex;justify-content:space-between;font-size:12px;padding:10px 0;border-bottom:1px solid #F5F5F4;"><span style="color:#78716C;">Vendor Costs</span><span style="font-weight:700;color:#EF4444;">₦1,850,000</span></div>
+                            <div style="margin-top:14px;">
+                                <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:5px;"><span style="color:#78716C;">Payment Progress</span><span style="color:#10B981;font-weight:600;">68%</span></div>
+                                <div style="height:7px;background:#F5F5F4;border-radius:4px;overflow:hidden;"><div style="height:100%;width:68%;background:#10B981;"></div></div>
+                            </div>
+                        </div>
+
+                        {{-- Screen 3: Tasks --}}
+                        <div x-show="screens[screen] === 'tasks'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" style="padding:18px;position:absolute;inset:0;">
+                            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Tasks — This Week</div>
+                            <div style="font-size:11px;color:#A8A29E;margin-bottom:16px;">5 due, 2 overdue</div>
+                            @foreach([['Confirm catering headcount','Urgent','#EF4444'],['Send RSVP reminder','Normal','#3B82F6'],['Finalize seating chart','High','#F59E0B'],['Brief photographer','Normal','#3B82F6']] as [$task, $priority, $color])
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #F5F5F4;">
+                                <span style="font-size:11.5px;color:#1C1917;">{{ $task }}</span>
+                                <span style="font-size:9px;color:{{ $color }};background:{{ $color }}1a;padding:2px 8px;border-radius:8px;font-weight:600;">{{ $priority }}</span>
+                            </div>
                             @endforeach
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -330,6 +452,7 @@
             <span class="lp-mockup-step">④ Run the Day</span>
         </div>
     </section>
+    </div>
 
     {{-- Trusted By --}}
     <section class="lp-trusted lp-animate">
@@ -378,7 +501,7 @@
     <section class="lp-section" id="features">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">Core Features</div>
-            <h2 class="lp-section-title lp-serif lp-animate">Everything your event business needs, in one workspace</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">Everything Your Event Business Needs, In One Workspace</h2>
             <p class="lp-section-sub lp-animate">From the first client inquiry to event-day execution and final payment.</p>
 
             {{-- Feature 1: Event Management --}}
@@ -637,7 +760,7 @@
     <section class="lp-section lp-section-alt">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">Why Koordli</div>
-            <h2 class="lp-section-title lp-serif lp-animate">Built for how event businesses actually work</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">Built For How Event Businesses Actually Work</h2>
             <div class="lp-why-grid">
                 @foreach([
                     ['icon' => '🏢', 'title' => 'Multi-Tenant', 'text' => 'Your company gets its own secure workspace'],
@@ -661,7 +784,7 @@
     <section class="lp-section">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">How It Works</div>
-            <h2 class="lp-section-title lp-serif lp-animate">From first inquiry to event day</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">From First Inquiry to Event Day</h2>
             <div class="lp-flow lp-animate">
                 @foreach(['Lead', 'Booking', 'Client Portal', 'Planning', 'Vendors', 'Tasks', 'RSVP', 'Runsheet', 'Event Day'] as $step)
                 <div class="lp-flow-step">{{ $step }}</div>
@@ -675,7 +798,7 @@
     <section class="lp-section lp-section-alt" id="pricing">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">Pricing</div>
-            <h2 class="lp-section-title lp-serif lp-animate">Simple pricing that grows with you</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">Simple Pricing That Grows With You</h2>
             <p class="lp-section-sub lp-animate">Start free. Upgrade whenever you're ready.</p>
 
             <div class="lp-pricing-toggle lp-animate">
@@ -755,7 +878,7 @@
     <section class="lp-section" id="faq">
         <div class="lp-container">
             <div class="lp-section-label lp-animate">FAQ</div>
-            <h2 class="lp-section-title lp-serif lp-animate">Frequently asked questions</h2>
+            <h2 class="lp-section-title lp-serif lp-animate">Frequently Asked Questions</h2>
             <div class="lp-faq lp-animate" x-data="{ openFaq: null }">
                 @foreach([
                     'Is Koordli only for weddings?' => 'Not at all. Koordli is built for any kind of event business — corporate events, conferences, churches, award ceremonies, birthdays, exhibitions, and more.',
@@ -781,7 +904,7 @@
     {{-- Final CTA — full bleed --}}
     <div class="lp-final-cta-outer">
         <div class="lp-final-cta-inner lp-animate">
-            <h2 class="lp-final-cta-title lp-serif">Ready to run your events without the chaos?</h2>
+            <h2 class="lp-final-cta-title lp-serif">Ready To Run Your Events Without The Chaos?</h2>
             <p class="lp-final-cta-sub">Start your free trial today. No card required.</p>
             <a href="{{ route('register') }}" wire:navigate class="lp-btn lp-btn-primary lp-btn-lg">Start Free Trial →</a>
         </div>
@@ -800,7 +923,7 @@
                 <div class="lp-footer-col-title">Product</div>
                 <a href="#features" class="lp-footer-link">Features</a>
                 <a href="#pricing" class="lp-footer-link">Pricing</a>
-                <a href="#" class="lp-footer-link">Documentation</a>
+                <a href="{{ route('docs') }}" target="_blank" class="lp-footer-link">Documentation</a>
             </div>
             <div>
                 <div class="lp-footer-col-title">Company</div>

@@ -2,22 +2,24 @@
     'name'        => '',
     'wire'        => null,
     'selected'    => 'Select',
+    'value'       => null,
     'placeholder' => 'Select',
     'maxWidth'    => null,
 ])
 
 <div
     class="krd-dropdown"
-    wire:key="krd-dropdown-{{ $wire }}-{{ md5($selected) }}"
+    wire:key="krd-dropdown-{{ $wire }}"
     x-data="krdDropdown({
         wire: @js($wire),
         selected: @js($selected),
+        value: @js($value ?? null),
         placeholder: @js($placeholder)
     })"
     x-on:click.outside="open = false"
     @if($maxWidth) style="max-width:{{ $maxWidth }};" @endif
 >
-    <button
+    <button wire:ignore
         type="button"
         class="krd-dropdown-trigger"
         x-bind:class="{ open: open }"
@@ -32,7 +34,7 @@
         </svg>
     </button>
 
-    <div x-show="open" x-cloak class="krd-dropdown-menu">
+    <div wire:ignore x-show="open" x-cloak class="krd-dropdown-menu">
         @if($placeholder)
         <div class="krd-dropdown-option" x-on:click="clear()">
             {{ $placeholder }}

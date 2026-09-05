@@ -40,7 +40,7 @@ class FormList extends Component
             return;
         }
 
-        Form::find($this->deleteId)?->delete();
+        Form::where('tenant_id', auth()->user()->tenant_id)->find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
         $this->toastSuccess('Form deleted.');
@@ -53,7 +53,7 @@ class FormList extends Component
             return;
         }
 
-        $form = Form::find($id);
+        $form = Form::where('tenant_id', auth()->user()->tenant_id)->find($id);
         if (!$form) return;
         $newStatus = $form->status === 'active' ? 'inactive' : 'active';
         $form->update(['status' => $newStatus]);
@@ -67,7 +67,7 @@ class FormList extends Component
             403
         );
 
-        $forms = Form::query()
+        $forms = Form::where('tenant_id', auth()->user()->tenant_id)
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%'))
             ->when($this->typeFilter, fn($q) =>

@@ -47,7 +47,7 @@ class VendorDirectory extends Component
             return;
         }
 
-        $vendor = Vendor::find($id);
+        $vendor = Vendor::where('tenant_id', auth()->user()->tenant_id)->find($id);
         if ($vendor) {
             $vendor->update(['is_preferred' => !$vendor->is_preferred]);
         }
@@ -72,7 +72,7 @@ class VendorDirectory extends Component
             return;
         }
 
-        Vendor::find($this->deleteId)?->delete();
+        Vendor::where('tenant_id', auth()->user()->tenant_id)->find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;
         $this->toastSuccess('Vendor deleted.');
@@ -127,7 +127,9 @@ class VendorDirectory extends Component
 
 
         $canManageInvolvement = app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'vendors.client_involvement.manage');
-        $vendors = Vendor::with(['category', 'eventAssignments'])
+        $tenantId = auth()->user()->tenant_id;
+        $vendors = Vendor::where('tenant_id', $tenantId)
+            ->with(['category', 'eventAssignments'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('contact_name', 'like', '%' . $this->search . '%')
@@ -151,8 +153,8 @@ class VendorDirectory extends Component
 
         return view('livewire.tenant.vendors.vendor-directory', [
             'vendors'               => $vendors,
-            'categories'            => VendorCategory::orderBy('sort_order')->get(),
-            'totalCount'            => Vendor::count(),
+            'categories'            => VendorCategory::where('tenant_id', $tenantId)->orderBy('sort_order')->get(),
+            'totalCount'            => Vendor::where('tenant_id', $tenantId)->count(),
             'canManageInvolvement'  => $canManageInvolvement,
         ]);
     }

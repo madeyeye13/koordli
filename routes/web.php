@@ -319,6 +319,8 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
 
     Route::middleware('guest:web')->group(function () {
         Route::get('/login', \App\Livewire\Tenant\Auth\Login::class)->name('tenant.login');
+        Route::get('/forgot-password', \App\Livewire\Tenant\Auth\ForgotPassword::class)->name('tenant.password.request');
+        Route::get('/reset-password/{token}', \App\Livewire\Tenant\Auth\ResetPassword::class)->name('tenant.password.reset');
     });
 
     Route::middleware(['auth.tenant', 'tenant.resolve', 'onboarding.check', 'tenant.active'])->group(function () {
@@ -417,6 +419,7 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/quick-access', \App\Livewire\Tenant\QuickAccessAdmin::class)->name('tenant.quick-access');
         Route::get('/clients', \App\Livewire\Tenant\Clients\ClientsList::class)->name('tenant.clients');
         Route::get('/settings', \App\Livewire\Tenant\SettingsHub::class)->name('tenant.settings');
+        Route::get('/branding-settings', \App\Livewire\Tenant\BrandingSettings::class)->name('tenant.branding-settings');
         Route::get('/my-quick-access', \App\Livewire\Staff\QuickAccessSettings::class)->name('tenant.my-quick-access');
         Route::get('/my-profile', \App\Livewire\Staff\Profile::class)->name('tenant.my-profile');
 
@@ -542,6 +545,19 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/', \App\Livewire\Public\LandingPage::class)->name('landing');
+Route::get('/docs', fn () => view('public.documentation'))->name('docs');
+Route::get('/terms', function () {
+    return view('public.legal', [
+        'title' => 'Terms & Conditions',
+        'content' => \App\Models\Central\PlatformSetting::get('terms_content', \App\Models\Central\PlatformSetting::defaultTerms()),
+    ]);
+})->name('terms');
+Route::get('/privacy', function () {
+    return view('public.legal', [
+        'title' => 'Privacy Policy',
+        'content' => \App\Models\Central\PlatformSetting::get('privacy_content', \App\Models\Central\PlatformSetting::defaultPrivacy()),
+    ]);
+})->name('privacy');
 
 Route::get('/sitemap.xml', function () {
     return response()->view('sitemap')->header('Content-Type', 'text/xml');

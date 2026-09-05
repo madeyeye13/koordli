@@ -101,6 +101,15 @@
                 </svg>
                 Site Settings
             </a>
+
+            <a href="{{ route('platform.site-settings') }}#legal-pages"
+                class="krd-nav-item {{ request()->routeIs('platform.site-settings') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/>
+                </svg>
+                Legal Pages
+            </a>
         </div>
 
     </nav>

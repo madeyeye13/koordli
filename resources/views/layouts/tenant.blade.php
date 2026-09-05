@@ -122,6 +122,27 @@
     @livewireScripts
 
     <script>
+        (() => {
+            let sidebarScrollTop = 0;
+
+            document.addEventListener('livewire:navigate', () => {
+                const nav = document.getElementById('tenant-sidebar-nav');
+                if (nav) sidebarScrollTop = nav.scrollTop;
+            });
+
+            document.addEventListener('livewire:navigated', () => {
+                const restore = () => {
+                    const nav = document.getElementById('tenant-sidebar-nav');
+                    if (nav) nav.scrollTop = sidebarScrollTop;
+                };
+
+                requestAnimationFrame(restore);
+                setTimeout(restore, 50);
+            });
+        })();
+    </script>
+
+    <script>
         document.addEventListener('subscription-locked', function() {
             if (window.showToast) {
                 window.showToast("This action requires an active plan. Redirecting to billing...", 'error');

@@ -34,7 +34,7 @@ class AssetDetail extends Component
             403
         );
 
-        $this->asset = Asset::with(['category', 'eventAssignments.event'])->findOrFail($id);
+        $this->asset = Asset::where('tenant_id', auth()->user()->tenant_id)->with(['category', 'eventAssignments.event'])->findOrFail($id);
     }
 
     public function showAssign(): void
@@ -102,7 +102,7 @@ class AssetDetail extends Component
             return;
         }
 
-        AssetEventAssignment::find($this->deleteAssignId)?->delete();
+        AssetEventAssignment::where('tenant_id', auth()->user()->tenant_id)->where('asset_id', $this->asset->id)->find($this->deleteAssignId)?->delete();
 
         if ($this->asset->eventAssignments()->count() === 0) {
             $this->asset->update(['status' => 'available']);

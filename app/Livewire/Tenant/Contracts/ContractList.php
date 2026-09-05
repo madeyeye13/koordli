@@ -23,7 +23,8 @@ class ContractList extends Component
             403
         );
 
-        $contracts = VendorContract::with(['vendor', 'event'])
+        $tenantId = auth()->user()->tenant_id;
+        $contracts = VendorContract::where('tenant_id', $tenantId)->with(['vendor', 'event'])
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, fn($q) => $q->where('title', 'like', '%' . $this->search . '%')
                 ->orWhereHas('vendor', fn($v) => $v->where('name', 'like', '%' . $this->search . '%')))
@@ -31,11 +32,11 @@ class ContractList extends Component
             ->get();
 
         $stats = [
-            'total'     => VendorContract::count(),
-            'draft'     => VendorContract::where('status', 'draft')->count(),
-            'sent'      => VendorContract::where('status', 'sent')->count(),
-            'signed'    => VendorContract::where('status', 'signed')->count(),
-            'expiring'  => VendorContract::whereNotNull('expires_at')
+            'total'     => VendorContract::where('tenant_id', $tenantId)->count(),
+            'draft'     => VendorContract::where('tenant_id', $tenantId)->where('status', 'draft')->count(),
+            'sent'      => VendorContract::where('tenant_id', $tenantId)->where('status', 'sent')->count(),
+            'signed'    => VendorContract::where('tenant_id', $tenantId)->where('status', 'signed')->count(),
+            'expiring'  => VendorContract::where('tenant_id', $tenantId)->whereNotNull('expires_at')
                 ->whereNotIn('status', ['signed', 'cancelled'])
                 ->where('expires_at', '<=', now()->addDays(14))
                 ->where('expires_at', '>=', now())

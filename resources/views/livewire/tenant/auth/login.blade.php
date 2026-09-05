@@ -89,7 +89,7 @@
             <div class="krd-input-group">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
                     <label class="krd-label-text" style="margin-bottom: 0;">Password</label>
-                    <a href="#" style="font-size: 12px; color: #7C3AED; text-decoration: none;">Forgot password?</a>
+                    <a href="{{ route('tenant.password.request') }}" wire:navigate style="font-size: 12px; color: #7C3AED; text-decoration: none;">Forgot password?</a>
                 </div>
                 <div style="position: relative;">
                     <input

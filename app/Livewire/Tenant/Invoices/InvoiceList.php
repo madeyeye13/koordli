@@ -22,7 +22,8 @@ class InvoiceList extends Component
             403
         );
 
-        $invoices = VendorInvoice::with(['vendor', 'event'])
+        $tenantId = auth()->user()->tenant_id;
+        $invoices = VendorInvoice::where('tenant_id', $tenantId)->with(['vendor', 'event'])
             ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, fn($q) => $q->where('invoice_number', 'like', '%' . $this->search . '%')
                 ->orWhereHas('vendor', fn($v) => $v->where('name', 'like', '%' . $this->search . '%')))
@@ -37,10 +38,10 @@ class InvoiceList extends Component
         }
 
         $stats = [
-            'total_invoiced'    => VendorInvoice::whereNotIn('status', ['cancelled'])->sum('total_amount'),
-            'total_paid'        => VendorInvoice::whereNotIn('status', ['cancelled'])->get()->sum(fn($i) => $i->totalPaid()),
-            'total_outstanding' => VendorInvoice::whereNotIn('status', ['cancelled'])->get()->sum(fn($i) => $i->balance()),
-            'overdue_count'     => VendorInvoice::where('status', 'overdue')->count(),
+            'total_invoiced'    => VendorInvoice::where('tenant_id', $tenantId)->whereNotIn('status', ['cancelled'])->sum('total_amount'),
+            'total_paid'        => VendorInvoice::where('tenant_id', $tenantId)->whereNotIn('status', ['cancelled'])->get()->sum(fn($i) => $i->totalPaid()),
+            'total_outstanding' => VendorInvoice::where('tenant_id', $tenantId)->whereNotIn('status', ['cancelled'])->get()->sum(fn($i) => $i->balance()),
+            'overdue_count'     => VendorInvoice::where('tenant_id', $tenantId)->where('status', 'overdue')->count(),
         ];
 
         return view('livewire.tenant.invoices.invoice-list', compact('invoices', 'stats'));

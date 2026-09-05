@@ -188,7 +188,8 @@ class VendorSuggestions extends Component
 
         if ($this->finalize_existing_vendor_id) {
             // Linking to a known, already-vetted directory vendor.
-            $vendor = Vendor::find($this->finalize_existing_vendor_id);
+            $vendor = Vendor::where('tenant_id', auth()->user()->tenant_id)
+                ->find($this->finalize_existing_vendor_id);
             $selectionSource = $isFromClient ? 'client_selected' : 'planner_suggested';
         } else {
             // Brand new vendor, created directly from this suggestion.
@@ -283,8 +284,10 @@ class VendorSuggestions extends Component
 
         return view('livewire.tenant.vendors.vendor-suggestions', [
             'suggestions' => $suggestions,
-            'vendors'     => Vendor::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'categories'  => VendorCategory::orderBy('sort_order')->get(),
+            'vendors'     => Vendor::where('tenant_id', auth()->user()->tenant_id)
+                ->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'categories'  => VendorCategory::where('tenant_id', auth()->user()->tenant_id)
+                ->orderBy('sort_order')->get(),
             'canManage'   => app(PermissionService::class)->userCan(auth()->user(), 'vendors.client_involvement.manage'),
         ]);
     }

@@ -88,7 +88,8 @@ class CreateForm extends Component
         );
 
         if ($id) {
-            $this->form    = Form::with(['fields', 'redirect', 'availabilities'])->findOrFail($id);
+            $this->form    = Form::where('tenant_id', auth()->user()->tenant_id)
+                ->with(['fields', 'redirect', 'availabilities'])->findOrFail($id);
             $this->formId  = $id;
 
             $this->name             = $this->form->name;
@@ -313,7 +314,7 @@ class CreateForm extends Component
         }
 
         if ($this->editFieldId) {
-            FormField::find($this->editFieldId)?->update([
+            FormField::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($this->editFieldId)?->update([
                 'label'       => $this->f_label,
                 'field_type'  => $this->f_type,
                 'placeholder' => $this->f_placeholder ?: null,
@@ -345,7 +346,7 @@ class CreateForm extends Component
     {
         if (!$this->checkPermission()) return;
 
-        $field = FormField::find($id);
+        $field = FormField::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($id);
         if (!$field) return;
         $this->editFieldId   = $id;
         $this->f_label       = $field->label;
@@ -360,7 +361,7 @@ class CreateForm extends Component
     {
         if (!$this->checkPermission()) return;
 
-        FormField::find($id)?->delete();
+        FormField::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($id)?->delete();
         $this->form->load('fields');
         $this->toastSuccess('Field removed.');
     }
@@ -369,7 +370,7 @@ class CreateForm extends Component
     {
         if (!$this->checkPermission()) return;
 
-        $field = FormField::find($id);
+        $field = FormField::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($id);
         if (!$field) return;
         $prev = FormField::where('form_id', $field->form_id)
             ->where('sort_order', '<', $field->sort_order)
@@ -385,7 +386,7 @@ class CreateForm extends Component
     {
         if (!$this->checkPermission()) return;
 
-        $field = FormField::find($id);
+        $field = FormField::where('tenant_id', auth()->user()->tenant_id)->where('form_id', $this->form->id)->find($id);
         if (!$field) return;
         $next = FormField::where('form_id', $field->form_id)
             ->where('sort_order', '>', $field->sort_order)

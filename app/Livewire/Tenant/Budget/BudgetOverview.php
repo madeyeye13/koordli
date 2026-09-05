@@ -26,7 +26,8 @@ class BudgetOverview extends Component
             403
         );
 
-        $eventsWithBudget = Event::with(['budget.items', 'budget.clientPayments', 'status'])
+        $tenantId = auth()->user()->tenant_id;
+        $eventsWithBudget = Event::where('tenant_id', $tenantId)->with(['budget.items', 'budget.clientPayments', 'status'])
             ->whereHas('budget')
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -34,7 +35,7 @@ class BudgetOverview extends Component
             ->orderBy('date', 'asc')
             ->get();
 
-        $eventsWithoutBudget = Event::with('status')
+        $eventsWithoutBudget = Event::where('tenant_id', $tenantId)->with('status')
             ->whereDoesntHave('budget')
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -42,7 +43,7 @@ class BudgetOverview extends Component
             ->orderBy('date', 'asc')
             ->get();
 
-        $allBudgets       = Budget::with(['items', 'clientPayments', 'event'])->get();
+        $allBudgets       = Budget::where('tenant_id', $tenantId)->with(['items', 'clientPayments', 'event'])->get();
         $totalAgreed      = $allBudgets->sum(fn($b) => $b->agreedBudget());
         $totalEstimated   = $allBudgets->sum(fn($b) => $b->totalEstimated());
         $totalActual      = $allBudgets->sum(fn($b) => $b->totalActual());
