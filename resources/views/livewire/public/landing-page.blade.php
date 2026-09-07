@@ -285,48 +285,8 @@
     }"
 >
 
-    {{-- Nav --}}
-    <nav class="lp-nav" :class="{ 'menu-open': mobileMenuOpen }">
-        <div class="lp-nav-inner">
-            <a href="{{ route('landing') }}" class="lp-logo">
-                @if($landingFaviconPath)
-                <img class="lp-logo-mark" src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($landingFaviconPath) }}?v={{ $landingFaviconVersion }}" alt="{{ $siteName ?? 'Koordli' }} logo">
-                @else
-                <span class="lp-logo-mark lp-logo-fallback"></span>
-                @endif
-                {{ $siteName ?? 'Koordli' }}
-            </a>
-            <div class="lp-nav-links">
-                <a href="#features" class="lp-nav-link">Features</a>
-                <a href="#pricing" class="lp-nav-link">Pricing</a>
-                <a href="#faq" class="lp-nav-link">FAQ</a>
-            </div>
-            <div class="lp-nav-cta">
-                <button class="lp-theme-toggle" x-on:click="toggleDark()">
-                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-                    <svg x-show="dark" x-cloak xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                </button>
-                <a href="{{ route('tenant.login') }}" class="lp-btn lp-btn-secondary lp-btn-sm-mobile" wire:navigate>Sign In</a>
-                <a href="{{ route('register') }}" class="lp-btn lp-btn-primary lp-btn-sm-mobile" wire:navigate>Start Free Trial</a>
-            </div>
-            <button class="lp-menu-toggle" type="button" x-on:click="mobileMenuOpen = !mobileMenuOpen" :aria-expanded="mobileMenuOpen.toString()" aria-label="Toggle navigation menu">
-                <svg x-show="!mobileMenuOpen" xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                <svg x-show="mobileMenuOpen" x-cloak xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </button>
-        </div>
-        <div class="lp-mobile-menu" x-show="mobileMenuOpen" x-cloak x-transition.opacity>
-            <a href="#features" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">Features</a>
-            <a href="#pricing" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">Pricing</a>
-            <a href="#faq" class="lp-mobile-menu-link" x-on:click="mobileMenuOpen = false">FAQ</a>
-            <div class="lp-mobile-menu-actions">
-                <button class="lp-theme-toggle" type="button" x-on:click="toggleDark()" :aria-label="dark ? 'Switch to light mode' : 'Switch to dark mode'">
-                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-                    <svg x-show="dark" x-cloak xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
-                </button>
-                <a href="{{ route('register') }}" class="lp-btn lp-btn-primary" wire:navigate x-on:click="mobileMenuOpen = false">Start Trial</a>
-            </div>
-        </div>
-    </nav>
+    {{-- Nav — single source of truth: resources/views/partials/public-nav.blade.php --}}
+    @include('partials.public-nav')
 
     {{-- Hero --}}
     <div class="lp-hero-outer">
@@ -901,6 +861,41 @@
         </div>
     </section>
 
+    {{-- Recent Blog Posts --}}
+    @php
+        $recentBlogPosts = \App\Models\Central\BlogPost::where('status', 'published')
+            ->where('published_at', '<=', now())
+            ->orderByDesc('published_at')
+            ->limit(3)
+            ->get();
+    @endphp
+    @if($recentBlogPosts->isNotEmpty())
+    <section class="lp-section lp-animate">
+        <div class="lp-container">
+            <div class="lp-section-label">From the Blog</div>
+            <h2 class="lp-section-title lp-serif">Guides For Running A Better Event Business</h2>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:20px;margin-top:32px;">
+                @foreach($recentBlogPosts as $post)
+                <a href="{{ route('blog.show', $post->slug) }}" wire:navigate style="border:1px solid var(--lp-border);border-radius:14px;overflow:hidden;text-decoration:none;background:var(--lp-card-bg);transition:transform 180ms ease;">
+                    @if($post->featuredImageUrl())
+                    <img src="{{ $post->featuredImageUrl() }}" style="width:100%;height:150px;object-fit:cover;background:var(--lp-bg-alt);" loading="lazy" alt="{{ $post->title }}">
+                    @else
+                    <div style="width:100%;height:150px;background:var(--lp-bg-alt);"></div>
+                    @endif
+                    <div style="padding:18px;">
+                        <div style="font-size:15px;font-weight:700;color:var(--lp-text);margin-bottom:6px;line-height:1.35;">{{ $post->title }}</div>
+                        <div style="font-size:12.5px;color:var(--lp-text-muted);line-height:1.6;">{{ \Illuminate\Support\Str::limit($post->excerpt, 90) }}</div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            <div style="text-align:center;margin-top:32px;">
+                <a href="{{ route('blog.index') }}" wire:navigate class="lp-btn lp-btn-secondary">Read More Articles →</a>
+            </div>
+        </div>
+    </section>
+    @endif
+
     {{-- Final CTA — full bleed --}}
     <div class="lp-final-cta-outer">
         <div class="lp-final-cta-inner lp-animate">
@@ -923,6 +918,7 @@
                 <div class="lp-footer-col-title">Product</div>
                 <a href="#features" class="lp-footer-link">Features</a>
                 <a href="#pricing" class="lp-footer-link">Pricing</a>
+                <a href="{{ route('blog.index') }}" wire:navigate class="lp-footer-link">Blog</a>
                 <a href="{{ route('docs') }}" target="_blank" class="lp-footer-link">Documentation</a>
             </div>
             <div>

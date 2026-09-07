@@ -47,6 +47,16 @@ Route::prefix('platform')->name('platform.')->group(function () {
             Auth::guard('platform')->logout();
             return redirect()->route('platform.login');
         })->name('logout');
+
+        Route::prefix('blog')->name('blog.')->group(function () {
+            Route::get('/', \App\Livewire\Platform\Blog\BlogPostList::class)->name('index');
+            Route::get('/create', \App\Livewire\Platform\Blog\BlogPostEditor::class)->name('create');
+            Route::get('/{id}/edit', \App\Livewire\Platform\Blog\BlogPostEditor::class)->name('edit');
+        });
+
+        Route::get('/blog/comments', \App\Livewire\Platform\Blog\BlogCommentModeration::class)->name('blog.comments');
+
+        Route::post('/blog/upload-image', [\App\Http\Controllers\BlogImageUploadController::class, 'upload'])->name('blog.upload-image');
     });
 
 });
@@ -560,8 +570,17 @@ Route::get('/privacy', function () {
 })->name('privacy');
 
 Route::get('/sitemap.xml', function () {
-    return response()->view('sitemap')->header('Content-Type', 'text/xml');
+    $blogPosts = \App\Models\Central\BlogPost::where('status', 'published')
+        ->where('published_at', '<=', now())
+        ->orderByDesc('published_at')
+        ->get();
+
+    return response()->view('sitemap', compact('blogPosts'))->header('Content-Type', 'text/xml');
 });
+
+// Public — outside any auth group
+Route::get('/blog', \App\Livewire\Public\Blog\BlogIndex::class)->name('blog.index');
+Route::get('/blog/{slug}', \App\Livewire\Public\Blog\BlogShow::class)->name('blog.show');
 
 Route::post('/broadcasting/multi-auth', function (\Illuminate\Http\Request $request) {
     if (auth('platform')->check()) {

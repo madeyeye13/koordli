@@ -61,6 +61,18 @@
                 </svg>
                 Billing Config
             </a>
+            <a href="{{ route('platform.blog.index') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.blog.*') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+                </svg>
+                Blog
+            </a>
+
+            <a href="{{ route('platform.blog.comments') }}" class="krd-nav-item {{ request()->routeIs('platform.blog.comments') ? 'active' : '' }}" wire:navigate style="padding-left:32px;font-size:12.5px;">
+    Comment Moderation
+</a>
         </div>
 
         <div class="krd-nav-section">

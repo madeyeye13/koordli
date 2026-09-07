@@ -1,5 +1,6 @@
 import './bootstrap';
 import './conversations-widget-store';
+import './blog-editor';
 
 document.addEventListener('alpine:init', () => {
 

@@ -103,5 +103,11 @@ class AppServiceProvider extends ServiceProvider
             \App\Events\RunsheetItemDelayed::class,
             \App\Listeners\CascadeRunsheetDelayWarning::class,
         );
+
+        \Illuminate\Support\Facades\Event::listen(
+    \App\Events\BlogCommentSubmitted::class,
+    \App\Listeners\NotifyPlatformOfNewComment::class,
+);
+        
     }
 }
