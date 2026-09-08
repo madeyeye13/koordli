@@ -122,7 +122,7 @@
             </div>
 
             {{-- Custom questions --}}
-            @foreach($response->rsvpForm->questions as $q)
+            @foreach($response->rsvpForm->customQuestions as $q)
             <div style="margin-bottom:16px;">
                 <label style="display:block;font-size:13px;font-weight:500;color:#57534E;margin-bottom:5px;font-family:'Spline Sans',sans-serif;">
                     {{ $q->label }}

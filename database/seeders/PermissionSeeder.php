@@ -150,9 +150,13 @@ class PermissionSeeder extends Seeder
             'moodboards.view',
             'moodboards.manage',
 
-            // Event Checklists
+                        // Event Checklists
             'checklists.view',
             'checklists.manage',
+
+            // Event Microsite (wedding/celebration guest-facing website)
+            'microsite.view',
+            'microsite.manage',
 
             // Vendor self (for vendor role)
             'vendor.profile.manage',
@@ -211,6 +215,7 @@ class PermissionSeeder extends Seeder
                 'clients.manage',
                 'moodboards.view', 'moodboards.manage',
                 'checklists.view', 'checklists.manage',
+                'microsite.view', 'microsite.manage',
                 'budget.view',
                 'budget.client-visibility.manage',
                 'guests.view', 'guests.create', 'guests.edit', 'guests.checkin',

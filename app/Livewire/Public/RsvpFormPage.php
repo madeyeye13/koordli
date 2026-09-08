@@ -34,7 +34,7 @@ class RsvpFormPage extends Component
     {
         $this->rsvpForm = RsvpForm::with([
             'event',
-            'questions' => fn($q) => $q->orderBy('sort_order'),
+            'customQuestions' => fn($q) => $q->orderBy('sort_order'),
         ])
             ->where('slug', $slug)
             ->where('is_active', true)
@@ -48,7 +48,7 @@ class RsvpFormPage extends Component
             $this->error = 'RSVP is now closed for this event.';
         }
 
-        foreach ($this->rsvpForm->questions ?? [] as $q) {
+        foreach ($this->rsvpForm->customQuestions ?? [] as $q) {
             $this->answers[$q->id] = '';
         }
     }
@@ -73,7 +73,7 @@ class RsvpFormPage extends Component
             'plus_one_count'   => 'integer|min:0|max:20',
         ];
 
-        foreach ($this->rsvpForm->questions ?? [] as $q) {
+        foreach ($this->rsvpForm->customQuestions ?? [] as $q) {
             $rules["answers.{$q->id}"] = $q->is_required ? 'required' : 'nullable';
         }
 
@@ -107,7 +107,7 @@ class RsvpFormPage extends Component
             'qr_token'         => $qrToken,
         ]);
 
-        foreach ($this->rsvpForm->questions ?? [] as $q) {
+        foreach ($this->rsvpForm->customQuestions ?? [] as $q) {
             if (isset($this->answers[$q->id]) && $this->answers[$q->id] !== '') {
                 RsvpResponseAnswer::create([
                     'tenant_id'        => $this->rsvpForm->tenant_id,

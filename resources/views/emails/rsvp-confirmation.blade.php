@@ -88,6 +88,12 @@
                         <span class="event-key">Attending</span>
                         <span class="event-val">{{ 1 + $plusOneCount }} {{ (1 + $plusOneCount) === 1 ? 'person' : 'people' }}</span>
                     </div>
+                    @if(!empty($companions))
+                    <div class="event-row" style="border-bottom:none;">
+                        <span class="event-key">With</span>
+                        <span class="event-val">{{ collect($companions)->map(fn($c) => $c['name'] . ($c['relation'] ? ' (' . $c['relation'] . ')' : ''))->join(', ') }}</span>
+                    </div>
+                    @endif
                     @endif
                 </div>
 

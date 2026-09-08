@@ -12,8 +12,8 @@
             <div>
                 <div class="krd-label" style="margin-bottom:4px;">RSVP</div>
                 <h2 class="krd-heading-3" style="color:#1C1917;">{{ $event->name }}</h2>
-                @if($form)
                 <div style="margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    @if($form)
                     <span class="krd-badge {{ $form->is_active ? 'krd-badge-green' : 'krd-badge-stone' }}">
                         {{ $form->is_active ? 'Active' : 'Inactive' }}
                     </span>
@@ -26,8 +26,14 @@
                     <a href="{{ $form->publicUrl() }}" target="_blank" class="krd-btn krd-btn-ghost krd-btn-sm">
                         Preview ↗
                     </a>
+                    @endif
+                    <a href="{{ route('tenant.events.microsite', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M4 11a9 9 0 019-9M20 12a8 8 0 01-8 8"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Microsite
+                    </a>
                 </div>
-                @endif
             </div>
         </div>
     </div>
@@ -175,9 +181,51 @@
                     </div>
                 </div>
 
+                <div class="krd-card" style="padding:18px 20px;margin-bottom:16px;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">
+                        <div>
+                            <div class="krd-label" style="margin-bottom:4px;">System Questions</div>
+                            <div style="font-size:12px;color:#78716C;">Edit the labels shown to guests and hide optional fields.</div>
+                        </div>
+                        <button wire:click="saveSystemQuestions" wire:loading.attr="disabled" class="krd-btn krd-btn-secondary krd-btn-sm">
+                            <span wire:loading.remove wire:target="saveSystemQuestions">Save</span>
+                            <span wire:loading wire:target="saveSystemQuestions">Saving...</span>
+                        </button>
+                    </div>
+                    @foreach($systemQuestions as $key => $systemQuestion)
+                    <div wire:key="system-question-{{ $key }}" style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F5F5F4;">
+                                                <div>
+                            <input wire:model="systemQuestions.{{ $key }}.label" type="text" class="krd-input" style="font-size:13px;" />
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                                <div style="display:flex;align-items:center;gap:8px;" x-data="{ req: @js($systemQuestion['required']) }">
+                                    <span style="font-size:11px;color:#78716C;white-space:nowrap;">Required</span>
+                                    <button type="button"
+                                        x-on:click="req = !req; $wire.setSystemQuestionRequired('{{ $key }}', req)"
+                                        x-bind:style="req
+                                            ? 'width:34px;height:19px;border-radius:10px;border:none;position:relative;background:#7C3AED;cursor:pointer;'
+                                            : 'width:34px;height:19px;border-radius:10px;border:none;position:relative;background:#D6D3D1;cursor:pointer;'">
+                                        <div x-bind:style="req ? 'position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#fff;' : 'position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;'"></div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;" x-data="{ on: @js($systemQuestion['enabled']) }">
+                            <span style="font-size:12px;color:#57534E;">Show</span>
+                            <button type="button"
+                                x-on:click="on = !on; $wire.setSystemQuestionEnabled('{{ $key }}', on)"
+                                x-bind:style="on
+                                    ? 'width:38px;height:22px;border-radius:11px;border:none;position:relative;background:#7C3AED;cursor:pointer;'
+                                    : 'width:38px;height:22px;border-radius:11px;border:none;position:relative;background:#D6D3D1;cursor:pointer;'">
+                                <div x-bind:style="on ? 'position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:#fff;' : 'position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;'"></div>
+                            </button>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                     <div style="font-size:13px;color:#78716C;">
-                        {{ $form->questions?->count() ?? 0 }} custom {{ Str::plural('question', $form->questions?->count() ?? 0) }}
+                        {{ $form->customQuestions?->count() ?? 0 }} custom {{ Str::plural('question', $form->customQuestions?->count() ?? 0) }}
                     </div>
                     <button wire:click="showAddQuestion" class="krd-btn krd-btn-primary krd-btn-sm">+ Add Question</button>
                 </div>
@@ -266,7 +314,7 @@
                 </div>
                 @endif
 
-                @if($form->questions?->isEmpty())
+                @if($form->customQuestions?->isEmpty())
                 <div class="krd-card">
                     <div class="krd-empty-state">
                         <div class="krd-empty-state-icon">❓</div>
@@ -276,7 +324,7 @@
                 </div>
                 @else
                 <div class="krd-card" style="padding:0;overflow:hidden;">
-                    @foreach($form->questions ?? [] as $q)
+                    @foreach($form->customQuestions ?? [] as $q)
                     <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #E7E5E4;flex-wrap:wrap;">
                         <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;">
                             <button wire:click="moveUp({{ $q->id }})" class="krd-btn krd-btn-ghost krd-btn-sm" style="padding:2px 6px;font-size:10px;">↑</button>
@@ -352,27 +400,39 @@
                     {{-- Colors --}}
                     <div class="krd-grid-2" style="gap:16px;margin-bottom:4px;">
                         <div class="krd-input-group">
-                            <label class="krd-label-text">Accent Color</label>
+                            <label class="krd-label-text">Accent Color (Gold)</label>
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <input wire:model.live="accent_color" type="color"
                                     style="width:40px;height:36px;border:1px solid #E7E5E4;border-radius:4px;cursor:pointer;padding:2px;" />
                                 <input wire:model.live="accent_color" type="text"
-                                    class="krd-input" placeholder="#7C3AED"
+                                    class="krd-input" placeholder="#C9943A"
                                     style="font-family:monospace;text-transform:uppercase;" />
                             </div>
-                            <span class="krd-input-hint">Used for buttons and highlights on the RSVP page.</span>
+                            <span class="krd-input-hint">Buttons, highlights, and countdown numbers.</span>
                         </div>
 
                         <div class="krd-input-group">
-                            <label class="krd-label-text">Background Color</label>
+                            <label class="krd-label-text">Background Color (Ivory)</label>
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <input wire:model.live="bg_color" type="color"
                                     style="width:40px;height:36px;border:1px solid #E7E5E4;border-radius:4px;cursor:pointer;padding:2px;" />
                                 <input wire:model.live="bg_color" type="text"
-                                    class="krd-input" placeholder="#FAFAF9"
+                                    class="krd-input" placeholder="#F5F0E8"
                                     style="font-family:monospace;text-transform:uppercase;" />
                             </div>
-                            <span class="krd-input-hint">Right panel background color.</span>
+                            <span class="krd-input-hint">Main page background color.</span>
+                        </div>
+
+                        <div class="krd-input-group">
+                            <label class="krd-label-text">Dark Color (Obsidian)</label>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <input wire:model.live="dark_color" type="color"
+                                    style="width:40px;height:36px;border:1px solid #E7E5E4;border-radius:4px;cursor:pointer;padding:2px;" />
+                                <input wire:model.live="dark_color" type="text"
+                                    class="krd-input" placeholder="#1A1815"
+                                    style="font-family:monospace;text-transform:uppercase;" />
+                            </div>
+                            <span class="krd-input-hint">Hero background, footer, and dark sections.</span>
                         </div>
                     </div>
 

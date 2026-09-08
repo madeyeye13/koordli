@@ -24,6 +24,7 @@ class RsvpConfirmationMail extends Mailable
         public readonly int    $plusOneCount,
         public readonly string $companyName = 'Koordli',
         public readonly bool   $whiteLabel  = false,
+        public readonly array  $companions  = [],
     ) {}
 
     public function envelope(): Envelope

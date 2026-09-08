@@ -161,6 +161,7 @@ Route::prefix('client')->name('client.')->group(function () {
         Route::get('/events/{slug}/moodboards', \App\Livewire\Client\Moodboards\MoodboardList::class)->name('moodboards.index');
         Route::get('/events/{slug}/checklist', \App\Livewire\Client\Checklists\ChecklistView::class)->name('checklist.index');
         Route::get('/events/{slug}/budget', \App\Livewire\Client\Budget\ClientBudgetView::class)->name('budget.show');
+        Route::get('/events/{slug}/microsite', \App\Livewire\Client\Microsite\ClientMicrosite::class)->name('client.events.microsite');
         Route::get('/moodboards/{id}', \App\Livewire\Client\Moodboards\MoodboardView::class)->name('moodboards.show');
         Route::get('/profile', \App\Livewire\Client\Profile::class)->name('profile');
 
@@ -287,7 +288,7 @@ Route::get('/vendors/{slug}/register', \App\Livewire\Public\VendorRegister::clas
     ->name('vendor.public.register');
 
 // RSVP
-Route::get('/rsvp/{slug}', \App\Livewire\Public\RsvpFormPage::class)->name('rsvp.form');
+Route::get('/rsvp/{slug}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.form');
 Route::get('/rsvp/{slug}/edit/{token}', \App\Livewire\Public\RsvpEdit::class)->name('rsvp.edit');
 Route::get('/rsvp/ticket/{token}', function (string $token) {
     $response = \App\Models\Tenant\RsvpResponse::with(['rsvpForm.event'])
@@ -351,6 +352,7 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/events/{slug}/vendor-suggestions', \App\Livewire\Tenant\Vendors\VendorSuggestions::class)->name('tenant.events.vendor-suggestions');
         Route::get('/events/{slug}/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardList::class)->name('tenant.events.moodboards');
         Route::get('/events/{slug}/checklist', \App\Livewire\Tenant\Checklists\ChecklistPage::class)->name('tenant.events.checklist');
+        Route::get('/events/{slug}/microsite', \App\Livewire\Tenant\Microsite\EventMicrosite::class)->name('tenant.events.microsite');
         Route::get('/checklists/{id}/export', [\App\Http\Controllers\ChecklistExportController::class, 'export'])->name('tenant.checklists.export');
         Route::get('/moodboards', \App\Livewire\Tenant\Moodboards\MoodboardsHub::class)->name('tenant.moodboards.hub');
         Route::get('/checklists', \App\Livewire\Tenant\Checklists\ChecklistsHub::class)->name('tenant.checklists.hub');

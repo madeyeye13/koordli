@@ -57,7 +57,7 @@ class RsvpEdit extends Component
         $this->plus_one_count   = $this->response->plus_one_count;
 
         // Pre-fill custom answers
-        foreach ($this->response->rsvpForm->questions as $q) {
+        foreach ($this->response->rsvpForm->customQuestions as $q) {
             $existing = $this->response->answers->firstWhere('rsvp_question_id', $q->id);
             $this->answers[$q->id] = $existing?->answer ?? '';
         }
@@ -76,7 +76,7 @@ class RsvpEdit extends Component
             'plus_one_count'   => 'integer|min:0|max:20',
         ];
 
-        foreach ($this->response->rsvpForm->questions as $q) {
+        foreach ($this->response->rsvpForm->customQuestions as $q) {
             $rules["answers.{$q->id}"] = $q->is_required ? 'required' : 'nullable';
         }
 
@@ -104,7 +104,7 @@ class RsvpEdit extends Component
         ]);
 
         // Update custom answers
-        foreach ($this->response->rsvpForm->questions as $q) {
+        foreach ($this->response->rsvpForm->customQuestions as $q) {
             $answer = $this->answers[$q->id] ?? null;
             $existing = RsvpResponseAnswer::where('rsvp_response_id', $this->response->id)
                 ->where('rsvp_question_id', $q->id)

@@ -80,6 +80,7 @@
                 </svg>
                 Checklist
             </a>
+            
             @if($event->client_email)
             <button wire:click="inviteClient" wire:loading.attr="disabled" wire:target="inviteClient" class="krd-btn krd-btn-secondary krd-btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

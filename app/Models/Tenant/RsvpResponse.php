@@ -57,6 +57,11 @@ class RsvpResponse extends Model
         return $this->hasMany(RsvpResponseAnswer::class);
     }
 
+        public function companions()
+    {
+        return $this->hasMany(RsvpCompanion::class)->orderBy('sort_order');
+    }
+
     public function totalAttendees(): int
     {
         return 1 + $this->plus_one_count;

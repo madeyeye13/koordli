@@ -33,8 +33,9 @@ class RsvpManager extends Component
     public bool    $is_active   = true;
 
     // Branding
-    public string $accent_color = '#7C3AED';
-    public string $bg_color     = '#FAFAF9';
+    public string $accent_color = '#C9943A';
+    public string $bg_color     = '#F5F0E8';
+    public string $dark_color   = '#1A1815';
     public $cover_image         = null;
     public ?string $cover_image_url = null;
 
@@ -45,6 +46,7 @@ class RsvpManager extends Component
     public bool   $q_is_required    = false;
     public string $q_options_raw    = '';
     public ?int   $editQuestionId   = null;
+    public array  $systemQuestions  = [];
 
     // Delete response
     public bool $showDeleteResponseModal = false;
@@ -59,6 +61,8 @@ class RsvpManager extends Component
         return true;
     }
 
+
+
     public function mount(string $slug): void
     {
         abort_unless(
@@ -70,7 +74,7 @@ class RsvpManager extends Component
             ->where('rsvp_enabled', true)
             ->firstOrFail();
 
-        $this->form = RsvpForm::with('questions')
+        $this->form = RsvpForm::with('customQuestions')
             ->where('event_id', $this->event->id)
             ->first();
 
@@ -81,15 +85,21 @@ class RsvpManager extends Component
             $this->is_active   = $this->form->is_active;
 
             $branding = $this->form->branding ?? [];
-            $this->accent_color    = $branding['accent_color'] ?? '#7C3AED';
-            $this->bg_color        = $branding['bg_color'] ?? '#FAFAF9';
+            $this->accent_color    = $branding['accent_color'] ?? '#C9943A';
+            $this->bg_color        = $branding['bg_color'] ?? '#F5F0E8';
+            $this->dark_color      = $branding['dark_color'] ?? '#1A1815';
             $this->cover_image_url = $branding['cover_image'] ?? null;
+            $this->systemQuestions = array_replace_recursive(
+                RsvpForm::defaultSystemQuestions(),
+                $this->form->system_questions ?? []
+            );
         } else {
             $this->title = $this->event->name . ' — RSVP';
+            $this->systemQuestions = RsvpForm::defaultSystemQuestions();
         }
 
-        if ($this->form && $this->form->questions === null) {
-            $this->form->setRelation('questions', collect());
+        if ($this->form && $this->form->customQuestions === null) {
+            $this->form->setRelation('customQuestions', collect());
         }
     }
 
@@ -137,7 +147,7 @@ class RsvpManager extends Component
             ]);
         }
 
-        $this->form = RsvpForm::with('questions')->find($this->form->id);
+        $this->form = RsvpForm::with('customQuestions')->find($this->form->id);
         $this->toastSuccess('RSVP form saved.');
     }
 
@@ -159,6 +169,7 @@ class RsvpManager extends Component
         $branding = $this->form->branding ?? [];
         $branding['accent_color'] = $this->accent_color;
         $branding['bg_color']     = $this->bg_color;
+        $branding['dark_color']   = $this->dark_color;
 
         if ($this->cover_image) {
             try {
@@ -269,7 +280,52 @@ class RsvpManager extends Component
 
         $this->showQuestionForm = false;
         $this->reset(['q_label', 'q_field_type', 'q_is_required', 'q_options_raw', 'editQuestionId']);
-        $this->form->load('questions');
+        $this->form->load('customQuestions');
+    }
+
+    public function saveSystemQuestions(): void
+    {
+        if (!$this->requireManage()) return;
+
+        if (!$this->form) {
+            $this->toastError('Save the RSVP form settings first.');
+            return;
+        }
+
+        $this->validate([
+            'systemQuestions.name.label' => 'required|string|min:2|max:100',
+            'systemQuestions.email.label' => 'required|string|min:2|max:100',
+            'systemQuestions.status.label' => 'required|string|min:2|max:100',
+            'systemQuestions.plus_one_count.label' => 'required|string|min:2|max:100',
+            'systemQuestions.*.field_type' => 'required|in:text,textarea,email,phone,number,yes_no,date',
+            'systemQuestions.*.required' => 'boolean',
+            'systemQuestions.*.enabled' => 'boolean',
+        ]);
+
+        $this->form->update(['system_questions' => $this->systemQuestions]);
+        $this->toastSuccess('System questions updated.');
+    }
+
+    public function setSystemQuestionEnabled(string $key, bool $enabled): void
+    {
+        if (!$this->requireManage() || !$this->form || !array_key_exists($key, $this->systemQuestions)) return;
+
+        $this->systemQuestions[$key]['enabled'] = $enabled;
+        $this->form->update(['system_questions' => $this->systemQuestions]);
+    }
+
+    /**
+     * Idempotent, matching the pattern that fixed the exact same
+     * toggle-loop bug on the Microsite settings — takes the precise
+     * target value Alpine already computed, never negates whatever's
+     * currently in the database.
+     */
+    public function setSystemQuestionRequired(string $key, bool $required): void
+    {
+        if (!$this->requireManage() || !$this->form || !array_key_exists($key, $this->systemQuestions)) return;
+
+        $this->systemQuestions[$key]['required'] = $required;
+        $this->form->update(['system_questions' => $this->systemQuestions]);
     }
 
     public function editQuestion(int $id): void
@@ -291,7 +347,7 @@ class RsvpManager extends Component
         if (!$this->requireManage()) return;
 
         RsvpQuestion::find($id)?->delete();
-        $this->form->load('questions');
+        $this->form->load('customQuestions');
         $this->toastSuccess('Question removed.');
     }
 
@@ -308,7 +364,7 @@ class RsvpManager extends Component
             [$q->sort_order, $prev->sort_order] = [$prev->sort_order, $q->sort_order];
             $q->save(); $prev->save();
         }
-        $this->form->load('questions');
+        $this->form->load('customQuestions');
     }
 
     public function moveDown(int $id): void
@@ -324,7 +380,7 @@ class RsvpManager extends Component
             [$q->sort_order, $next->sort_order] = [$next->sort_order, $q->sort_order];
             $q->save(); $next->save();
         }
-        $this->form->load('questions');
+        $this->form->load('customQuestions');
     }
 
     public function confirmDeleteResponse(int $id): void
@@ -359,20 +415,35 @@ class RsvpManager extends Component
 
     public function render()
     {
-        $responses = $this->form
+        if ($this->form) {
+            $this->form->load('customQuestions');
+        }
+
+        $responses = $this->form && $this->activeTab === 'responses'
             ? RsvpResponse::where('rsvp_form_id', $this->form->id)
                 ->with('answers.question')
                 ->orderByDesc('created_at')
                 ->get()
             : collect();
 
+        $summary = $this->form
+            ? RsvpResponse::where('rsvp_form_id', $this->form->id)
+                ->selectRaw('COUNT(*) as total')
+                ->selectRaw("SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed")
+                ->selectRaw("SUM(CASE WHEN status = 'declined' THEN 1 ELSE 0 END) as declined")
+                ->selectRaw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending")
+                ->selectRaw('SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) as checked_in')
+                ->selectRaw("SUM(CASE WHEN status = 'confirmed' THEN 1 + plus_one_count ELSE 0 END) as attendees")
+                ->first()
+            : null;
+
         $stats = [
-            'total'      => $responses->count(),
-            'confirmed'  => $responses->where('status', 'confirmed')->count(),
-            'declined'   => $responses->where('status', 'declined')->count(),
-            'pending'    => $responses->where('status', 'pending')->count(),
-            'checked_in' => $responses->whereNotNull('checked_in_at')->count(),
-            'attendees'  => $responses->where('status', 'confirmed')->sum(fn($r) => 1 + $r->plus_one_count),
+            'total'      => (int) ($summary->total ?? 0),
+            'confirmed'  => (int) ($summary->confirmed ?? 0),
+            'declined'   => (int) ($summary->declined ?? 0),
+            'pending'    => (int) ($summary->pending ?? 0),
+            'checked_in' => (int) ($summary->checked_in ?? 0),
+            'attendees'  => (int) ($summary->attendees ?? 0),
         ];
 
         return view('livewire.tenant.rsvp.rsvp-manager', compact('responses', 'stats'));
