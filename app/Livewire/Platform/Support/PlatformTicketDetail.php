@@ -29,13 +29,37 @@ class PlatformTicketDetail extends Component
 
     public function mount(string $uuid): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.view'), 403);
+
         $this->ticket = SupportTicket::where('uuid', $uuid)
             ->with(['messages.attachments', 'tenant', 'assignedAgent.platformUser', 'assignmentHistory.toAgent.platformUser'])
             ->firstOrFail();
     }
 
+    /**
+     * True ownership gate for agents specifically — managers/admins/owners
+     * (who hold support.agents.manage) can act on ANY ticket; a plain
+     * agent can only act on a ticket currently assigned to them, or an
+     * unassigned one (to claim it). support.tickets.manage alone can't
+     * express this distinction, since both roles share that permission.
+     */
+    private function canActOnThisTicket(): bool
+    {
+        $user = auth('platform')->user();
+        if (!$user->can('support.tickets.manage')) return false;
+        if ($user->can('support.agents.manage')) return true; // managers/admins: unrestricted
+
+        $agent = SupportAgent::where('platform_user_id', $user->id)->first();
+        return $agent && (
+            $this->ticket->assigned_agent_id === $agent->id
+            || $this->ticket->assigned_agent_id === null
+        );
+    }
+
     public function endChatByAgent(): void
     {
+        if (!$this->canActOnThisTicket()) { $this->toastError('You are not assigned to this ticket.'); return; }
+
         $chatSession = \App\Models\Central\SupportChatSession::where('ticket_id', $this->ticket->id)->first();
 
         if ($this->ticket->source !== 'chat' || !$chatSession) {
@@ -64,6 +88,8 @@ class PlatformTicketDetail extends Component
 
     public function claimTicket(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.manage'), 403);
+
         $agent = SupportAgent::where('platform_user_id', auth('platform')->id())->first();
 
         if (!$agent) {
@@ -89,6 +115,8 @@ class PlatformTicketDetail extends Component
 
     public function sendReply(): void
     {
+        if (!$this->canActOnThisTicket()) { $this->toastError('You are not assigned to this ticket.'); return; }
+
         $this->validate([
             'reply'         => 'nullable|string|max:3000',
             'attachments.*' => 'nullable|file|max:10240',
@@ -158,6 +186,8 @@ class PlatformTicketDetail extends Component
 
     public function updateStatus(string $status): void
     {
+        if (!$this->canActOnThisTicket()) { $this->toastError('You are not assigned to this ticket.'); return; }
+
         $wasActive = !in_array($this->ticket->status, ['resolved', 'closed']);
         $becomingInactive = in_array($status, ['resolved', 'closed']);
 
@@ -177,11 +207,14 @@ class PlatformTicketDetail extends Component
 
     public function confirmDelete(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.delete'), 403);
         $this->showDeleteModal = true;
     }
 
     public function deleteTicket(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.delete'), 403);
+
         $this->ticket->delete(); // cascades to messages/attachments/history/chat session via FK constraints
         $this->toastSuccess('Ticket permanently deleted.');
         $this->redirect(route('platform.support.tickets'), navigate: true);
@@ -189,6 +222,8 @@ class PlatformTicketDetail extends Component
 
     public function archiveTicket(): void
     {
+        if (!$this->canActOnThisTicket()) { $this->toastError('You are not assigned to this ticket.'); return; }
+
         $this->ticket->update(['status' => 'closed']);
         $this->ticket->refresh();
         $this->toastSuccess('Ticket archived (closed).');
@@ -196,11 +231,13 @@ class PlatformTicketDetail extends Component
 
     public function openHandoff(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.handoff'), 403);
         $this->showHandoffModal = true;
     }
 
     public function handoff(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.tickets.handoff'), 403);
         $this->validate(['handoffAgentId' => 'required|exists:support_agents,id']);
 
         $newAgent = SupportAgent::find($this->handoffAgentId);

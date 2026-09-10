@@ -44,14 +44,30 @@ class EventMicrosite extends Component
     public string $newBankName = '';
     public string $newAccountName = '';
     public string $newAccountNumber = '';
+    public string $newAccountSwiftCode = '';
     public string $newRegistryLabel = '';
     public string $newRegistryUrl = '';
 
     // Dress code
     public array $dressColors = [];
+    public string $newGroupName = '';
+    public string $selectedColorGroup = '';
+    public ?int $editingDressGroupIndex = null;
+    public string $editingDressGroupName = '';
     public string $newColorName = '';
     public string $newColorHex = '#7C3AED';
     public string $dressNote = '';
+
+    // Gallery password + Hotels
+    public string $galleryPassword = '';
+    public string $galleryPasswordWhatsapp = '';
+    public string $hotelsNote = '';
+    public string $hotelsMapsUrl = '';
+    public string $receptionVenue = '';
+    public string $receptionAddress = '';
+    public string $receptionTime = '';
+
+    public string $newAccountCurrency = 'NGN';
 
     private function requireManage(): bool
     {
@@ -83,8 +99,33 @@ class EventMicrosite extends Component
             $this->registryLinks = $this->giftInfo->registry_links ?? [];
         }
 
-        $this->dressColors = $this->settings->dress_code_colors ?? [];
+        $this->dressColors = $this->normalizeDressGroups($this->settings->dress_code_colors ?? []);
+        $this->selectedColorGroup = $this->dressColors[0]['name'] ?? '';
         $this->dressNote = $this->settings->dress_code_note ?? '';
+        $this->galleryPassword = $this->settings->gallery_password ?? '';
+        $this->galleryPasswordWhatsapp = $this->settings->gallery_password_whatsapp ?? '';
+        $this->hotelsNote = $this->settings->hotels_note ?? '';
+        $this->hotelsMapsUrl = $this->settings->hotels_maps_url ?? '';
+        $this->receptionVenue = $this->settings->reception_venue ?? '';
+        $this->receptionAddress = $this->settings->reception_address ?? '';
+        $this->receptionTime = $this->settings->reception_time ? substr($this->settings->reception_time, 0, 5) : '';
+    }
+
+    private function normalizeDressGroups(array $palette): array
+    {
+        if ($palette === []) return [];
+
+        if (isset($palette[0]['colors'])) {
+            return array_values(array_map(fn ($group) => [
+                'name' => $group['name'] ?? 'Colour Palette',
+                'colors' => array_values($group['colors'] ?? []),
+            ], $palette));
+        }
+
+        return [[
+            'name' => 'Colour Palette',
+            'colors' => array_values($palette),
+        ]];
     }
 
     #[Renderless]
@@ -104,7 +145,7 @@ class EventMicrosite extends Component
     {
         if (!$this->requireManage()) return;
 
-        $valid = ['story_enabled', 'gallery_enabled', 'wishes_enabled', 'gifts_enabled', 'dress_code_enabled', 'countdown_enabled', 'wishes_require_approval', 'gate_venue_address'];
+        $valid = ['story_enabled', 'gallery_enabled', 'wishes_enabled', 'gifts_enabled', 'dress_code_enabled', 'countdown_enabled', 'wishes_require_approval', 'gate_venue_address', 'separate_venues_enabled', 'gallery_password_protected', 'hotels_enabled'];
         if (!in_array($field, $valid)) return;
 
         $this->settings->update([$field => $value]);
@@ -232,8 +273,6 @@ class EventMicrosite extends Component
     }
 
     // ── Gifts ────────────────────────────────────────────────
-    public string $newAccountCurrency = 'NGN';
-
     public function addBankAccount(): void
     {
         if (!$this->requireManage()) return;
@@ -243,9 +282,10 @@ class EventMicrosite extends Component
             'bank_name' => $this->newBankName,
             'account_name' => $this->newAccountName,
             'account_number' => $this->newAccountNumber,
+            'swift_code' => $this->newAccountSwiftCode,
             'currency' => $this->newAccountCurrency,
         ];
-        $this->newBankName = $this->newAccountName = $this->newAccountNumber = '';
+        $this->newBankName = $this->newAccountName = $this->newAccountNumber = $this->newAccountSwiftCode = '';
         $this->saveGiftInfo();
     }
 
@@ -314,18 +354,65 @@ class EventMicrosite extends Component
     public function addDressColor(): void
     {
         if (!$this->requireManage()) return;
-        if (!$this->newColorName) return;
+        if (!$this->newColorName || !$this->selectedColorGroup) return;
 
-        $this->dressColors[] = ['name' => $this->newColorName, 'hex' => $this->newColorHex];
+        $groupIndex = collect($this->dressColors)->search(fn ($group) => $group['name'] === $this->selectedColorGroup);
+        if ($groupIndex === false) return;
+
+        $this->dressColors[$groupIndex]['colors'][] = ['name' => $this->newColorName, 'hex' => $this->newColorHex];
         $this->newColorName = '';
         $this->settings->update(['dress_code_colors' => $this->dressColors]);
     }
 
-    public function removeDressColor(int $index): void
+    public function addDressGroup(): void
     {
         if (!$this->requireManage()) return;
-        unset($this->dressColors[$index]);
+        $name = trim($this->newGroupName);
+        if (!$name || collect($this->dressColors)->contains('name', $name)) return;
+
+        $this->dressColors[] = ['name' => $name, 'colors' => []];
+        $this->newGroupName = '';
+        $this->selectedColorGroup = $name;
+        $this->settings->update(['dress_code_colors' => $this->dressColors]);
+    }
+
+    public function startEditDressGroup(int $groupIndex): void
+    {
+        if (!$this->requireManage() || !isset($this->dressColors[$groupIndex])) return;
+
+        $this->editingDressGroupIndex = $groupIndex;
+        $this->editingDressGroupName = $this->dressColors[$groupIndex]['name'];
+    }
+
+    public function saveDressGroupName(): void
+    {
+        if (!$this->requireManage() || $this->editingDressGroupIndex === null) return;
+
+        $name = trim($this->editingDressGroupName);
+        if (!$name || collect($this->dressColors)->except($this->editingDressGroupIndex)->contains('name', $name)) return;
+
+        $oldName = $this->dressColors[$this->editingDressGroupIndex]['name'];
+        $this->dressColors[$this->editingDressGroupIndex]['name'] = $name;
+        if ($this->selectedColorGroup === $oldName) $this->selectedColorGroup = $name;
+        $this->settings->update(['dress_code_colors' => $this->dressColors]);
+        $this->editingDressGroupIndex = null;
+        $this->editingDressGroupName = '';
+    }
+
+    public function removeDressColor(int $groupIndex, int $colorIndex): void
+    {
+        if (!$this->requireManage()) return;
+        unset($this->dressColors[$groupIndex]['colors'][$colorIndex]);
+        $this->dressColors[$groupIndex]['colors'] = array_values($this->dressColors[$groupIndex]['colors']);
+        $this->settings->update(['dress_code_colors' => $this->dressColors]);
+    }
+
+    public function removeDressGroup(int $groupIndex): void
+    {
+        if (!$this->requireManage()) return;
+        unset($this->dressColors[$groupIndex]);
         $this->dressColors = array_values($this->dressColors);
+        $this->selectedColorGroup = $this->dressColors[0]['name'] ?? '';
         $this->settings->update(['dress_code_colors' => $this->dressColors]);
     }
 
@@ -334,6 +421,50 @@ class EventMicrosite extends Component
         if (!$this->requireManage()) return;
         $this->settings->update(['dress_code_note' => $this->dressNote]);
         $this->toastSuccess('Saved.');
+    }
+
+    public function saveGalleryPassword(): void
+    {
+        if (!$this->requireManage()) return;
+
+        $this->settings->update([
+            'gallery_password' => $this->galleryPassword ?: null,
+            'gallery_password_whatsapp' => $this->galleryPasswordWhatsapp ?: null,
+        ]);
+        $this->toastSuccess('Gallery password settings saved.');
+    }
+
+    public function saveHotelsInfo(): void
+    {
+        if (!$this->requireManage()) return;
+
+        $this->validate([
+            'hotelsMapsUrl' => 'nullable|url|max:500',
+        ]);
+
+        $this->settings->update([
+            'hotels_note' => $this->hotelsNote ?: null,
+            'hotels_maps_url' => $this->hotelsMapsUrl ?: null,
+        ]);
+        $this->toastSuccess('Hotels info saved.');
+    }
+
+    public function saveReceptionVenue(): void
+    {
+        if (!$this->requireManage()) return;
+
+        $this->validate([
+            'receptionVenue' => 'nullable|string|max:255',
+            'receptionAddress' => 'nullable|string|max:1000',
+            'receptionTime' => 'nullable|date_format:H:i',
+        ]);
+
+        $this->settings->update([
+            'reception_venue' => $this->receptionVenue ?: null,
+            'reception_address' => $this->receptionAddress ?: null,
+            'reception_time' => $this->receptionTime ?: null,
+        ]);
+        $this->toastSuccess('Reception venue saved.');
     }
 
     public function render()

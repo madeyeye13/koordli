@@ -108,6 +108,15 @@ class AppServiceProvider extends ServiceProvider
     \App\Events\BlogCommentSubmitted::class,
     \App\Listeners\NotifyPlatformOfNewComment::class,
 );
+
+\Illuminate\Support\Facades\Event::listen(
+    \App\Events\WishSubmitted::class,
+    \App\Listeners\NotifyOfNewWish::class,
+);
+\Illuminate\Support\Facades\Event::listen(
+    \App\Events\WishApproved::class,
+    \App\Listeners\NotifyGuestWishApproved::class,
+);
         
     }
 }

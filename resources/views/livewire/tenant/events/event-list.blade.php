@@ -1,4 +1,4 @@
-<div x-data="{ view: '{{ $view }}' }">
+<div x-data="{ view: '{{ $view }}', showDeleteModal: false, deleteId: null }">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -151,7 +151,7 @@
                                 <div style="display:flex;align-items:center;gap:6px;">
                                     <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">View</a>
                                     <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
-                                    <button wire:click="confirmDelete({{ $event->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
+                                    <button x-on:click="showDeleteModal = true; deleteId = {{ $event->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
                                 </div>
                             </td>
                         </tr>
@@ -207,7 +207,7 @@
                     <div style="display:flex;gap:8px;">
                         <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">View</a>
                         <a href="{{ route('tenant.events.edit', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
-                        <button wire:click="confirmDelete({{ $event->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
+                        <button x-on:click="showDeleteModal = true; deleteId = {{ $event->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
                     </div>
                 </div>
             </div>
@@ -295,7 +295,7 @@
                         Edit
                     </a>
                     <button
-                        wire:click="confirmDelete({{ $event->id }})"
+                        x-on:click="showDeleteModal = true; deleteId = {{ $event->id }}"
                         class="krd-btn krd-btn-sm"
                         style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;"
                     >
@@ -316,20 +316,31 @@
     </div>
 
     {{-- Delete Modal --}}
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;">
-        <div style="background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;">
+    <div x-show="showDeleteModal" x-cloak
+        style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete Event?</h3>
             <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
                 This will permanently delete this event and all associated data including tasks, guests, and budget items. This cannot be undone.
             </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="delete" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
-                <button wire:click="cancelDelete" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null; $wire.delete(deleteId)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
 
 </div>
 

@@ -11,7 +11,7 @@
                 <line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
         </button>
-        <div style="font-size: 13px; font-weight: 500; color: #1C1917;">
+        <div style="font-size: inherit; font-weight: 500; color: #1C1917;">
             Client Portal
         </div>
     </div>

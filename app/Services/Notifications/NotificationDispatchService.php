@@ -30,7 +30,16 @@ class NotificationDispatchService
         bool $isManual = false,
     ): void {
         $template = NotificationTemplate::where('key', $templateKey)->where('is_active', true)->first();
-        if (!$template) return;
+
+        if (!$template) {
+            $template = new NotificationTemplate([
+                'key' => $templateKey,
+                'category' => $category,
+                'subject' => $notificationType,
+                'body' => $notificationType,
+                'is_active' => true,
+            ]);
+        }
 
         $rendered = $template->render($placeholders);
         $channels = NotificationPreference::channelsFor($notifiable, $category);

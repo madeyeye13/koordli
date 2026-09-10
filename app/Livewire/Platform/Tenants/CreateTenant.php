@@ -26,6 +26,8 @@ class CreateTenant extends Component
     public string $country          = 'NG';
     public ?int   $plan_id          = null;
     public ?int   $industry_profile_id = null;
+    public string $subscription_mode = 'trial';
+    public string $subscription_cycle = 'monthly';
     public string $status           = 'trial';
     public bool   $success          = false;
     public string $error            = '';
@@ -66,6 +68,8 @@ class CreateTenant extends Component
             'country'             => 'required|string|size:2',
             'plan_id'             => 'nullable|exists:plans,id',
             'industry_profile_id' => 'nullable|exists:industry_profiles,id',
+            'subscription_mode'   => 'required|in:trial,direct',
+            'subscription_cycle'  => 'required|in:monthly,annual',
         ]);
 
         try {
@@ -78,6 +82,8 @@ class CreateTenant extends Component
                 'country'             => $this->country,
                 'plan_id'             => $this->plan_id,
                 'industry_profile_id' => $this->industry_profile_id,
+                'subscription_mode'   => $this->subscription_mode,
+                'subscription_cycle'  => $this->subscription_cycle,
                 'is_self_registered'  => false,
             ]);
 

@@ -130,6 +130,65 @@ class ClientNotificationService
      * lands is both simpler and avoids the reminder engine's 15-minute
      * window edge cases.
      */
+    public function notifyRsvpSubmitted(\App\Models\Tenant\RsvpResponse $response): void
+    {
+        $event = $response->event;
+        if (!$event) return;
+
+        $client = $this->clientFor($event->id, $response->tenant_id);
+        if (!$client) return;
+
+        $tenant = Tenant::find($response->tenant_id);
+        if (!$tenant || !$tenant->clientNotificationEnabled('rsvp')) return;
+
+        $this->dispatcher->notify(
+            notifiable: $client,
+            category: 'rsvp',
+            notificationType: 'rsvp_submitted',
+            templateKey: 'client_rsvp_submitted',
+            placeholders: [
+                'user_name'   => $client->name,
+                'guest_name'  => $response->respondent_name,
+                'event_name'  => $event->name ?? 'your event',
+                'status'      => ucfirst($response->status),
+            ],
+            priority: 'normal',
+            actionUrl: route('client.dashboard'),
+            actionLabel: 'View Event',
+            subject: $response,
+            tenantId: $response->tenant_id,
+        );
+    }
+
+    public function notifyWishSubmitted(\App\Models\Tenant\EventWish $wish): void
+    {
+        $event = $wish->event;
+        if (!$event) return;
+
+        $client = $this->clientFor($event->id, $wish->tenant_id);
+        if (!$client) return;
+
+        $tenant = Tenant::find($wish->tenant_id);
+        if (!$tenant || !$tenant->clientNotificationEnabled('rsvp')) return;
+
+        $this->dispatcher->notify(
+            notifiable: $client,
+            category: 'rsvp',
+            notificationType: 'wish_submitted',
+            templateKey: 'client_wish_submitted',
+            placeholders: [
+                'user_name'  => $client->name,
+                'guest_name' => $wish->guest_name,
+                'event_name' => $event->name ?? 'your event',
+            ],
+            priority: 'normal',
+            actionUrl: route('client.dashboard'),
+            actionLabel: 'View Event',
+            subject: $wish,
+            tenantId: $wish->tenant_id,
+        );
+    }
+
     public function checkRsvpMilestone(\App\Models\Tenant\RsvpForm $rsvpForm): void
     {
         if (!$rsvpForm->guest_limit || $rsvpForm->guest_limit <= 0) return;

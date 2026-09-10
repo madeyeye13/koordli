@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ showDeleteModal: false, deleteId: null }">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <div class="krd-label" style="margin-bottom:4px;">Operations</div>
@@ -53,7 +53,7 @@
                         <td onclick="event.stopPropagation();">
                             <div style="display:flex;gap:6px;">
                                 <a href="{{ route('tenant.assets.edit', $asset->id) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
-                                <button wire:click="confirmDelete({{ $asset->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">✕</button>
+                                <button x-on:click="showDeleteModal = true; deleteId = {{ $asset->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">✕</button>
                             </div>
                         </td>
                     </tr>
@@ -77,17 +77,19 @@
     </div>
     @endif
 
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+    <div x-show="showDeleteModal" x-cloak style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete {{ term_title('asset', 'Asset') }}?</h3>
+            <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
+                This will permanently delete this {{ strtolower(term_title('asset', 'asset')) }}. This cannot be undone.
+            </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="delete" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
-                <button wire:click="$set('showDeleteModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null; $wire.delete(deleteId)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
+
 </div>
 
 <style>

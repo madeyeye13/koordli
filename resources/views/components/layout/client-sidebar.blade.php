@@ -63,16 +63,16 @@
     </nav>
 
     {{-- Client info + logout --}}
-    <div style="padding:12px 16px;border-top:1px solid #E7E5E4;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:32px;height:32px;background:#EDE9FE;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#7C3AED;flex-shrink:0;">
+    <div class="krd-user-panel">
+        <div class="krd-user-row">
+            <div class="krd-user-avatar">
                 {{ strtoupper(substr(auth('client')->user()?->name ?? 'C', 0, 1)) }}
             </div>
             <div style="flex:1;min-width:0;overflow:hidden;">
-                <div style="font-size:13px;font-weight:500;color:#1C1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                <div class="krd-user-name">
                     {{ auth('client')->user()?->name }}
                 </div>
-                <div style="font-size:11px;color:#A8A29E;">Client Portal</div>
+                <div class="krd-user-role">Client Portal</div>
             </div>
             <form method="POST" action="{{ route('client.logout') }}">
                 @csrf

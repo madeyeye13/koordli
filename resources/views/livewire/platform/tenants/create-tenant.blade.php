@@ -104,7 +104,8 @@
                 <div class="krd-input-group"
                     x-data="{
                         open: false,
-                        label: '{{ collect([
+                        selected: @entangle('billing_currency'),
+                        options: @js([
                             'NGN' => 'NGN — Nigerian Naira (₦)',
                             'GHS' => 'GHS — Ghanaian Cedi (₵)',
                             'GBP' => 'GBP — British Pound (£)',
@@ -112,11 +113,14 @@
                             'EUR' => 'EUR — Euro (€)',
                             'KES' => 'KES — Kenyan Shilling (KSh)',
                             'ZAR' => 'ZAR — South African Rand (R)',
-                        ])->get($billing_currency, 'NGN — Nigerian Naira (₦)') }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('billing_currency', val); }
+                        ]),
+                        get label() {
+                            return this.options[this.selected] ?? 'NGN — Nigerian Naira (₦)';
+                        },
+                        pick(val) { this.selected = val; this.open = false; $wire.set('billing_currency', val); }
                     }"
                     x-on:click.outside="open = false"
-                    style="position:relative;">
+                    x-bind:style="open ? 'position: relative; z-index: 30;' : 'position: relative; z-index: 1;'">
                     <label class="krd-label-text">Billing Currency</label>
                     <button type="button"
                         x-on:click="open = !open"
@@ -136,7 +140,7 @@
                             'ZAR' => 'ZAR — South African Rand (R)',
                         ] as $val => $label)
                         <div class="krd-dropdown-option {{ $billing_currency === $val ? 'selected' : '' }}"
-                            x-on:click="pick('{{ $val }}', '{{ $label }}')">
+                            x-on:click="pick('{{ $val }}')">
                             {{ $label }}
                         </div>
                         @endforeach
@@ -147,11 +151,15 @@
                 <div class="krd-input-group"
                     x-data="{
                         open: false,
-                        label: '{{ $countries[$country] ?? 'Select country' }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('country', val); }
+                        selected: @entangle('country'),
+                        options: @js($countries),
+                        get label() {
+                            return this.options[this.selected] ?? 'Select country';
+                        },
+                        pick(val) { this.selected = val; this.open = false; $wire.set('country', val); }
                     }"
                     x-on:click.outside="open = false"
-                    style="position:relative;">
+                    x-bind:style="open ? 'position: relative; z-index: 30;' : 'position: relative; z-index: 1;'">
                     <label class="krd-label-text">Country <span style="color:#EF4444;">*</span></label>
                     <button type="button"
                         x-on:click="open = !open"
@@ -163,7 +171,7 @@
                     <div x-show="open" x-cloak class="krd-dropdown-menu" style="max-height:200px;overflow-y:auto;">
                         @foreach($countries as $code => $name)
                         <div class="krd-dropdown-option {{ $country === $code ? 'selected' : '' }}"
-                            x-on:click="pick('{{ $code }}', '{{ $name }}')">
+                            x-on:click="pick('{{ $code }}')">
                             {{ $name }}
                         </div>
                         @endforeach
@@ -174,11 +182,16 @@
                 <div class="krd-input-group"
                     x-data="{
                         open: false,
-                        label: '{{ $industry_profile_id ? ($industryProfiles->firstWhere('id', $industry_profile_id)?->name ?? 'No profile') : 'No profile' }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('industry_profile_id', val); }
+                        selected: @entangle('industry_profile_id'),
+                        options: @js($industryProfiles->mapWithKeys(fn ($profile) => [$profile->id => $profile->icon . ' ' . $profile->name])->all()),
+                        get label() {
+                            if (this.selected === null || this.selected === '') return 'No profile';
+                            return this.options[this.selected] ?? 'No profile';
+                        },
+                        pick(val) { this.selected = val; this.open = false; $wire.set('industry_profile_id', val); }
                     }"
                     x-on:click.outside="open = false"
-                    style="position:relative;">
+                    x-bind:style="open ? 'position: relative; z-index: 30;' : 'position: relative; z-index: 1;'">
                     <label class="krd-label-text">Industry Profile <span style="color:#A8A29E;font-weight:400;">(optional)</span></label>
                     <button type="button"
                         x-on:click="open = !open"
@@ -189,12 +202,12 @@
                     </button>
                     <div x-show="open" x-cloak class="krd-dropdown-menu">
                         <div class="krd-dropdown-option {{ !$industry_profile_id ? 'selected' : '' }}"
-                            x-on:click="pick(null, 'No profile')">
+                            x-on:click="pick(null)">
                             No profile
                         </div>
                         @foreach($industryProfiles as $profile)
                         <div class="krd-dropdown-option {{ $industry_profile_id == $profile->id ? 'selected' : '' }}"
-                            x-on:click="pick({{ $profile->id }}, '{{ $profile->icon }} {{ $profile->name }}')">
+                            x-on:click="pick({{ $profile->id }})">
                             {{ $profile->icon }} {{ $profile->name }}
                         </div>
                         @endforeach
@@ -203,14 +216,19 @@
                 </div>
 
                 {{-- Plan --}}
-                <div class="krd-input-group" style="margin-bottom:0;"
+                <div class="krd-input-group" style="margin-bottom:0; position:relative; z-index:1;"
                     x-data="{
                         open: false,
-                        label: '{{ $plan_id ? ($plans->firstWhere('id', $plan_id)?->name ?? 'Let tenant choose') : 'Let tenant choose during onboarding' }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('plan_id', val); }
+                        selected: @entangle('plan_id'),
+                        options: @js($plans->mapWithKeys(fn ($plan) => [$plan->id => $plan->name . ' ' . ucfirst($plan->billing_cycle)])->all()),
+                        get label() {
+                            if (this.selected === null || this.selected === '') return 'Let tenant choose during onboarding';
+                            return this.options[this.selected] ?? 'Let tenant choose during onboarding';
+                        },
+                        pick(val) { this.selected = val; this.open = false; $wire.set('plan_id', val); }
                     }"
                     x-on:click.outside="open = false"
-                    style="position:relative;">
+                    x-bind:style="open ? 'position: relative; z-index: 10;' : 'position: relative; z-index: 1;'">
                     <label class="krd-label-text">Assign Plan</label>
                     <button type="button"
                         x-on:click="open = !open"
@@ -219,14 +237,14 @@
                         <span x-text="label" style="color:#A8A29E;"></span>
                         <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
-                    <div x-show="open" x-cloak class="krd-dropdown-menu">
+                    <div x-show="open" x-cloak class="krd-dropdown-menu" style="z-index:80;">
                         <div class="krd-dropdown-option {{ !$plan_id ? 'selected' : '' }}"
-                            x-on:click="pick(null, 'Let tenant choose during onboarding')">
+                            x-on:click="pick(null)">
                             Let tenant choose during onboarding
                         </div>
                         @foreach($plans as $plan)
                         <div class="krd-dropdown-option {{ $plan_id === $plan->id ? 'selected' : '' }}"
-                            x-on:click="pick({{ $plan->id }}, '{{ $plan->name }}')">
+                            x-on:click="pick({{ $plan->id }})">
                             {{ $plan->name }}
                             <span style="font-size:11px;color:#A8A29E;margin-left:6px;">{{ ucfirst($plan->billing_cycle) }}</span>
                         </div>
@@ -234,6 +252,52 @@
                     </div>
                     <span class="krd-input-hint">If no plan is assigned, tenant will choose during onboarding.</span>
                 </div>
+
+                @if($plan_id)
+                <div class="krd-input-group"
+                    x-data="{
+                        open: false,
+                        selected: @entangle('subscription_mode'),
+                        cycle: @entangle('subscription_cycle')
+                    }"
+                    x-on:click.outside="open = false"
+                    x-bind:style="open ? 'position: relative; z-index: 30;' : 'position: relative; z-index: 1;'">
+                    <label class="krd-label-text">Subscription Mode</label>
+                    <button type="button"
+                        x-on:click="open = !open"
+                        x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                        style="width:100%;">
+                        <span x-text="selected === 'trial' ? 'Trial' : 'Direct payment'" style="color:#1C1917;"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak class="krd-dropdown-menu" style="z-index:80;">
+                        <div class="krd-dropdown-option {{ $subscription_mode === 'trial' ? 'selected' : '' }}" x-on:click="selected = 'trial'; open = false; $wire.set('subscription_mode', 'trial');">Trial</div>
+                        <div class="krd-dropdown-option {{ $subscription_mode === 'direct' ? 'selected' : '' }}" x-on:click="selected = 'direct'; open = false; $wire.set('subscription_mode', 'direct');">Direct payment</div>
+                    </div>
+                </div>
+
+                <div class="krd-input-group"
+                    x-data="{
+                        open: false,
+                        selected: @entangle('subscription_cycle')
+                    }"
+                    x-on:click.outside="open = false"
+                    x-bind:style="open ? 'position: relative; z-index: 20;' : 'position: relative; z-index: 1;'">
+                    <label class="krd-label-text">Billing Cycle</label>
+                    <button type="button"
+                        x-on:click="open = !open"
+                        x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
+                        style="width:100%;">
+                        <span x-text="selected === 'annual' ? 'Annual' : 'Monthly'" style="color:#1C1917;"></span>
+                        <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div x-show="open" x-cloak class="krd-dropdown-menu" style="z-index:80;">
+                        <div class="krd-dropdown-option {{ $subscription_cycle === 'monthly' ? 'selected' : '' }}" x-on:click="selected = 'monthly'; open = false; $wire.set('subscription_cycle', 'monthly');">Monthly</div>
+                        <div class="krd-dropdown-option {{ $subscription_cycle === 'annual' ? 'selected' : '' }}" x-on:click="selected = 'annual'; open = false; $wire.set('subscription_cycle', 'annual');">Annual</div>
+                    </div>
+                    <span class="krd-input-hint">Only applies when using direct payment; trial mode will use the plan's configured trial days.</span>
+                </div>
+                @endif
             </div>
 
             <div style="margin-top:16px;display:flex;align-items:center;gap:12px;">

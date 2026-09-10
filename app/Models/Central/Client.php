@@ -40,4 +40,9 @@ class Client extends Authenticatable
     {
         return $this->belongsTo(Tenant::class);
     }
+
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'notifications.client.' . $this->id;
+    }
 }

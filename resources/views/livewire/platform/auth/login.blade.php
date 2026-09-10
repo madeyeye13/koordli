@@ -61,7 +61,7 @@
                     wire:model="email"
                     type="email"
                     class="krd-input @error('email') krd-input-error @enderror"
-                    placeholder="admin@koordli.com"
+                    placeholder="johndoe@gmail.com"
                     autocomplete="email"
                     wire:keydown.enter="login"
                 />
@@ -71,12 +71,12 @@
             </div>
 
             {{-- Password --}}
-            <div class="krd-input-group">
+            <div class="krd-input-group" x-data="{ showPw: false }">
                 <label class="krd-label-text">Password</label>
                 <div style="position: relative;">
                     <input
                         wire:model="password"
-                        type="{{ $showPassword ? 'text' : 'password' }}"
+                        :type="showPw ? 'text' : 'password'"
                         class="krd-input @error('password') krd-input-error @enderror"
                         placeholder="••••••••"
                         autocomplete="current-password"
@@ -85,26 +85,26 @@
                     />
                     <button
                         type="button"
-                        wire:click="togglePassword"
+                        x-on:click="showPw = !showPw"
                         style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A8A29E; display: flex; align-items: center; padding: 0;"
                     >
-                        @if($showPassword)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg x-show="!showPw" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        <svg x-show="showPw" x-cloak xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94"/>
                             <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19"/>
                             <line x1="1" y1="1" x2="23" y2="23"/>
                         </svg>
-                        @else
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
-                        </svg>
-                        @endif
                     </button>
                 </div>
                 @error('password')
                 <span class="krd-input-error-msg">{{ $message }}</span>
                 @enderror
+                <div style="text-align:right;margin-top:6px;">
+                    <a href="{{ route('platform.password.request') }}" wire:navigate style="font-size:12px;color:#7C3AED;text-decoration:none;">Forgot password?</a>
+                </div>
             </div>
 
             {{-- Submit --}}

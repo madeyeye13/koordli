@@ -312,9 +312,7 @@
                         <td>
                             <div style="display:flex;gap:6px;">
                                 <button wire:click="startEdit({{ $guest->id }})" class="krd-btn krd-btn-secondary krd-btn-sm">Edit</button>
-                                <button wire:click="confirmDelete({{ $guest->id }})"
-                                    class="krd-btn krd-btn-sm"
-                                    style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
+                                <button x-on:click="showDeleteModal = true; deleteId = {{ $guest->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
                                         <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
@@ -358,9 +356,7 @@
                     {{ $guest->checked_in ? '✓ In' : 'Check In' }}
                 </button>
                 <button wire:click="startEdit({{ $guest->id }})" class="krd-btn krd-btn-secondary krd-btn-sm">Edit</button>
-                <button wire:click="confirmDelete({{ $guest->id }})"
-                    class="krd-btn krd-btn-sm"
-                    style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
+                <button x-on:click="showDeleteModal = true; deleteId = {{ $guest->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Delete</button>
             </div>
         </div>
         @endforeach
@@ -368,20 +364,18 @@
     @endif
 
     {{-- Delete Modal --}}
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+    <div x-show="showDeleteModal" x-cloak style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Remove Guest?</h3>
             <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
-                This will permanently remove this guest from the event.
+                This will permanently remove this guest from the event. This cannot be undone.
             </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="deleteGuest" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
-                <button wire:click="cancelDelete" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null; $wire.deleteGuest(deleteId)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
 
 </div>
 

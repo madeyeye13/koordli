@@ -23,9 +23,31 @@ class RsvpEdit extends Component
     public string $respondent_phone = '';
     public string $status           = 'confirmed';
     public int    $plus_one_count   = 0;
+    public string $decline_reason   = '';
+
+    // Companions — same pattern as the initial RSVP submission
+    public array  $companions            = [];
+    public string $newCompanionName      = '';
+    public string $newCompanionRelation  = '';
+    public bool   $comingWithSomeone     = false;
 
     // Custom answers keyed by question ID
     public array $answers = [];
+
+    public function addCompanion(): void
+    {
+        if (!$this->newCompanionName || count($this->companions) >= 5) return;
+
+        $this->companions[] = ['name' => $this->newCompanionName, 'relation' => $this->newCompanionRelation ?: null];
+        $this->newCompanionName = '';
+        $this->newCompanionRelation = '';
+    }
+
+    public function removeCompanion(int $index): void
+    {
+        unset($this->companions[$index]);
+        $this->companions = array_values($this->companions);
+    }
 
     public bool   $saved  = false;
     public string $error  = '';
@@ -37,7 +59,7 @@ class RsvpEdit extends Component
 
         $this->response = RsvpResponse::with([
             'rsvpForm.event',
-            'rsvpForm.questions' => fn($q) => $q->orderBy('sort_order'),
+            'rsvpForm.customQuestions' => fn($q) => $q->orderBy('sort_order'),
             'answers',
         ])
             ->where('edit_token', $token)
@@ -55,6 +77,15 @@ class RsvpEdit extends Component
         $this->respondent_phone = $this->response->respondent_phone ?? '';
         $this->status           = $this->response->status;
         $this->plus_one_count   = $this->response->plus_one_count;
+        $this->decline_reason   = $this->response->decline_reason ?? '';
+
+        $this->companions = $this->response->companions()
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($c) => ['name' => $c->name, 'relation' => $c->relation])
+            ->toArray();
+        $this->comingWithSomeone = !empty($this->companions);
+
 
         // Pre-fill custom answers
         foreach ($this->response->rsvpForm->customQuestions as $q) {
@@ -73,7 +104,7 @@ class RsvpEdit extends Component
             'respondent_email' => 'nullable|email|max:150',
             'respondent_phone' => 'nullable|string|max:20',
             'status'           => 'required|in:confirmed,declined',
-            'plus_one_count'   => 'integer|min:0|max:20',
+            'decline_reason'   => 'nullable|string|max:500',
         ];
 
         foreach ($this->response->rsvpForm->customQuestions as $q) {
@@ -99,9 +130,28 @@ class RsvpEdit extends Component
             'respondent_email' => $this->respondent_email ?: null,
             'respondent_phone' => $this->respondent_phone ?: null,
             'status'           => $newStatus,
-            'plus_one_count'   => $newStatus === 'confirmed' ? $this->plus_one_count : 0,
+            'decline_reason'   => $newStatus === 'declined' ? ($this->decline_reason ?: null) : null,
+            // Derived from the real, named companions below — matches
+            // the same rule the initial RSVP submission already follows.
+            'plus_one_count'   => $newStatus === 'confirmed' ? count($this->companions) : 0,
             'qr_token'         => $qrToken,
         ]);
+
+        // Replace the companion list wholesale — simpler and safe here,
+        // since companions have no independent identity worth diffing
+        // (unlike answers, which are keyed to a specific question).
+        $this->response->companions()->delete();
+        if ($newStatus === 'confirmed') {
+            foreach ($this->companions as $i => $c) {
+                \App\Models\Tenant\RsvpCompanion::create([
+                    'rsvp_response_id' => $this->response->id,
+                    'tenant_id' => $this->response->tenant_id,
+                    'name' => $c['name'],
+                    'relation' => $c['relation'],
+                    'sort_order' => $i,
+                ]);
+            }
+        }
 
         // Update custom answers
         foreach ($this->response->rsvpForm->customQuestions as $q) {
@@ -136,22 +186,24 @@ class RsvpEdit extends Component
             SendRsvpConfirmationJob::dispatch(
                 $this->respondent_email,
                 $this->respondent_name,
-                $event->name,
+                $this->response->rsvpForm->title,
                 $eventDate,
                 $event->venue ?? '',
                 $newStatus,
                 $qrToken ?? '',
                 $this->response->editUrl(),
-                $newStatus === 'confirmed' ? $this->plus_one_count : 0,
+                $newStatus === 'confirmed' ? count($this->companions) : 0,
                 $__tenant?->name ?? 'Koordli',
                 $__tenant ? app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label') : false,
+                $newStatus === 'confirmed' ? $this->companions : [],
             );
         }
 
-        // Notify planner
+        // Notify planner — uses is_system flag, not a hardcoded role
+        // name, matching the fix already applied elsewhere in this app.
         $plannerUser = \App\Models\Tenant\User::withoutGlobalScope('tenant')
             ->where('tenant_id', $this->response->tenant_id)
-            ->whereHas('roles', fn($q) => $q->where('name', 'company_owner'))
+            ->whereHas('roles', fn($q) => $q->where('is_system', true))
             ->first();
 
         if ($plannerUser?->email) {
@@ -161,8 +213,9 @@ class RsvpEdit extends Component
                 $this->respondent_name,
                 $event->name,
                 $newStatus,
-                $newStatus === 'confirmed' ? $this->plus_one_count : 0,
+                $newStatus === 'confirmed' ? count($this->companions) : 0,
                 true, // isUpdate
+                $newStatus === 'confirmed' ? $this->companions : [],
             );
         }
 
@@ -178,8 +231,9 @@ class RsvpEdit extends Component
                     $this->respondent_name,
                     $event->name,
                     $newStatus,
-                    $newStatus === 'confirmed' ? $this->plus_one_count : 0,
+                    $newStatus === 'confirmed' ? count($this->companions) : 0,
                     true,
+                    $newStatus === 'confirmed' ? $this->companions : [],
                 );
             }
         }

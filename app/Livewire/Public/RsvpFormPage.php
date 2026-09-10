@@ -124,6 +124,7 @@ class RsvpFormPage extends Component
         $eventDate = $event->date?->format('D, d M Y') ?? 'TBC';
 
         event(new \App\Events\RsvpSubmitted($this->response, $this->rsvpForm->tenant_id));
+        app(\App\Services\Notifications\ClientNotificationService::class)->notifyRsvpSubmitted($this->response);
 
         if ($this->status === 'confirmed') {
             app(\App\Services\Notifications\ClientNotificationService::class)

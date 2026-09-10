@@ -28,6 +28,8 @@ Route::prefix('platform')->name('platform.')->group(function () {
 
     Route::middleware('guest:platform')->group(function () {
         Route::get('/login', \App\Livewire\Platform\Auth\Login::class)->name('login');
+        Route::get('/forgot-password', \App\Livewire\Platform\Auth\ForgotPassword::class)->name('password.request');
+        Route::get('/accept-invite/{token}', \App\Livewire\Platform\Auth\AcceptInvite::class)->name('accept-invite');
     });
 
     Route::middleware('auth.platform')->group(function () {
@@ -40,6 +42,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
         Route::get('/plans/{planId}/edit', \App\Livewire\Platform\Plans\CreatePlan::class)->name('plans.edit');
         Route::get('/billing', \App\Livewire\Platform\BillingConfig::class)->name('billing');
         Route::get('/site-settings', \App\Livewire\Platform\SiteSettings::class)->name('site-settings');
+        Route::get('/profile', \App\Livewire\Platform\Profile::class)->name('profile');
         Route::get('/support/faqs', \App\Livewire\Platform\Support\FaqList::class)->name('support.faqs');
         Route::get('/support/tickets', \App\Livewire\Platform\Support\TicketInbox::class)->name('support.tickets');
         Route::get('/support/tickets/{uuid}', \App\Livewire\Platform\Support\PlatformTicketDetail::class)->name('support.tickets.show');
@@ -53,6 +56,9 @@ Route::prefix('platform')->name('platform.')->group(function () {
             Route::get('/create', \App\Livewire\Platform\Blog\BlogPostEditor::class)->name('create');
             Route::get('/{id}/edit', \App\Livewire\Platform\Blog\BlogPostEditor::class)->name('edit');
         });
+
+        Route::get('/staff', \App\Livewire\Platform\Staff\PlatformStaffManager::class)->name('staff');
+        Route::get('/staff/roles', \App\Livewire\Platform\Staff\PlatformRoleManager::class)->name('staff.roles');
 
         Route::get('/blog/comments', \App\Livewire\Platform\Blog\BlogCommentModeration::class)->name('blog.comments');
 
@@ -161,7 +167,7 @@ Route::prefix('client')->name('client.')->group(function () {
         Route::get('/events/{slug}/moodboards', \App\Livewire\Client\Moodboards\MoodboardList::class)->name('moodboards.index');
         Route::get('/events/{slug}/checklist', \App\Livewire\Client\Checklists\ChecklistView::class)->name('checklist.index');
         Route::get('/events/{slug}/budget', \App\Livewire\Client\Budget\ClientBudgetView::class)->name('budget.show');
-        Route::get('/events/{slug}/microsite', \App\Livewire\Client\Microsite\ClientMicrosite::class)->name('client.events.microsite');
+        Route::get('/events/{slug}/microsite', \App\Livewire\Client\Microsite\ClientMicrosite::class)->name('events.microsite');
         Route::get('/moodboards/{id}', \App\Livewire\Client\Moodboards\MoodboardView::class)->name('moodboards.show');
         Route::get('/profile', \App\Livewire\Client\Profile::class)->name('profile');
 
@@ -289,7 +295,7 @@ Route::get('/vendors/{slug}/register', \App\Livewire\Public\VendorRegister::clas
 
 // RSVP
 Route::get('/rsvp/{slug}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.form');
-Route::get('/rsvp/{slug}/edit/{token}', \App\Livewire\Public\RsvpEdit::class)->name('rsvp.edit');
+Route::get('/rsvp/{slug}/edit/{token}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.edit');
 Route::get('/rsvp/ticket/{token}', function (string $token) {
     $response = \App\Models\Tenant\RsvpResponse::with(['rsvpForm.event'])
         ->where('qr_token', $token)

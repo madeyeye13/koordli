@@ -37,6 +37,8 @@ class TenantService
 
             // 2. Create tenant
             $slug = $this->generateSlug($data['name']);
+            $subscriptionMode = $data['subscription_mode'] ?? 'trial';
+            $subscriptionCycle = $data['subscription_cycle'] ?? 'monthly';
 
             $tenant = Tenant::create([
                 'uuid'             => Str::uuid(),
@@ -57,18 +59,42 @@ class TenantService
             if (!empty($data['plan_id'])) {
                 $plan = Plan::find($data['plan_id']);
                 if ($plan) {
+                    $now = now();
+                    $subscriptionStatus = 'trial';
+                    $trialEndsAt = null;
+                    $expiresAt = null;
+                    $billingCycle = $subscriptionCycle;
+
+                    if ($subscriptionMode === 'trial') {
+                        if ($plan->trial_days <= 0) {
+                            throw new \InvalidArgumentException('This plan does not have a trial available.');
+                        }
+                        $subscriptionStatus = 'trial';
+                        $trialEndsAt = $now->copy()->addDays($plan->trial_days);
+                        $expiresAt = $trialEndsAt;
+                    } else {
+                        $subscriptionStatus = 'active';
+                        $billingCycle = in_array($subscriptionCycle, ['monthly', 'annual']) ? $subscriptionCycle : 'monthly';
+                        $expiresAt = $billingCycle === 'annual' ? $now->copy()->addYear() : $now->copy()->addMonth();
+                    }
+
                     DB::table('subscriptions')->insert([
                         'tenant_id'            => $tenant->id,
                         'plan_id'              => $plan->id,
-                        'status'               => 'trial',
-                        'trial_ends_at'        => now()->addDays($plan->trial_days ?? 30),
-                        'current_period_start' => now(),
-                        'current_period_end'   => now()->addDays($plan->trial_days ?? 30),
+                        'status'               => $subscriptionStatus,
+                        'trial_ends_at'        => $trialEndsAt,
+                        'current_period_start' => $now,
+                        'current_period_end'   => $expiresAt ?? $trialEndsAt,
+                        'expires_at'           => $expiresAt,
+                        'grace_until'          => $expiresAt ? $expiresAt->copy()->addDays(7) : null,
+                        'billing_cycle'        => $billingCycle,
                         'currency'             => $data['billing_currency'] ?? 'NGN',
                         'amount'               => 0,
-                        'created_at'           => now(),
-                        'updated_at'           => now(),
+                        'created_at'           => $now,
+                        'updated_at'           => $now,
                     ]);
+
+                    $tenant->update(['status' => $subscriptionStatus === 'trial' ? 'trial' : 'active']);
                 }
             }
             // 3. Create company owner user

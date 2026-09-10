@@ -89,33 +89,14 @@ class RsvpForm extends Model
     }
 
     /**
-     * Resolves against the TENANT'S OWN domain when one is configured
-     * and verified (custom_domain, domain_status = 'verified'), falling
-     * back to their subdomain, then to Koordli's own app.url — never
-     * hardcoded to one domain regardless of which tenant owns this form.
+     * Resolves against the tenant's real public domain — see
+     * Tenant::resolvePublicBaseUrl() for the shared logic.
      */
     public function publicUrl(): string
     {
         $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
-        $base = $this->resolveTenantBaseUrl($tenant);
+        $base = $tenant ? $tenant->resolvePublicBaseUrl() : config('app.url');
 
         return rtrim($base, '/') . '/rsvp/' . $this->slug;
-    }
-
-    private function resolveTenantBaseUrl(?\App\Models\Central\Tenant $tenant): string
-    {
-        if (!$tenant) return config('app.url');
-
-        if ($tenant->custom_domain && $tenant->domain_status === 'verified') {
-            return 'https://' . $tenant->custom_domain;
-        }
-
-        if ($tenant->subdomain) {
-            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
-            $scheme  = parse_url(config('app.url'), PHP_URL_SCHEME) ?? 'https';
-            return $scheme . '://' . $tenant->subdomain . '.' . $appHost;
-        }
-
-        return config('app.url');
     }
 }

@@ -20,6 +20,7 @@ class RsvpNotificationMail extends Mailable
         public readonly string $status,
         public readonly int    $plusOneCount,
         public readonly bool   $isUpdate = false,
+        public readonly array  $companions = [],
     ) {}
 
     public function envelope(): Envelope

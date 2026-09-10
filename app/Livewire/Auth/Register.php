@@ -20,6 +20,7 @@ class Register extends Component
 {
     // ── Current Step ──────────────────────────────────────────
     public int $step = 1;
+    public string $selectedGateway = 'paystack';
 
     // ── Step 1 ────────────────────────────────────────────────
     public string $company_name          = '';
@@ -73,6 +74,11 @@ class Register extends Component
                 session()->forget('registration.wizard');
                 $savedRegistration = null;
             }
+        }
+
+        if (is_array($savedRegistration) && ($savedRegistration['step'] ?? null) === 1) {
+            session()->forget('registration.wizard');
+            $savedRegistration = null;
         }
 
         if (is_array($savedRegistration)) {
@@ -283,7 +289,16 @@ class Register extends Component
             $this->step         = 3;
             $this->saveRegistrationState();
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Tenant provisioning failed during registration', [
+                'email' => $this->email,
+                'company_name' => $this->company_name,
+                'industry_profile_id' => $this->industry_profile_id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             $this->error = 'Something went wrong creating your account. Please try again.';
         }
     }
@@ -354,7 +369,12 @@ class Register extends Component
 
             $billing = app(\App\Services\BillingService::class);
             $pricing = $billing->getPriceForTenant($plan, $tenant, 'monthly');
-            $gateway = $pricing['gateway'];
+
+            // Uses the person's own choice from the Step 3 selector,
+            // rather than always deferring to whatever getPriceForTenant()
+            // picked automatically — matching the same pattern already
+            // live on the Upgrade page's gateway selector.
+            $gateway = $this->selectedGateway;
 
             $result = $gateway === 'paystack'
                 ? $billing->initializePaystackPayment($tenant, $plan, 'monthly', $pricing)
@@ -427,12 +447,15 @@ class Register extends Component
             ->orderBy('sort_order')
             ->get();
 
+        $enabledGateways = \App\Models\Central\BillingSetting::get('enabled_gateways', ['paystack', 'flutterwave']);
+
         return view('livewire.auth.register', [
             'plans'             => $plans,
             'pricingData'       => $pricingData,
             'countries'         => CurrencyHelper::countries(),
             'currency'          => $this->getCurrency(),
             'industryProfiles'  => $industryProfiles,
+            'enabledGateways'   => $enabledGateways,
         ]);
     }
 }

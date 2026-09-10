@@ -23,8 +23,15 @@ class FaqList extends Component
     public bool $showDeleteModal = false;
     public ?int $deleteId        = null;
 
+    public function mount(): void
+    {
+        abort_unless(auth('platform')->user()?->can('support.faqs.view'), 403);
+    }
+
     public function showCreate(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         $this->reset(['editId', 'question', 'answer', 'keywords', 'category']);
         $this->is_active = true;
         $this->showForm   = true;
@@ -32,6 +39,8 @@ class FaqList extends Component
 
     public function showEdit(int $id): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         $faq = SupportFaq::find($id);
         if (!$faq) return;
 
@@ -46,6 +55,8 @@ class FaqList extends Component
 
     public function save(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         $this->validate([
             'question' => 'required|string|max:255',
             'answer'   => 'required|string',
@@ -75,18 +86,24 @@ class FaqList extends Component
 
     public function toggleActive(int $id): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         $faq = SupportFaq::find($id);
         $faq?->update(['is_active' => !$faq->is_active]);
     }
 
     public function confirmDelete(int $id): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         $this->deleteId        = $id;
         $this->showDeleteModal = true;
     }
 
     public function delete(): void
     {
+        abort_unless(auth('platform')->user()?->can('support.faqs.manage'), 403);
+
         SupportFaq::find($this->deleteId)?->delete();
         $this->showDeleteModal = false;
         $this->deleteId        = null;

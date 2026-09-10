@@ -210,7 +210,10 @@
             <span wire:loading.remove wire:target="saveBranding">Save & Continue</span>
             <span wire:loading wire:target="saveBranding">Saving...</span>
         </button>
-        <button wire:click="skipBranding" type="button" class="krd-btn krd-btn-ghost">Skip</button>
+        <button wire:click="skipBranding" wire:loading.attr="disabled" wire:target="skipBranding" type="button" class="krd-btn krd-btn-ghost">
+            <span wire:loading.remove wire:target="skipBranding">Skip</span>
+            <span wire:loading wire:target="skipBranding">Opening...</span>
+        </button>
     </div>
     @endif
 

@@ -318,13 +318,21 @@
 
                 <template x-teleport="body">
                     <div x-show="confirmOpen" x-cloak
-                        style="position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;"
-                        x-transition.opacity>
+                        style="position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:100;padding:20px;"
+                        x-transition:enter="transition ease-out duration-150"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-100"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0">
                         <div style="position:absolute;inset:0;background:rgba(28,25,23,0.42);" x-on:click="confirmOpen = false"></div>
-                        <div style="position:relative;width:100%;max-width:360px;background:#fff;border:1px solid #E7E5E4;border-radius:10px;padding:24px;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
+                        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;max-width:360px;background:#fff;border:1px solid #E7E5E4;border-radius:10px;padding:24px;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
                             x-transition:enter="transition ease-out duration-150"
                             x-transition:enter-start="opacity-0 scale-95"
-                            x-transition:enter-end="opacity-100 scale-100">
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95">
                             <div style="width:38px;height:38px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                             </div>

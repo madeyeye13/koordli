@@ -304,7 +304,15 @@
             <input wire:model="deleteConfirmText" type="text" class="krd-input @error('deleteConfirmText') krd-input-error @enderror" placeholder="Exact company name" style="margin-bottom:4px;">
             @error('deleteConfirmText') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
             <div style="display:flex;gap:10px;margin-top:16px;">
-                <button wire:click="delete" class="krd-btn krd-btn-danger" style="flex:1;">Delete Permanently</button>
+                <button wire:click="delete"
+                    wire:target="delete"
+                    wire:loading.attr="disabled"
+                    wire:loading.class="tenant-delete-loading"
+                    class="krd-btn krd-btn-danger"
+                    style="flex:1;">
+                    <span wire:loading.remove wire:target="delete">Delete Permanently</span>
+                    <span wire:loading wire:target="delete">Deleting...</span>
+                </button>
                 <button type="button" x-on:click="showDeleteModal = false; $wire.cancelDelete()" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
@@ -321,5 +329,12 @@
 @media (max-width: 767px) {
     #tenants-desktop { display: none !important; }
     #tenants-mobile  { display: flex !important; }
+}
+</style>
+
+<style>
+.tenant-delete-loading {
+    opacity: .55;
+    cursor: wait;
 }
 </style>

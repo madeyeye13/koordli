@@ -64,8 +64,12 @@ class VendorDirectory extends Component
         $this->showDeleteModal = true;
     }
 
-    public function delete(): void
+    public function delete(?int $id = null): void
     {
+        if (!is_null($id)) {
+            $this->deleteId = $id;
+        }
+
         if (!app(PermissionService::class)->userCan(auth()->user(), 'vendors.delete')) {
             $this->toastError('You do not have permission to delete vendors.');
             $this->showDeleteModal = false;

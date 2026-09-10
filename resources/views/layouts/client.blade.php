@@ -57,11 +57,11 @@
          class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
     </div>
 
-    <div class="krd-shell">
+    <div id="krd-client-shell" class="krd-shell">
 
         {{-- Sidebar --}}
         <aside class="krd-sidebar"
-            id="krd-sidebar"
+            id="krd-client-sidebar"
             x-bind:class="{
                 'krd-sidebar--collapsed': !sidebarOpen && window.innerWidth >= 768,
                 'open': sidebarOpen && window.innerWidth < 768

@@ -5,6 +5,7 @@ namespace App\Models\Tenant;
 use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EventWish extends Model
 {
@@ -15,6 +16,11 @@ class EventWish extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(EventWishReaction::class, 'wish_id');
     }
 
     public function isApproved(): bool { return $this->status === 'approved'; }

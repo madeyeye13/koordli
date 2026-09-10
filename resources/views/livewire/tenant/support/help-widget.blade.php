@@ -1,6 +1,7 @@
 <div>
     {{-- Topbar Help Button --}}
     <button wire:click="openChoices"
+        class="tenant-help-button"
         style="position:relative;display:flex;align-items:center;gap:6px;background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background 150ms;"
         onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

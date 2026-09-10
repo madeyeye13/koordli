@@ -40,22 +40,20 @@
                                 <span wire:loading wire:target="invite({{ $row['event_id'] }})">Sending...</span>
                             </button>
                             @else
-                            <div x-data="{ open: false }">
-                                <button type="button" x-on:click="open = true" title="Revoke access" style="background:none;border:none;color:#DC2626;cursor:pointer;padding:4px;display:flex;">
+                            <div x-data="{ open: false, revokeId: null }">
+                                <button type="button" x-on:click="revokeId = {{ $row['access_id'] }}; open = true" title="Revoke access" style="background:none;border:none;color:#DC2626;cursor:pointer;padding:4px;display:flex;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>
                                     </svg>
                                 </button>
                                 <template x-teleport="body">
-                                <div x-show="open" x-cloak style="position:fixed;inset:0;z-index:70;">
-                                    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.4);"></div>
-                                    <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
-                                        <div style="background:#fff;border-radius:8px;padding:24px;max-width:380px;width:100%;">
-                                            <p style="font-size:13px;color:#1C1917;margin-bottom:20px;line-height:1.6;">Revoke this client's access to this event? Their login stays active for any other events they have access to.</p>
-                                            <div style="display:flex;gap:10px;">
-                                                <button wire:click="revokeAccess({{ $row['access_id'] }})" x-on:click="open = false" class="krd-btn krd-btn-danger" style="flex:1;">Revoke</button>
-                                                <button type="button" x-on:click="open = false" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
-                                            </div>
+                                <div x-show="open" x-cloak style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:70;">
+                                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);">
+                                        <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Revoke Access?</h3>
+                                        <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">This will revoke this client's access to this event. Their login stays active for any other events they have access to. This cannot be undone.</p>
+                                        <div style="display:flex;gap:10px;">
+                                            <button wire:click="revokeAccess(revokeId)" x-on:click="open = false; revokeId = null" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Revoke</button>
+                                            <button type="button" x-on:click="open = false; revokeId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
                                         </div>
                                     </div>
                                 </div>

@@ -14,6 +14,11 @@ class TicketInbox extends Component
     #[Url] public string $statusFilter = '';
     #[Url] public string $viewFilter   = 'mine'; // mine|unassigned|all
 
+    public function mount(): void
+    {
+        abort_unless(auth('platform')->user()?->can('support.tickets.view'), 403);
+    }
+
     public function refreshList(): void
     {
         // no-op body — calling this just forces Livewire to re-render, which re-runs render() below

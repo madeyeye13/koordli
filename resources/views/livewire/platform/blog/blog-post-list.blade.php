@@ -1,4 +1,4 @@
-<div x-data="{ showDeleteModal: false }">
+<div x-data="{ showDeleteModal: false, deleteId: null }">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <div class="krd-label" style="margin-bottom:4px;">Platform</div>
@@ -39,7 +39,7 @@
                             <button wire:click="togglePublish({{ $post->id }})" class="krd-btn krd-btn-sm" style="background:{{ $post->status === 'published' ? '#FEE2E2' : '#D1FAE5' }};color:{{ $post->status === 'published' ? '#DC2626' : '#059669' }};">
                                 {{ $post->status === 'published' ? 'Unpublish' : 'Publish' }}
                             </button>
-                            <button x-on:click="showDeleteModal=true" wire:click="confirmDelete({{ $post->id }})" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">
+                            <button type="button" x-on:click="showDeleteModal = true; deleteId = {{ $post->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
                             </button>
                         </div>
@@ -54,13 +54,28 @@
     </div>
 
     <template x-teleport="body">
-    <div x-show="showDeleteModal" x-cloak style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
-            <h3 style="font-size:16px;font-weight:600;margin-bottom:8px;">Delete Post?</h3>
-            <p style="font-size:13px;color:#78716C;margin-bottom:20px;">This cannot be undone.</p>
+    <div x-show="showDeleteModal" x-cloak
+        style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95">
+            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete Post?</h3>
+            <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
+                This will permanently delete this blog post and cannot be undone.
+            </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="delete" x-on:click="showDeleteModal=false" class="krd-btn krd-btn-danger" style="flex:1;">Delete</button>
-                <button type="button" x-on:click="showDeleteModal=false" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button type="button" x-on:click="showDeleteModal = false; $wire.delete(deleteId); deleteId = null;" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
+                <button type="button" x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>

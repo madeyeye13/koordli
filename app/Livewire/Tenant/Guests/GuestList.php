@@ -190,8 +190,12 @@ class GuestList extends Component
         $this->showDeleteModal = true;
     }
 
-    public function deleteGuest(): void
+    public function deleteGuest(?int $id = null): void
     {
+        if (!is_null($id)) {
+            $this->deleteId = $id;
+        }
+
         if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.delete')) {
             $this->toastError('You do not have permission to delete guests.');
             $this->showDeleteModal = false;

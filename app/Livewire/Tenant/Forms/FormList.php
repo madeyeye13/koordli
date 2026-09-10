@@ -32,8 +32,12 @@ class FormList extends Component
         $this->showDeleteModal = true;
     }
 
-    public function deleteForm(): void
+    public function deleteForm(?int $id = null): void
     {
+        if (!is_null($id)) {
+            $this->deleteId = $id;
+        }
+
         if (!app(PermissionService::class)->userCan(auth()->user(), 'forms.delete')) {
             $this->toastError('You do not have permission to delete forms.');
             $this->showDeleteModal = false;

@@ -135,13 +135,12 @@ class Onboarding extends Component
         }
 
         $tenant->update(['branding' => $branding]);
-        $this->toastSuccess('Branding saved.');
-        $this->step = 4;
+        $this->goToDashboard();
     }
 
     public function skipBranding(): void
     {
-        $this->step = 4;
+        $this->goToDashboard();
     }
 
     public function goToDashboard(): void

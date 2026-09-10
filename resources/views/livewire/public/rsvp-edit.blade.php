@@ -6,7 +6,7 @@
             Update Your RSVP
         </div>
         <h1 class="rsvp-heading" style="font-size:clamp(24px,4vw,40px);font-weight:700;color:#FAFAF9;line-height:1.15;margin-bottom:12px;">
-            {{ $response->rsvpForm->event->name }}
+            {{ $response->rsvpForm->title }}
         </h1>
         @if($response->rsvpForm->event->date)
         <div style="font-size:15px;color:#A8A29E;font-family:'Spline Sans',sans-serif;">
@@ -112,13 +112,42 @@
                 <input wire:model="respondent_phone" type="tel" class="krd-input" placeholder="+234..." />
             </div>
 
-            {{-- Plus one --}}
-            <div style="margin-bottom:24px;" x-show="$wire.status === 'confirmed'">
-                <label style="display:block;font-size:13px;font-weight:500;color:#57534E;margin-bottom:5px;font-family:'Spline Sans',sans-serif;">
-                    Number of Additional Guests
+            {{-- Companions --}}
+            <div style="margin-bottom:24px;" x-show="$wire.status === 'confirmed'" x-data="{ withSomeone: @js($comingWithSomeone) }">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#1C1917;font-family:'Spline Sans',sans-serif;">
+                    <input type="checkbox" x-model="withSomeone" wire:model="comingWithSomeone" style="width:16px;height:16px;accent-color:#7C3AED;">
+                    Are you coming with someone?
                 </label>
-                <input wire:model="plus_one_count" type="number" min="0" max="20"
-                    class="krd-input" style="max-width:120px;" />
+
+                <div x-show="withSomeone" x-cloak style="margin-top:12px;padding-left:20px;border-left:2px solid #EDE9FE;">
+                    <p style="font-size:12px;color:#A8A29E;margin-bottom:10px;font-family:'Spline Sans',sans-serif;">You can add up to 5 people.</p>
+
+                    @foreach($companions as $i => $c)
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#F5F5F4;border-radius:6px;margin-bottom:8px;">
+                        <span style="font-size:13px;font-family:'Spline Sans',sans-serif;">{{ $c['name'] }}{{ $c['relation'] ? ' — ' . $c['relation'] : '' }}</span>
+                        <button type="button" wire:click="removeCompanion({{ $i }})" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:12px;">✕</button>
+                    </div>
+                    @endforeach
+
+                    @if(count($companions) < 5)
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <input wire:model="newCompanionName" type="text" placeholder="Full name" class="krd-input" style="max-width:180px;">
+                        <input wire:model="newCompanionRelation" type="text" placeholder="Relation (e.g. Sister)" class="krd-input" style="max-width:180px;">
+                        <button type="button" wire:click="addCompanion" class="krd-btn krd-btn-secondary krd-btn-sm">+ Add</button>
+                    </div>
+                    <p style="font-size:11px;color:#A8A29E;margin-top:6px;font-family:'Spline Sans',sans-serif;">{{ 5 - count($companions) }} more can be added.</p>
+                    @else
+                    <p style="font-size:12px;color:#7C3AED;margin-top:6px;font-family:'Spline Sans',sans-serif;">You've reached the maximum of 5 guests.</p>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Decline reason --}}
+            <div style="margin-bottom:24px;" x-show="$wire.status === 'declined'" x-cloak>
+                <label style="display:block;font-size:13px;font-weight:500;color:#57534E;margin-bottom:5px;font-family:'Spline Sans',sans-serif;">
+                    Reason (optional)
+                </label>
+                <textarea wire:model="decline_reason" rows="3" placeholder="Let us know if you'd like..." class="krd-input" style="resize:vertical;"></textarea>
             </div>
 
             {{-- Custom questions --}}

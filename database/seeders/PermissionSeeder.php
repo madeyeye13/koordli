@@ -33,6 +33,20 @@ class PermissionSeeder extends Seeder
             'platform.features.manage',
             'platform.analytics.view',
             'platform.settings.manage',
+
+            // Platform staff & roles — the actual missing piece per the audit
+            'platform.staff.view',
+            'platform.staff.manage',   // invite/edit/deactivate platform users
+            'platform.roles.manage',   // create custom roles, assign permissions — Super Admin/Owner territory by default
+
+            // Support module — previously ungoverned by any permission at all
+            'support.tickets.view',
+            'support.tickets.manage',   // respond, resolve, reassign
+            'support.tickets.handoff',
+            'support.faqs.view',
+            'support.faqs.manage',
+            'support.agents.manage',    // view/toggle OTHER agents' availability, not just your own
+            'support.tickets.delete',   // permanent, destructive — deliberately separate from manage
         ];
 
         foreach ($platformPermissions as $permission) {
@@ -42,16 +56,68 @@ class PermissionSeeder extends Seeder
             ]);
         }
 
-        // Platform owner role
-        $platformOwner = Role::firstOrCreate([
-            'name'       => 'platform_owner',
-            'guard_name' => 'platform',
-            'tenant_id'  => null,
-        ]);
+        // Platform role definitions. super_admin and owner intentionally
+        // receive every permission — see the note in the assistant's reply
+        // for the stated assumption about their relationship; correct this
+        // seeder if that assumption is wrong.
+        $platformRoles = [
+            'platform_super_admin' => $platformPermissions, // everything, always
+            'platform_owner'       => $platformPermissions, // everything, always
 
-        $platformOwner->givePermissionTo(
-            Permission::where('guard_name', 'platform')->get()
-        );
+            'platform_admin' => [
+                'platform.access',
+                'platform.tenants.view', 'platform.tenants.create', 'platform.tenants.edit',
+                'platform.plans.manage', 'platform.subscriptions.manage', 'platform.features.manage',
+                'platform.analytics.view', 'platform.settings.manage',
+                'platform.staff.view',
+                'support.tickets.view', 'support.tickets.manage', 'support.tickets.handoff', 'support.tickets.delete',
+                'support.faqs.view', 'support.faqs.manage', 'support.agents.manage',
+                // Deliberately withheld: platform.tenants.delete, platform.staff.manage,
+                // platform.roles.manage — destructive/organizational actions stay with
+                // Owner/Super Admin only by default.
+            ],
+
+            'platform_tech' => [
+                'platform.access',
+                'platform.tenants.view',
+                'platform.features.manage',
+                'platform.analytics.view',
+                'platform.settings.manage',
+                // Technical/system-facing access — deliberately excludes staff
+                // management, role management, and tenant billing/deletion.
+            ],
+
+            'platform_support_manager' => [
+                'platform.access',
+                'support.tickets.view', 'support.tickets.manage', 'support.tickets.handoff', 'support.tickets.delete',
+                'support.faqs.view', 'support.faqs.manage',
+                'support.agents.manage', // can see/manage the whole support team's availability
+            ],
+
+            'platform_support_agent' => [
+                'platform.access',
+                'support.tickets.view', 'support.tickets.manage', // own assigned tickets
+                'support.faqs.view',
+                // No support.agents.manage — an agent manages their own
+                // availability via their own SupportAgent record directly,
+                // not through this permission (which governs seeing/toggling
+                // OTHER agents).
+            ],
+        ];
+
+        foreach ($platformRoles as $roleName => $permissions) {
+            $role = Role::firstOrCreate([
+                'name'       => $roleName,
+                'guard_name' => 'platform',
+                'tenant_id'  => null,
+            ]);
+
+            $role->syncPermissions(
+                Permission::whereIn('name', $permissions)
+                    ->where('guard_name', 'platform')
+                    ->get()
+            );
+        }
 
         /*
         |----------------------------------------------------------------------

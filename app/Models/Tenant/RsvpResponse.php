@@ -73,7 +73,10 @@ class RsvpResponse extends Model
 
     public function editUrl(): string
     {
-        return url('/rsvp/' . $this->rsvpForm->slug . '/edit/' . $this->edit_token);
+        $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
+        $base = $tenant ? $tenant->resolvePublicBaseUrl() : config('app.url');
+
+        return rtrim($base, '/') . '/rsvp/' . $this->rsvpForm->slug . '/edit/' . $this->edit_token;
     }
 
     public function generateQrToken(): string

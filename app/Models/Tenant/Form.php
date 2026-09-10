@@ -74,14 +74,20 @@ class Form extends Model
 
     public function publicUrl(): string
     {
+        $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
+        $base = rtrim($tenant ? $tenant->resolvePublicBaseUrl() : config('app.url'), '/');
+
         return $this->type === 'consultation'
-            ? url('/consult/' . $this->slug)
-            : url('/book/' . $this->slug);
+            ? $base . '/consult/' . $this->slug
+            : $base . '/book/' . $this->slug;
     }
 
     public function endpointUrl(): string
     {
-        return url('/api/forms/' . $this->endpoint_token . '/submit');
+        $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
+        $base = rtrim($tenant ? $tenant->resolvePublicBaseUrl() : config('app.url'), '/');
+
+        return $base . '/api/forms/' . $this->endpoint_token . '/submit';
     }
 
     public function embedCode(): string

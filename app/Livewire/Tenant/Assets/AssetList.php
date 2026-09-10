@@ -33,8 +33,12 @@ class AssetList extends Component
         $this->showDeleteModal = true;
     }
 
-    public function delete(): void
+    public function delete(?int $id = null): void
     {
+        if (!is_null($id)) {
+            $this->deleteId = $id;
+        }
+
         if (!app(PermissionService::class)->userCan(auth()->user(), 'assets.manage')) {
             $this->toastError('You do not have permission to manage assets.');
             $this->showDeleteModal = false;

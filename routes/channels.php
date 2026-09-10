@@ -9,6 +9,11 @@ Broadcast::channel('notifications.tenant-user.{id}', function ($user, $id) {
     return auth('web')->check() && (int) auth('web')->id() === (int) $id;
 });
 
+// Platform User personal notifications channel (see PlatformUser::receivesBroadcastNotificationsOn())
+Broadcast::channel('notifications.platform-user.{id}', function ($user, $id) {
+    return auth('platform')->check() && (int) auth('platform')->id() === (int) $id;
+});
+
 // Serves BOTH the private channel ('private-support-ticket.{uuid}') AND
 // the presence channel ('presence-support-ticket.{uuid}') for the same ticket.
 // Laravel matches by logical name after stripping the private-/presence- prefix,

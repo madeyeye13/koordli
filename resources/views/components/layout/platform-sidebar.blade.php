@@ -71,8 +71,16 @@
             </a>
 
             <a href="{{ route('platform.blog.comments') }}" class="krd-nav-item {{ request()->routeIs('platform.blog.comments') ? 'active' : '' }}" wire:navigate style="padding-left:32px;font-size:12.5px;">
-    Comment Moderation
-</a>
+                Comment Moderation
+            </a>
+            <a href="{{ route('platform.staff') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.staff*') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+                Staff & Roles
+            </a>
         </div>
 
         <div class="krd-nav-section">
@@ -97,13 +105,6 @@
 
         <div class="krd-nav-section">
             <div class="krd-nav-label">System</div>
-            <a href="#" class="krd-nav-item">
-                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/>
-                </svg>
-                Settings
-            </a>
-
             <a href="{{ route('platform.site-settings') }}"
                 class="krd-nav-item {{ request()->routeIs('platform.site-settings') ? 'active' : '' }}"
                 wire:navigate>
@@ -122,6 +123,15 @@
                 </svg>
                 Legal Pages
             </a>
+
+            <a href="{{ route('platform.profile') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.profile') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+                My Account
+            </a>
         </div>
 
     </nav>
@@ -129,24 +139,61 @@
     {{-- User --}}
     <div style="padding: 12px 16px; border-top: 1px solid #E7E5E4; flex-shrink: 0;">
         <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 32px; height: 32px; background: #EDE9FE; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #7C3AED; flex-shrink: 0;">
+            <a href="{{ route('platform.profile') }}" wire:navigate style="width: 32px; height: 32px; background: #EDE9FE; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #7C3AED; flex-shrink: 0; text-decoration: none;" title="My Account">
                 {{ strtoupper(substr(auth('platform')->user()?->name ?? 'A', 0, 1)) }}
-            </div>
-            <div style="flex: 1; min-width: 0; overflow: hidden;">
+            </a>
+            <a href="{{ route('platform.profile') }}" wire:navigate style="flex: 1; min-width: 0; overflow: hidden; text-decoration: none;">
                 <div style="font-size: 13px; font-weight: 500; color: #1C1917; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     {{ auth('platform')->user()?->name }}
                 </div>
-                <div style="font-size: 11px; color: #A8A29E;">Platform Owner</div>
-            </div>
-            <form method="POST" action="{{ route('platform.logout') }}">
+                <div style="font-size: 11px; color: #A8A29E;">{{ str_replace('platform_', '', auth('platform')->user()?->roles->first()?->name ?? 'Staff') }}</div>
+            </a>
+            <form id="platform-logout-form" method="POST" action="{{ route('platform.logout') }}" x-data="{ confirmOpen: false }" x-on:submit.prevent="confirmOpen = true">
                 @csrf
-                <button type="submit" style="background: none; border: none; cursor: pointer; color: #A8A29E; padding: 4px; display: flex;" title="Sign out">
+                <button type="submit" style="background: none; border: none; cursor: pointer; color: #A8A29E; padding: 4px; display: flex;" title="Sign out" aria-label="Sign out">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
                     </svg>
                 </button>
+
+                <template x-teleport="body">
+                    <div x-show="confirmOpen" x-cloak
+                        style="position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:100;padding:20px;"
+                        x-transition:enter="transition ease-out duration-150"
+                        x-transition:enter-start="opacity-0"
+                        x-transition:enter-end="opacity-100"
+                        x-transition:leave="transition ease-in duration-100"
+                        x-transition:leave-start="opacity-100"
+                        x-transition:leave-end="opacity-0">
+                        <div style="position:absolute;inset:0;background:rgba(28,25,23,0.42);" x-on:click="confirmOpen = false"></div>
+                        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;max-width:360px;background:#fff;border:1px solid #E7E5E4;border-radius:10px;padding:24px;box-shadow:0 20px 50px rgba(28,25,23,0.2);"
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95">
+                            <div style="width:38px;height:38px;border-radius:50%;background:#FEE2E2;color:#DC2626;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                            </div>
+                            <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:6px;">Sign out of Koordli?</h3>
+                            <p style="font-size:13px;line-height:1.6;color:#78716C;margin-bottom:20px;">You will need to sign in again to access this workspace.</p>
+                            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                                <button type="button" class="krd-btn krd-btn-secondary" x-on:click="confirmOpen = false">Cancel</button>
+                                <button type="button" class="krd-btn" style="background:#DC2626;color:#fff;border-color:#DC2626;"
+                                    x-on:click="document.getElementById('platform-logout-form').classList.add('platform-logout-fading'); setTimeout(() => document.getElementById('platform-logout-form').submit(), 180)">
+                                    Sign out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </form>
         </div>
     </div>
 
 </div>
+
+<style>
+#platform-logout-form.platform-logout-fading { opacity:0; transition:opacity 180ms ease; }
+</style>

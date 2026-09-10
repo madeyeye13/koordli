@@ -45,6 +45,14 @@
                     <a href="{{ route('client.events.media', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                         Media
                     </a>
+                    <a href="{{ route('client.events.microsite', $event->slug) }}" wire:navigate class="krd-btn krd-btn-primary krd-btn-sm">
+                        Event Microsite
+                    </a>
+                    @if($event->rsvp_enabled && $event->rsvpForm)
+                    <a href="{{ $event->rsvpForm->publicUrl() }}" target="_blank" class="krd-btn krd-btn-secondary krd-btn-sm">
+                        View RSVP
+                    </a>
+                    @endif
                     <a href="{{ route('client.moodboards.index', $event->slug) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">
                         Moodboards
                     </a>

@@ -24,6 +24,7 @@ class SendRsvpNotificationJob implements ShouldQueue
         public readonly string  $status,
         public readonly int     $plusOneCount,
         public readonly bool    $isUpdate = false,
+        public readonly array   $companions = [],
     ) {}
 
     public function handle(): void
@@ -37,6 +38,7 @@ class SendRsvpNotificationJob implements ShouldQueue
                 $this->status,
                 $this->plusOneCount,
                 $this->isUpdate,
+                $this->companions,
             )
         );
     }

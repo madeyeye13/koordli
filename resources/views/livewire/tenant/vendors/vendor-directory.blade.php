@@ -1,4 +1,4 @@
-<div x-data="{ view: '{{ $view }}', showInvolvementModal: false }">
+<div x-data="{ view: '{{ $view }}', showInvolvementModal: false, showDeleteModal: false, deleteId: null }">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -227,8 +227,7 @@
                     </a>
                     <a href="{{ route('tenant.vendors.edit', $vendor->id) }}" wire:navigate
                         class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
-                    <button wire:click="confirmDelete({{ $vendor->id }})" class="krd-btn krd-btn-sm"
-                        style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
+                    <button x-on:click="showDeleteModal = true; deleteId = {{ $vendor->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/>
                         </svg>
@@ -383,20 +382,18 @@
     </div>
 
     {{-- Delete Modal --}}
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+    <div x-show="showDeleteModal" x-cloak style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:28px;max-width:400px;width:90%;box-shadow:0 20px 50px rgba(28,25,23,0.2);">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Delete Vendor?</h3>
             <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
                 This will remove the vendor from your directory and all event assignments. This cannot be undone.
             </p>
             <div style="display:flex;gap:10px;">
-                <button wire:click="delete" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
-                <button wire:click="cancelDelete" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null; $wire.delete(deleteId)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Delete</button>
+                <button x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
 
 </div>
 

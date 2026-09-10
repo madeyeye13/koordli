@@ -456,6 +456,31 @@
                 <p style="font-size: 13px; color: #78716C;">Start free. Upgrade when you're ready.</p>
             </div>
 
+            @if(count($enabledGateways) > 1)
+            <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #E7E5E4;"
+                x-data="{
+                    gateway: '{{ $selectedGateway }}',
+                    setGateway(val) {
+                        this.gateway = val;
+                        $wire.set('selectedGateway', val);
+                    }
+                }">
+                <span style="font-size:12px;font-weight:600;color:#1C1917;">Choose preferred payment method</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:12px;color:#A8A29E;">Pay with:</span>
+                    @foreach($enabledGateways as $gw)
+                    <button type="button"
+                        x-on:click="setGateway('{{ $gw }}')"
+                        :style="gateway === '{{ $gw }}'
+                            ? 'padding:6px 14px;border-radius:6px;border:1.5px solid #7C3AED;background:#7C3AED;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;'
+                            : 'padding:6px 14px;border-radius:6px;border:1.5px solid #E7E5E4;background:transparent;color:#78716C;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;'">
+                        {{ ucfirst($gw) }}
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             <div style="display:flex;flex-direction:column;gap:12px;">
                 @foreach($plans as $plan)
                 <div
@@ -568,6 +593,7 @@
                     }
                 }"
                 x-on:click.outside="open = false"
+                x-bind:style="open ? 'position: relative; z-index: 30;' : 'position: relative; z-index: 1;'"
             >
                 <label class="krd-label-text">How did you hear about Koordli?</label>
                 <div class="krd-dropdown">
@@ -608,6 +634,7 @@
                     }
                 }"
                 x-on:click.outside="open = false"
+                x-bind:style="open ? 'position: relative; z-index: 20;' : 'position: relative; z-index: 1;'"
             >
                 <label class="krd-label-text">How many team members do you have?</label>
                 <div class="krd-dropdown">

@@ -337,6 +337,98 @@ body {
     opacity: 1;
 }
 
+#krd-client-shell,
+#krd-client-shell * {
+    font-size: 14px !important;
+}
+
+#krd-client-sidebar .krd-nav-section {
+    padding: 16px 0 4px;
+}
+
+#krd-client-sidebar .krd-nav-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #A8A29E;
+    padding: 0 16px 6px;
+}
+
+#krd-client-sidebar .krd-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 400;
+    color: #57534E;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 150ms ease;
+    text-decoration: none;
+}
+
+#krd-client-sidebar .krd-nav-item:hover {
+    color: #1C1917;
+    background-color: #F5F5F4;
+}
+
+#krd-client-sidebar .krd-nav-item.active {
+    color: var(--tenant-primary);
+    border-left-color: var(--tenant-primary);
+    background-color: #F5F3FF;
+    font-weight: 500;
+}
+
+#krd-client-sidebar .krd-user-panel {
+    padding: 12px 16px;
+    border-top: 1px solid #E7E5E4;
+    flex-shrink: 0;
+}
+
+#krd-client-sidebar .krd-user-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#krd-client-sidebar .krd-user-avatar {
+    width: 32px;
+    height: 32px;
+    background: #EDE9FE;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7C3AED;
+    flex-shrink: 0;
+}
+
+#krd-client-sidebar .krd-user-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1C1917;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#krd-client-sidebar .krd-user-role {
+    font-size: 11px;
+    color: #A8A29E;
+}
+
+#krd-client-sidebar .krd-nav-item,
+#krd-client-sidebar .krd-nav-label,
+#krd-client-sidebar .krd-user-name,
+#krd-client-sidebar .krd-user-role,
+#krd-client-sidebar .krd-user-avatar {
+    font-size: inherit;
+}
+
 /* ============================================================
    CARDS
    ============================================================ */
@@ -506,6 +598,11 @@ body {
 .krd-dropdown {
     position: relative;
     width: 100%;
+    z-index: 1;
+}
+
+.krd-input-group {
+    position: relative;
 }
 
 .krd-dropdown-trigger {
@@ -558,10 +655,11 @@ body {
     background-color: #FFFFFF;
     border: 1px solid #E7E5E4;
     border-radius: 6px;
-    z-index: 50;
+    z-index: 80;
     overflow: hidden;
     max-height: 240px;
     overflow-y: auto;
+    box-shadow: 0 12px 28px rgba(28, 25, 23, 0.12);
 }
 
 .krd-dropdown-option {
@@ -884,6 +982,19 @@ body {
     color: #FAFAF9 !important;
 }
 
+.dark .krd-topbar .tenant-help-button,
+.dark .krd-topbar .tenant-help-button * {
+    color: #7C3AED !important;
+    border-color: #C4B5FD !important;
+    background-color: #F5F3FF !important;
+}
+
+.dark .krd-topbar .tenant-help-button svg {
+    stroke: currentColor !important;
+    color: #7C3AED !important;
+    fill: none !important;
+}
+
 .dark .krd-heading-3 {
     color: #FAFAF9 !important;
 }
@@ -978,6 +1089,62 @@ body {
    DARK MODE — INLINE COLOR OVERRIDES
    These fix hardcoded color:#1C1917 inline styles across views
    ============================================================ */
+
+.dark [style*="background:#fff"],
+.dark [style*="background: #fff"],
+.dark [style*="background:#ffffff"],
+.dark [style*="background: #ffffff"] {
+    background-color: #FFFFFF !important;
+}
+
+.dark [style*="background:#fff"] h3,
+.dark [style*="background:#fff"] h2,
+.dark [style*="background:#fff"] h1,
+.dark [style*="background:#fff"] p,
+.dark [style*="background:#fff"] div,
+.dark [style*="background:#fff"] a,
+.dark [style*="background:#fff"] span,
+.dark [style*="background: #fff"] h3,
+.dark [style*="background: #fff"] h2,
+.dark [style*="background: #fff"] h1,
+.dark [style*="background: #fff"] p,
+.dark [style*="background: #fff"] div,
+.dark [style*="background: #fff"] a,
+.dark [style*="background: #fff"] span {
+    color: #1C1917 !important;
+}
+
+.dark [style*="background:#fff"] .krd-btn,
+.dark [style*="background:#fff"] .krd-btn-secondary,
+.dark [style*="background:#fff"] .krd-btn-danger,
+.dark [style*="background:#fff"] .krd-btn-primary,
+.dark [style*="background: #fff"] .krd-btn,
+.dark [style*="background: #fff"] .krd-btn-secondary,
+.dark [style*="background: #fff"] .krd-btn-danger,
+.dark [style*="background: #fff"] .krd-btn-primary {
+    color: inherit !important;
+}
+
+.dark [style*="background:#fff"] .krd-btn-secondary,
+.dark [style*="background: #fff"] .krd-btn-secondary {
+    background-color: #1C1917 !important;
+    color: #FAFAF9 !important;
+    border-color: #292524 !important;
+}
+
+.dark [style*="background:#fff"] .krd-btn-danger,
+.dark [style*="background: #fff"] .krd-btn-danger {
+    background-color: #DC2626 !important;
+    color: #FFFFFF !important;
+    border-color: #DC2626 !important;
+}
+
+.dark [style*="background:#fff"] .krd-btn-primary,
+.dark [style*="background: #fff"] .krd-btn-primary {
+    background-color: #7C3AED !important;
+    color: #FFFFFF !important;
+    border-color: #7C3AED !important;
+}
 
 .dark [style*="color:#1C1917"],
 .dark [style*="color: #1C1917"] {

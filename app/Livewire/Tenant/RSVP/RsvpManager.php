@@ -419,7 +419,7 @@ class RsvpManager extends Component
             $this->form->load('customQuestions');
         }
 
-        $responses = $this->form && $this->activeTab === 'responses'
+        $responses = $this->form
             ? RsvpResponse::where('rsvp_form_id', $this->form->id)
                 ->with('answers.question')
                 ->orderByDesc('created_at')

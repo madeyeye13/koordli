@@ -1,5 +1,6 @@
 <div x-data="{
-    section: (window.location.hash ? window.location.hash.slice(1) : 'home'),
+    section: new URLSearchParams(window.location.search).get('section') || @js($editing ? 'rsvp' : null) || (window.location.hash ? window.location.hash.slice(1) : 'home'),
+    step: @entangle('step'),
     mobileMenuOpen: false,
     countdown: { d: 0, h: 0, m: 0, s: 0 },
     eventDate: '{{ $rsvpForm->event->date?->toIso8601String() }}',
@@ -75,7 +76,7 @@
     .ms-wrap { background:var(--ms-bg); color:#1C1917; min-height:100vh; overflow-anchor:none; }
 
     .ms-nav { position:sticky; top:0; z-index:30; background:var(--color-obsidian); border-bottom:1px solid rgba(255,255,255,0.08); display:flex; justify-content:center; gap:4px; padding:16px; flex-wrap:wrap; }
-    .ms-nav-item { font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.65); padding:8px 16px; border-radius:20px; cursor:pointer; letter-spacing:0.02em; text-transform:uppercase; transition:color 150ms; }
+    .ms-nav-item { display:inline-block; font-size:12.5px; font-weight:600; color:rgba(255,255,255,0.65); padding:8px 16px; border-radius:20px; cursor:pointer; letter-spacing:0.02em; text-transform:uppercase; text-decoration:none; transition:color 150ms; }
     .ms-nav-item:hover { color:#fff; }
     .ms-nav-item.active { background:var(--color-gold); color:#fff; }
     .ms-nav-toggle { display:none; align-items:center; justify-content:space-between; width:100%; padding:12px 16px; color:#fff; background:none; border:0; font-size:13px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; }
@@ -138,6 +139,10 @@
     .ms-lightbox-content img { max-width:100%; max-height:80vh; object-fit:contain; }
     .rsvp-nav-btn { transition: opacity 180ms ease, transform 180ms ease; }
     .rsvp-nav-btn.is-loading { opacity:0.55; cursor:wait; transform:translateY(1px); }
+    .rsvp-submit-btn { transition: opacity 180ms ease, transform 180ms ease; }
+    .rsvp-submit-btn.is-loading { opacity:0.55; cursor:wait; transform:translateY(1px); }
+    .rsvp-step-fields > div:not(:last-child) { margin-bottom:1.5rem; }
+    .rsvp-step-attendance > div:first-child { margin-bottom:1rem; }
     @media (max-width:640px) {
         .ms-lightbox-content { padding:56px 44px; }
     }
@@ -169,19 +174,20 @@
             </svg>
         </button>
         <div id="public-rsvp-nav-links" class="ms-nav-links" :class="mobileMenuOpen && 'is-open'">
-            <span class="ms-nav-item" :class="section === 'home' && 'active'" x-on:click="section = 'home'; mobileMenuOpen = false">Home</span>
+            <a href="{{ request()->url() }}?section=home" class="ms-nav-item" :class="section === 'home' && 'active'">Home</a>
             @if($settings?->story_enabled && $chapters->isNotEmpty())
-            <span class="ms-nav-item" :class="section === 'story' && 'active'" x-on:click="section = 'story'; mobileMenuOpen = false">Our Story</span>
+            <a href="{{ request()->url() }}?section=story" class="ms-nav-item" :class="section === 'story' && 'active'">Our Story</a>
             @endif
-            <span class="ms-nav-item" :class="section === 'rsvp' && 'active'" x-on:click="section = 'rsvp'; mobileMenuOpen = false">RSVP</span>
+            <a href="{{ request()->url() }}?section=rsvp" class="ms-nav-item" :class="section === 'rsvp' && 'active'">RSVP</a>
             @if($settings?->wishes_enabled)
-            <span class="ms-nav-item" :class="section === 'wishes' && 'active'" x-on:click="section = 'wishes'; mobileMenuOpen = false">Wishes</span>
+            <a href="{{ request()->url() }}?section=wishes" class="ms-nav-item" :class="section === 'wishes' && 'active'">Wishes</a>
             @endif
             @if($settings?->gallery_enabled && $images->isNotEmpty())
-            <span class="ms-nav-item" :class="section === 'gallery' && 'active'" x-on:click="section = 'gallery'; mobileMenuOpen = false">Gallery</span>
+            <a href="{{ request()->url() }}?section=gallery" class="ms-nav-item" :class="section === 'gallery' && 'active'">Gallery</a>
             @endif
+
             @if($settings?->gifts_enabled && $giftInfo)
-            <span class="ms-nav-item" :class="section === 'gifts' && 'active'" x-on:click="section = 'gifts'; mobileMenuOpen = false">Gift Us</span>
+            <a href="{{ request()->url() }}?section=gifts" class="ms-nav-item" :class="section === 'gifts' && 'active'">Gift Us</a>
             @endif
         </div>
     </nav>
@@ -193,7 +199,7 @@
             <div class="hero-content">
                 <p class="mb-3" style="font-family:var(--font-sans);font-size:0.75rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:{{ $rsvpForm->branding['invited_label_color'] ?? '#E8D5A3' }};">You're Invited</p>
                 <h1 style="font-family:var(--font-serif);font-size:clamp(2rem,5.5vw,3.75rem);font-weight:300;color:#fff;line-height:1.12;">
-                    {{ $rsvpForm->event->name }}
+                    {{ $rsvpForm->title }}
                 </h1>
                 <p style="color:rgba(255,255,255,0.6);font-size:0.875rem;letter-spacing:0.1em;text-transform:uppercase;margin:1rem 0 2.5rem;">
                     {{ $rsvpForm->event->date?->format('l, jS F Y') ?? 'Date TBC' }}
@@ -243,21 +249,54 @@
         </section>
         @endif
 
+
+        @if($settings?->hotels_enabled && $settings->hotels_maps_url)
+        <section style="background:var(--color-obsidian);padding:5rem 1.5rem;text-align:center;">
+            <p class="section-eyebrow mb-3">Travelling From Afar?</p>
+            <h2 class="section-title mb-3" style="color:#fff;font-weight:300;">Find Nearby Hotels</h2>
+            @if($settings->hotels_note)
+            <p style="color:rgba(255,255,255,0.55);font-size:0.9375rem;max-width:480px;margin:0 auto 2.5rem;line-height:1.8;">{{ $settings->hotels_note }}</p>
+            @endif
+            <a href="{{ $settings->hotels_maps_url }}" target="_blank" class="btn-gold">📍 Find Hotels Near Venue</a>
+            <p style="color:rgba(255,255,255,0.35);font-size:0.75rem;margin-top:1rem;">Opens Google Maps</p>
+        </section>
+        @endif
+
         @if($settings?->dress_code_enabled && !empty($settings->dress_code_colors))
         <section style="padding:5rem 1.5rem;background:#fff;text-align:center;">
             <p class="section-eyebrow mb-3">Dress Code</p>
             <h2 class="section-title mb-3" style="font-weight:300;">Colour Palette for Guests</h2>
             @if($settings->dress_code_note)<p style="color:var(--color-muted);font-size:0.9375rem;margin-bottom:2.5rem;">{{ $settings->dress_code_note }}</p>@endif
-            <div style="display:flex;align-items:flex-start;justify-content:center;gap:1.5rem;flex-wrap:wrap;">
-                @foreach($settings->dress_code_colors as $c)
-                <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;min-width:72px;">
-                    <div style="width:64px;height:64px;border-radius:50%;background:{{ $c['hex'] }};box-shadow:0 0 0 3px #fff,0 0 0 4px rgba(0,0,0,0.08);"></div>
-                    <p style="font-size:0.75rem;color:var(--color-obsidian);margin:0;">{{ $c['name'] }}</p>
+            @php
+                $palette = $settings->dress_code_colors;
+                $palette = isset($palette[0]['colors'])
+                    ? $palette
+                    : [['name' => 'Colour Palette', 'colors' => $palette]];
+            @endphp
+            <div style="max-width:47rem;margin:0 auto;">
+                @foreach($palette as $group)
+                <div style="margin-top:2.75rem;">
+                    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.75rem;">
+                        <span style="height:1px;background:#E6DCC9;flex:1;"></span>
+                        <span style="font-size:0.6875rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--color-gold);white-space:nowrap;">{{ $group['name'] }}</span>
+                        <span style="height:1px;background:#E6DCC9;flex:1;"></span>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;justify-content:center;gap:1.25rem;flex-wrap:wrap;">
+                        @foreach($group['colors'] as $c)
+                        <div style="display:flex;flex-direction:column;align-items:center;min-width:76px;">
+                            <div style="width:74px;height:74px;border-radius:50%;background:{{ $c['hex'] }};box-shadow:0 0 0 3px #fff,0 1px 7px rgba(28,25,23,0.2);margin-bottom:0.75rem;"></div>
+                            <p style="font-size:0.75rem;color:var(--color-obsidian);margin:0 0 0.35rem;font-weight:500;">{{ $c['name'] }}</p>
+                            <p style="font-size:0.6875rem;color:var(--color-muted);margin:0;letter-spacing:0.04em;">{{ strtoupper($c['hex']) }}</p>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
                 @endforeach
             </div>
         </section>
         @endif
+
+
     </div>
 
     {{-- STORY --}}
@@ -284,23 +323,34 @@
             </div>
         </section>
 
-        @if($settings->gate_venue_address && $rsvpForm->event->venue)
+        @if($settings->gate_venue_address && ($rsvpForm->event->venue || ($settings->separate_venues_enabled && $settings->reception_venue)))
         <section style="background:var(--color-obsidian);padding:5rem 1.5rem;">
             <div style="max-width:32rem;margin:0 auto;text-align:center;">
                 <p class="section-eyebrow mb-3">The Celebration</p>
                 <h2 class="section-title mb-3" style="color:#fff;">Venue Details</h2>
                 <p style="color:rgba(255,255,255,0.4);font-size:0.875rem;margin-bottom:2.5rem;">Venue details visible to confirmed guests only</p>
 
-                <div style="border:1px solid rgba(255,255,255,0.1);padding:2rem;text-align:left;">
-                    @if($this->canSeeVenueAddress())
-                    <p style="font-family:var(--font-serif);font-size:1.125rem;color:#fff;margin-bottom:0.75rem;">{{ $rsvpForm->event->venue }}</p>
-                    @if($rsvpForm->event->date)
-                    <p style="font-size:0.875rem;color:rgba(255,255,255,0.55);">🕙 {{ $rsvpForm->event->date->format('l, F j, Y') }}@if($rsvpForm->event->start_time) &middot; {{ \Carbon\Carbon::parse($rsvpForm->event->start_time)->format('g:i A') }}@endif</p>
-                    @endif
-                    @else
-                    <p style="font-size:0.875rem;color:rgba(255,255,255,0.55);text-align:center;">Full address provided to confirmed guests via RSVP</p>
+                @if($this->canSeeVenueAddress())
+                <div style="display:grid;grid-template-columns:{{ $settings->separate_venues_enabled && $settings->reception_venue ? 'repeat(2, minmax(0, 1fr))' : '1fr' }};gap:1rem;text-align:left;">
+                    <div style="border:1px solid rgba(255,255,255,0.1);padding:1.5rem;">
+                        <p class="section-eyebrow" style="margin-bottom:0.75rem;">Ceremony</p>
+                        <p style="font-family:var(--font-serif);font-size:1.125rem;color:#fff;margin-bottom:0.75rem;">{{ $rsvpForm->event->venue }}</p>
+                        @if($rsvpForm->event->date || $rsvpForm->event->start_time)
+                        <p style="font-size:0.875rem;color:rgba(255,255,255,0.55);">🕙 @if($rsvpForm->event->date){{ $rsvpForm->event->date->format('l, F j, Y') }}@endif @if($rsvpForm->event->start_time)&middot; {{ \Carbon\Carbon::parse($rsvpForm->event->start_time)->format('g:i A') }}@endif</p>
+                        @endif
+                    </div>
+                    @if($settings->separate_venues_enabled && $settings->reception_venue)
+                    <div style="border:1px solid rgba(255,255,255,0.1);padding:1.5rem;">
+                        <p class="section-eyebrow" style="margin-bottom:0.75rem;">Reception</p>
+                        <p style="font-family:var(--font-serif);font-size:1.125rem;color:#fff;margin-bottom:0.75rem;">{{ $settings->reception_venue }}</p>
+                        @if($settings->reception_address)<p style="font-size:0.875rem;color:rgba(255,255,255,0.55);margin-bottom:0.75rem;">{{ $settings->reception_address }}</p>@endif
+                        @if($settings->reception_time)<p style="font-size:0.875rem;color:rgba(255,255,255,0.55);">🕙 {{ \Carbon\Carbon::parse($settings->reception_time)->format('g:i A') }}</p>@endif
+                    </div>
                     @endif
                 </div>
+                @else
+                <div class="ms-venue-locked">Full venue addresses are provided to confirmed guests via RSVP.</div>
+                @endif
 
                 <div style="margin-top:2.5rem;">
                     <button type="button" x-on:click="section = 'rsvp'" class="btn-gold">Confirm Your Attendance</button>
@@ -315,7 +365,7 @@
     <div x-show="section === 'rsvp'" x-cloak>
         <div style="text-align:center;padding:4rem 1.5rem;background:var(--color-obsidian);">
             <p style="font-family:var(--font-sans);font-size:0.75rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:{{ $rsvpForm->branding['invited_label_color'] ?? '#E8D5A3' }};margin-bottom:0.5rem;">You're Invited</p>
-            <h1 style="font-family:var(--font-serif);font-size:clamp(1.75rem,4vw,2.75rem);font-weight:300;color:#fff;margin-bottom:0.75rem;">{{ $rsvpForm->event->name }}</h1>
+            <h1 style="font-family:var(--font-serif);font-size:clamp(1.75rem,4vw,2.75rem);font-weight:300;color:#fff;margin-bottom:0.75rem;">{{ $rsvpForm->title }}</h1>
             <p style="color:rgba(255,255,255,0.55);font-size:0.875rem;letter-spacing:0.1em;text-transform:uppercase;">
                 {{ $rsvpForm->event->date?->format('l, jS F Y') ?? 'Date TBC' }}
                 @if($rsvpForm->event->venue) &middot; {{ $rsvpForm->event->venue }} @endif
@@ -337,6 +387,14 @@
                     Thank you, <strong>{{ $respondent_name }}</strong>! Your RSVP is confirmed.
                     @if($respondent_email)A copy has been sent to <strong>{{ $respondent_email }}</strong>.@endif
                 </p>
+                <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:1.5rem;">
+                    @if($settings?->gifts_enabled && $giftInfo)
+                    <button type="button" x-on:click="section = 'gifts'" class="btn-gold" style="font-size:12px;padding:11px 20px;">Gift Us</button>
+                    @endif
+                    @if($settings?->wishes_enabled)
+                    <button type="button" x-on:click="section = 'wishes'" class="btn-outline-gold" style="font-size:12px;padding:10px 20px;">Send a Wish</button>
+                    @endif
+                </div>
             </div>
 
             @if($response->qr_token)
@@ -344,7 +402,7 @@
                 <div style="background:var(--color-obsidian);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;">
                     <div>
                         <p style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin:0 0 2px;">Entry Pass</p>
-                        <p style="font-family:var(--font-serif);color:#fff;font-size:1rem;margin:0;">{{ $rsvpForm->event->name }}</p>
+                        <p style="font-family:var(--font-serif);color:#fff;font-size:1rem;margin:0;">{{ $rsvpForm->title }}</p>
                     </div>
                 </div>
                 <div style="padding:1.25rem;">
@@ -397,8 +455,7 @@
                 </p>
             </div>
 
-            @if($step === 1)
-            <div style="display:flex;flex-direction:column;gap:1.25rem;">
+            <div wire:key="rsvp-step-1" x-show="step === 1" x-cloak class="rsvp-step-fields" style="display:flex;flex-direction:column;gap:1.5rem;">
                 @if($systemQuestions['name']['enabled'])
                 <div>
                     <label class="form-label">{{ $systemQuestions['name']['label'] }} @if($systemQuestions['name']['required'])<span style="color:#EF4444;">*</span>@endif</label>
@@ -427,10 +484,8 @@
                     <input wire:model="respondent_phone" type="tel" placeholder="+234 800 000 0000" class="form-input">
                 </div>
             </div>
-            @endif
 
-                                    @if($step === 2)
-            <div style="display:flex;flex-direction:column;gap:1.5rem;" x-data="{ withSomeone: @js($comingWithSomeone), selectedStatus: @js($status) }">
+            <div wire:key="rsvp-step-2" x-show="step === 2" x-cloak class="rsvp-step-attendance" style="display:flex;flex-direction:column;gap:1.5rem;" x-data="{ withSomeone: @js($comingWithSomeone), selectedStatus: @js($status) }">
                 @if($systemQuestions['status']['enabled'])
                 <div>
                     <label class="form-label" style="margin-bottom:12px;">{{ $systemQuestions['status']['label'] }} @if($systemQuestions['status']['required'])<span style="color:#EF4444;">*</span>@endif</label>
@@ -448,7 +503,7 @@
                 @endif
 
                 @if($systemQuestions['plus_one_count']['enabled'])
-                <div x-show="selectedStatus === 'confirmed'" x-cloak>
+                <div x-show="selectedStatus === 'confirmed'" x-cloak style="margin-top:0.5rem;">
                     <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                         <input type="checkbox" x-model="withSomeone" wire:model="comingWithSomeone" style="width:16px;height:16px;accent-color:var(--color-gold);">
                         <span style="font-size:0.875rem;">Are you coming with someone?</span>
@@ -482,12 +537,9 @@
                     <label class="form-label">Reason (optional)</label>
                     <textarea wire:model="decline_reason" rows="3" placeholder="Let us know if you'd like..." class="form-input"></textarea>
                 </div>
-                @endif
             </div>
-            @endif
 
-            @if($step === 3)
-            <div style="display:flex;flex-direction:column;gap:1.25rem;">
+            <div wire:key="rsvp-step-3" x-show="step === 3" x-cloak style="display:flex;flex-direction:column;gap:1.25rem;">
                 @foreach($rsvpForm->customQuestions as $q)
                 <div>
                     <label class="form-label">{{ $q->label }} @if($q->is_required)<span style="color:#EF4444;">*</span>@endif</label>
@@ -513,9 +565,8 @@
                 </div>
                 @endforeach
             </div>
-            @endif
 
-            <div style="display:flex;justify-content:space-between;margin-top:2.5rem;max-width:32rem;margin-left:auto;margin-right:auto;">
+            <div wire:key="rsvp-navigation" style="display:flex;justify-content:space-between;margin-top:2.5rem;max-width:32rem;margin-left:auto;margin-right:auto;">
                 @if($step > 1)
                 <button type="button" wire:click="prevStep" wire:loading.attr="disabled" wire:loading.class="is-loading" wire:target="prevStep" class="btn-outline-gold rsvp-nav-btn" style="font-size:12px;padding:12px 24px;">
                     <span wire:loading.remove wire:target="prevStep">← Back</span>
@@ -526,17 +577,18 @@
                 @endif
 
                 @if($step < $this->totalSteps())
-                <button type="button" wire:click.prevent="nextStep" wire:loading.attr="disabled" wire:loading.class="is-loading" wire:target="nextStep" class="btn-gold rsvp-nav-btn" style="font-size:12px;padding:12px 32px;">
+                <button type="button" wire:click="nextStep" wire:loading.attr="disabled" wire:loading.class="is-loading" wire:target="nextStep" class="btn-gold rsvp-nav-btn" style="font-size:12px;padding:12px 32px;">
                     <span wire:loading.remove wire:target="nextStep">Next →</span>
                     <span wire:loading wire:target="nextStep">...</span>
                 </button>
                 @else
-                <button wire:click="submitRsvp" wire:loading.attr="disabled" class="btn-gold" style="font-size:12px;padding:12px 32px;">
-                    <span wire:loading.remove wire:target="submitRsvp">Submit RSVP</span>
+                <button type="button" wire:click="submitRsvp" wire:loading.attr="disabled" wire:loading.class="is-loading" wire:target="submitRsvp" x-on:click="$el.classList.add('is-loading'); $el.setAttribute('disabled', 'disabled')" class="btn-gold rsvp-submit-btn" style="font-size:12px;padding:12px 32px;">
+                    <span wire:loading.remove wire:target="submitRsvp">{{ $editing ? 'Save RSVP Changes' : 'Submit RSVP' }}</span>
                     <span wire:loading wire:target="submitRsvp">Processing...</span>
                 </button>
                 @endif
             </div>
+            @endif
             
         </div>
         </div>
@@ -554,7 +606,7 @@
         <div style="max-width:32rem;margin:0 auto;">
 
             @if($wishSubmitted)
-            <div style="text-align:center;padding:3rem 0;border:1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);background:color-mix(in srgb, var(--color-gold) 5%, transparent);margin-bottom:3rem;">
+            <div x-data x-init="setTimeout(() => $wire.resetWishSubmission(), 4000)" style="text-align:center;padding:3rem 0;border:1px solid color-mix(in srgb, var(--color-gold) 30%, transparent);background:color-mix(in srgb, var(--color-gold) 5%, transparent);margin-bottom:3rem;">
                 <div style="font-size:1.75rem;margin-bottom:0.75rem;">💛</div>
                 <h3 style="font-family:var(--font-serif);font-size:1.25rem;margin-bottom:0.5rem;">Your wish has been sent!</h3>
                 <p style="color:var(--color-muted);font-size:0.9375rem;">
@@ -580,9 +632,20 @@
             <div class="gold-divider mb-10"><span style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-muted);white-space:nowrap;padding:0 12px;">Wishes from loved ones</span></div>
             <div style="display:flex;flex-direction:column;gap:1.25rem;">
                 @foreach($wishes as $wish)
-                <div style="border:1px solid var(--color-border);background:#fff;padding:1.5rem;">
+                <div style="border:1px solid var(--color-border);background:#fff;padding:1.5rem;" x-data="{
+                    heart: { count: {{ $wish->heart_reactions_count }}, active: {{ in_array('heart', $myWishReactions[$wish->id] ?? []) ? 'true' : 'false' }} },
+                    congrats: { count: {{ $wish->congrats_reactions_count }}, active: {{ in_array('congrats', $myWishReactions[$wish->id] ?? []) ? 'true' : 'false' }} }
+                }">
                     <p style="font-size:0.9375rem;line-height:1.8;color:#3a3a3a;margin-bottom:0.75rem;">"{{ $wish->message }}"</p>
                     <p style="font-size:0.875rem;font-weight:500;color:var(--color-gold);">— {{ $wish->guest_name }}</p>
+                    <div style="display:flex;gap:8px;margin-top:1rem;">
+                        <button type="button" x-on:click="heart.active = !heart.active; heart.count += heart.active ? 1 : -1; $wire.toggleWishReaction({{ $wish->id }}, 'heart')" x-bind:aria-pressed="heart.active" style="border:1px solid var(--color-border);background:transparent;padding:7px 10px;cursor:pointer;color:var(--color-gold);font-size:12px;">
+                            <span>♥</span> <span x-text="heart.count"></span>
+                        </button>
+                        <button type="button" x-on:click="congrats.active = !congrats.active; congrats.count += congrats.active ? 1 : -1; $wire.toggleWishReaction({{ $wish->id }}, 'congrats')" x-bind:aria-pressed="congrats.active" style="border:1px solid var(--color-border);background:transparent;padding:7px 10px;cursor:pointer;color:var(--color-gold);font-size:12px;">
+                            <span>Congratulations</span> <span x-text="congrats.count"></span>
+                        </button>
+                    </div>
                 </div>
                 @endforeach
             </div>
@@ -614,7 +677,26 @@
         </div>
         <div style="max-width:64rem;margin:0 auto;padding-top:4rem;">
 
-            @if($images->isNotEmpty())
+            @if($settings->gallery_password_protected && !$this->galleryUnlocked())
+            <div style="max-width:24rem;margin:0 auto;text-align:center;padding:2rem 1.5rem;">
+                <div style="width:56px;height:56px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;">
+                    <svg style="width:24px;height:24px;color:var(--color-gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+                <h2 style="font-family:var(--font-serif);font-size:1.375rem;margin-bottom:0.75rem;">Gallery is Private</h2>
+                <p style="color:var(--color-muted);font-size:0.9375rem;margin-bottom:2rem;">Enter the password to view our photos.</p>
+
+                <input wire:model="galleryPasswordInput" type="password" placeholder="Enter gallery password" class="form-input" style="margin-bottom:8px;">
+                @if($galleryPasswordError)<p style="color:#EF4444;font-size:12px;margin-bottom:12px;">{{ $galleryPasswordError }}</p>@endif
+                <button wire:click="unlockGallery" class="btn-gold" style="width:100%;">Unlock Gallery</button>
+
+                @if($settings->gallery_password_whatsapp)
+                <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--color-border);">
+                    <p style="font-size:12px;color:var(--color-muted);margin-bottom:6px;">Don't have the password?</p>
+                    <a href="{{ $settings->gallery_password_whatsapp }}" target="_blank" style="font-size:13px;color:var(--color-gold);">Request Password on WhatsApp</a>
+                </div>
+                @endif
+            </div>
+            @elseif($images->isNotEmpty())
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
                 @foreach($images as $i => $img)
                 <div style="aspect-ratio:1;overflow:hidden;cursor:pointer;" x-on:click="open({{ $i }})">
@@ -647,6 +729,7 @@
         </div>
     </div>
     @endif
+
 
     {{-- GIFTS --}}
     @if($settings?->gifts_enabled && $giftInfo)
@@ -690,6 +773,7 @@
                             <p style="font-size:0.875rem;font-weight:500;margin-bottom:2px;">{{ $acc['bank_name'] }}</p>
                             <p style="color:var(--color-muted);font-size:0.875rem;">{{ $acc['account_name'] }}</p>
                             <p style="font-family:var(--font-serif);font-size:1.5rem;letter-spacing:0.04em;color:var(--color-obsidian);margin-top:0.5rem;">{{ $acc['account_number'] }}</p>
+                            @if(!empty($acc['swift_code']))<p style="color:var(--color-muted);font-size:0.75rem;margin-top:0.35rem;">SWIFT / BIC: {{ $acc['swift_code'] }}</p>@endif
                         </div>
                         <button type="button" x-on:click="copy('{{ $acc['account_number'] }}')" style="border:1px solid var(--color-border);padding:10px;background:none;cursor:pointer;flex-shrink:0;">
                             <svg style="width:16px;height:16px;color:var(--color-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -732,5 +816,21 @@
         </div>
     </div>
     @endif
+
+    @php
+        $__tenant = \App\Models\Central\Tenant::find($rsvpForm->tenant_id);
+        $__whiteLabel = app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label');
+    @endphp
+    <footer style="background:var(--color-obsidian);padding:3rem 1.5rem 2rem;text-align:center;">
+        <h3 style="font-family:var(--font-serif);font-size:1.375rem;font-weight:300;color:var(--color-gold-light);margin-bottom:0.5rem;">{{ $rsvpForm->title }}</h3>
+        <p style="color:rgba(255,255,255,0.5);font-size:0.8125rem;margin-bottom:1.5rem;">
+            {{ $rsvpForm->event->date?->format('l, jS F Y') ?? '' }}
+            @if($rsvpForm->event->venue) &middot; {{ $rsvpForm->event->venue }} @endif
+        </p>
+        <div style="height:1px;background:rgba(255,255,255,0.08);max-width:200px;margin:0 auto 1.5rem;"></div>
+        @if(!$__whiteLabel)
+        <p style="color:rgba(255,255,255,0.3);font-size:0.75rem;">Website created with <a href="/" style="color:rgba(255,255,255,0.45);">Koordli</a></p>
+        @endif
+    </footer>
 </div>
 </div>

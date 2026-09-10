@@ -1,5 +1,5 @@
+<div style="position:relative;" @if(!$enabled) x-data="{}" @else x-data="{ show: false, tipDismissed: !!localStorage.getItem('krd-tip-dismissed-quick-access-icon-tenant') }" @endif>
 @if($enabled)
-<div style="position:relative;" x-data="{ show: false, tipDismissed: !!localStorage.getItem('krd-tip-dismissed-quick-access-icon-tenant') }">
     <button x-on:click="show = !show"
         style="background:none;border:none;cursor:pointer;color:#57534E;padding:6px;display:flex;align-items:center;" title="Quick Access Link">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -41,5 +41,5 @@
 
         <a href="{{ route('tenant.my-quick-access') }}" wire:navigate style="display:block;text-align:center;font-size:11px;color:#7C3AED;text-decoration:none;margin-top:10px;">Manage settings →</a>
     </div>
-</div>
 @endif
+</div>

@@ -58,7 +58,12 @@
                     @if($status === 'confirmed' && $plusOneCount > 0)
                     <div class="info-row">
                         <span class="info-key">Additional Guests</span>
-                        <span class="info-val">{{ $plusOneCount }}</span>
+                        <span class="info-val">
+                            {{ $plusOneCount }}
+                            @if(!empty($companions))
+                            — {{ collect($companions)->map(fn($c) => $c['name'] . ($c['relation'] ? ' (' . $c['relation'] . ')' : ''))->join(', ') }}
+                            @endif
+                        </span>
                     </div>
                     @endif
                 </div>

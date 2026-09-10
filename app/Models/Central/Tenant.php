@@ -100,6 +100,29 @@ class Tenant extends Model
         return $this->plan?->hasFeature($key) ?? false;
     }
 
+        /**
+     * Resolves this tenant's real public-facing base URL — their own
+     * verified custom domain when configured, falling back to their
+     * subdomain, then to the app's own default. Single source of truth
+     * for every model that generates a tenant-facing public link
+     * (RsvpForm, RsvpResponse, Form, etc.) — do not duplicate this
+     * logic locally in another model; call this method instead.
+     */
+    public function resolvePublicBaseUrl(): string
+    {
+        if ($this->custom_domain && $this->domain_status === 'verified') {
+            return 'https://' . $this->custom_domain;
+        }
+
+        if ($this->subdomain) {
+            $appHost = parse_url(config('app.url'), PHP_URL_HOST);
+            $scheme  = parse_url(config('app.url'), PHP_URL_SCHEME) ?? 'https';
+            return $scheme . '://' . $this->subdomain . '.' . $appHost;
+        }
+
+        return config('app.url');
+    }
+
     public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(\App\Models\Central\Subscription::class);

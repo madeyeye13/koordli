@@ -30,9 +30,6 @@ class EventList extends Component
     #[Url]
     public string $view = 'list'; // list or grid
 
-    public bool $showDeleteModal = false;
-    public ?int $deleteId        = null;
-
     public function updatedSearch(): void   { $this->resetPage(); }
     public function updatedStatusFilter(): void { $this->resetPage(); }
     public function updatedTypeFilter(): void   { $this->resetPage(); }
@@ -54,27 +51,22 @@ class EventList extends Component
         $this->showDeleteModal = true;
     }
 
-    public function delete(): void
+    public function delete(?int $id = null): void
     {
         if (!app(PermissionService::class)->userCan(auth()->user(), 'events.delete')) {
             $this->toastError('You do not have permission to delete events.');
-            $this->showDeleteModal = false;
             return;
         }
 
-        $event = Event::find($this->deleteId);
+        if (is_null($id)) {
+            return;
+        }
+
+        $event = Event::find($id);
         if ($event) {
             $event->delete();
             $this->toastSuccess('Event deleted.');
         }
-        $this->showDeleteModal = false;
-        $this->deleteId        = null;
-    }
-
-    public function cancelDelete(): void
-    {
-        $this->showDeleteModal = false;
-        $this->deleteId        = null;
     }
 
     public function render()
