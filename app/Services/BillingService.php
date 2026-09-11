@@ -27,17 +27,30 @@ class BillingService
 
         return Cache::remember($cacheKey, now()->addHours($hours), function () use ($from, $to) {
             try {
-                $response = Http::timeout(10)
-                    ->get("https://api.frankfurter.app/latest", [
-                        'from'   => $from,
-                        'to'     => $to,
-                    ]);
+                // Switched from Frankfurter — it's ECB-sourced and never
+                // supported NGN at all, our actual base currency, so
+                // currency conversion silently never worked. This
+                // provider genuinely supports NGN as both base and target.
+                $apiKey = config('services.exchangerate_api.key');
 
-                if ($response->successful()) {
-                    return $response->json("rates.{$to}", 1.0);
+                if (!$apiKey) {
+                    Log::warning('EXCHANGERATE_API_KEY is not set — falling back to 1.0 exchange rate.');
+                    return 1.0;
                 }
+
+                $response = Http::timeout(10)
+                    ->get("https://v6.exchangerate-api.com/v6/{$apiKey}/pair/{$from}/{$to}");
+
+                if ($response->successful() && $response->json('result') === 'success') {
+                    return (float) $response->json('conversion_rate');
+                }
+
+                Log::warning('exchangerate-api.com returned an unsuccessful response.', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
             } catch (\Exception $e) {
-                Log::warning("Frankfurter API failed: {$e->getMessage()}");
+                Log::warning("exchangerate-api.com request failed: {$e->getMessage()}");
             }
             return 1.0;
         });

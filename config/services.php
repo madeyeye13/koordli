@@ -52,4 +52,8 @@ return [
     'pexels' => [
         'key' => env('PEXELS_API_KEY'),
     ],
+
+        'exchangerate_api' => [
+        'key' => env('EXCHANGERATE_API_KEY'),
+    ],
 ];
