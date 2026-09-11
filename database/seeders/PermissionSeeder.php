@@ -15,7 +15,7 @@ class PermissionSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Set team_id to null for platform-level permissions
-        app()[PermissionRegistrar::class]->setPermissionsTeamId(null);
+        app()[PermissionRegistrar::class]->setPermissionsTeamId(0);
 
         /*
         |----------------------------------------------------------------------

@@ -1,7 +1,7 @@
 <div>
 @php
     $landingFaviconPath = \App\Models\Central\PlatformSetting::get('site_favicon');
-    $landingFaviconVersion = $landingFaviconPath ? \Illuminate\Support\Facades\Storage::disk('public')->lastModified($landingFaviconPath) : null;
+    $landingFaviconVersion = ($landingFaviconPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($landingFaviconPath)) ? \Illuminate\Support\Facades\Storage::disk('public')->lastModified($landingFaviconPath) : null;
 @endphp
 <style>
     :root {

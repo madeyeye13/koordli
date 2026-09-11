@@ -21,6 +21,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Traefik terminates HTTPS and forwards plain HTTP internally —
+        // trusting it as a proxy lets Laravel correctly read the real
+        // X-Forwarded-Proto header instead of assuming http, which was
+        // causing every generated URL (asset(), route(), url()) to be
+        // built as http:// even though the actual visitor connection
+        // was https://.
+        $middleware->trustProxies(
+            at: '*',
+            headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |
+                     \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO
+        );
+
         $middleware->alias([
             'auth.platform'          => AuthenticatePlatformUser::class,
             'auth.tenant'            => AuthenticateTenantUser::class,

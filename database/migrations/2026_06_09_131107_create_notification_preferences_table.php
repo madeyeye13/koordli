@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->string('channel'); // mail|database|sms|whatsapp|push
-            $table->string('event_type'); // task.assigned|rsvp.confirmed etc.
+            $table->string('channel');
+            $table->string('event_type');
             $table->boolean('is_enabled')->default(true);
             $table->timestamps();
 
