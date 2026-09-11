@@ -28,6 +28,9 @@ class PlanSeeder extends Seeder
             ['key' => 'white_label',       'label' => 'White Label',             'description' => 'Remove Koordli branding completely'],
             ['key' => 'api_access',        'label' => 'API Access',              'description' => 'Access to public API'],
             ['key' => 'priority_support',  'label' => 'Priority Support',        'description' => 'Priority customer support'],
+            ['key' => 'custom_subdomain', 'label' => 'Custom Subdomain', 'description' => 'Choose your own koordli.site subdomain'],
+            ['key' => 'assets',           'label' => 'Asset Management', 'description' => 'Track and assign equipment/assets to events'],
+            ['key' => 'quick_access',     'label' => 'Quick Access Links', 'description' => 'Permanent no-login links for staff and vendors'],
         ];
 
         foreach ($flags as $flag) {
@@ -59,6 +62,9 @@ class PlanSeeder extends Seeder
                     'white_label'    => 'false',
                     'api_access'     => 'false',
                     'priority_support' => 'false',
+                    'custom_subdomain' => 'false',
+                    'assets'         => 'false',
+                    'quick_access'   => 'false',
                 ],
                 'limits' => [
                     'max_events'     => 3,
@@ -87,6 +93,9 @@ class PlanSeeder extends Seeder
                     'white_label'    => 'false',
                     'api_access'     => 'false',
                     'priority_support' => 'false',
+                    'custom_subdomain' => 'false',
+                    'assets'         => 'true',
+                    'quick_access'   => 'true',
                 ],
                 'limits' => [
                     'max_events'     => 10,
@@ -115,6 +124,9 @@ class PlanSeeder extends Seeder
                     'white_label'    => 'false',
                     'api_access'     => 'true',
                     'priority_support' => 'true',
+                    'custom_subdomain' => 'true',
+                    'assets'         => 'true',
+                    'quick_access'   => 'true',
                 ],
                 'limits' => [
                     'max_events'     => 50,
@@ -143,6 +155,9 @@ class PlanSeeder extends Seeder
                     'white_label'    => 'true',
                     'api_access'     => 'true',
                     'priority_support' => 'true',
+                    'custom_subdomain' => 'true',
+                    'assets'         => 'true',
+                    'quick_access'   => 'true',
                 ],
                 'limits' => [
                     'max_events'     => -1, // -1 = unlimited

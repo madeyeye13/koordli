@@ -176,6 +176,31 @@ class IndustryProfileSeeder extends Seeder
                 'recommended_feature_flags' => ['runsheet', 'booking_forms'],
             ],
             [
+                'key'  => 'full_service',
+                'name' => 'Full-Service / Multiple Event Types',
+                'icon' => '✨',
+                'description' => 'For companies handling a wide mix of event types under one roof.',
+                'terminology' => [],
+                'default_event_types' => [
+                    ['name' => 'Wedding', 'icon' => 'rings', 'color' => '#7C3AED'],
+                    ['name' => 'Corporate Event', 'icon' => 'briefcase', 'color' => '#3B82F6'],
+                    ['name' => 'Birthday', 'icon' => 'cake', 'color' => '#F59E0B'],
+                    ['name' => 'Concert', 'icon' => 'music', 'color' => '#EF4444'],
+                    ['name' => 'Conference', 'icon' => 'mic', 'color' => '#6366F1'],
+                ],
+                'default_vendor_categories' => [
+                    ['name' => 'Venue', 'icon' => 'building'], ['name' => 'Catering', 'icon' => 'utensils'],
+                    ['name' => 'Photography', 'icon' => 'camera'], ['name' => 'AV & Production', 'icon' => 'video'],
+                    ['name' => 'Decoration', 'icon' => 'flower'], ['name' => 'Security', 'icon' => 'shield'],
+                ],
+                'default_task_categories' => [
+                    ['name' => 'Pre-Event', 'color' => '#3B82F6'], ['name' => 'Logistics', 'color' => '#F59E0B'],
+                    ['name' => 'On The Day', 'color' => '#10B981'], ['name' => 'Post-Event', 'color' => '#78716C'],
+                ],
+                'default_roles' => ['Coordinator', 'Finance', 'Operations'],
+                'recommended_feature_flags' => ['rsvp', 'runsheet', 'client_portal', 'booking_forms', 'vendor_portal'],
+            ],
+            [
                 'key'  => 'other',
                 'name' => 'Other',
                 'icon' => '✨',
