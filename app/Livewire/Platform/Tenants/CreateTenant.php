@@ -44,6 +44,14 @@ class CreateTenant extends Component
             $this->industry_profile_id = $tenant->industry_profile_id ?? null;
             $this->status           = $tenant->status ?? 'trial';
 
+            $subscription = $tenant->latestSubscription;
+            if ($subscription) {
+                $this->subscription_mode = $subscription->status === 'active' ? 'direct' : 'trial';
+                $this->subscription_cycle = in_array($subscription->billing_cycle, ['monthly', 'annual'], true)
+                    ? $subscription->billing_cycle
+                    : 'monthly';
+            }
+
             // Load owner info from first user
             $owner = \App\Models\Tenant\User::withoutGlobalScope('tenant')
                 ->where('tenant_id', $tenant->id)
@@ -109,6 +117,7 @@ class CreateTenant extends Component
         ]);
 
         try {
+            $wasSuspended = $this->tenant->status === 'suspended';
             $this->tenant->update([
                 'name'             => $this->name,
                 'billing_currency' => $this->billing_currency,
@@ -116,6 +125,36 @@ class CreateTenant extends Component
                 'plan_id'          => $this->plan_id,
                 'status'           => $this->status,
             ]);
+
+            if (!$wasSuspended && $this->status === 'suspended') {
+                $owner = \App\Models\Tenant\User::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $this->tenant->id)
+                    ->orderBy('id')
+                    ->first();
+
+                if ($owner?->email) {
+                    \App\Jobs\SendTenantSuspendedJob::dispatch(
+                        $owner->email,
+                        $this->tenant->name,
+                        route('tenant.billing.upgrade'),
+                    );
+                }
+            }
+
+            if ($wasSuspended && $this->status === 'active') {
+                $owner = \App\Models\Tenant\User::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $this->tenant->id)
+                    ->orderBy('id')
+                    ->first();
+
+                if ($owner?->email) {
+                    \App\Jobs\SendTenantReactivatedJob::dispatch(
+                        $owner->email,
+                        $this->tenant->name,
+                        route('tenant.dashboard'),
+                    );
+                }
+            }
 
             // Update owner name
             $owner = \App\Models\Tenant\User::withoutGlobalScope('tenant')
@@ -141,6 +180,7 @@ class CreateTenant extends Component
             'plans'            => Plan::where('is_active', true)->get(),
             'countries'        => CurrencyHelper::countries(),
             'industryProfiles' => \App\Models\Central\IndustryProfile::where('is_active', true)->orderBy('sort_order')->get(),
+            'subscription'     => $this->isEdit ? $this->tenant->latestSubscription : null,
         ]);
     }
 }

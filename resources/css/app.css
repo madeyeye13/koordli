@@ -598,11 +598,6 @@ body {
 .krd-dropdown {
     position: relative;
     width: 100%;
-    z-index: 1;
-}
-
-.krd-input-group {
-    position: relative;
 }
 
 .krd-dropdown-trigger {
@@ -655,11 +650,10 @@ body {
     background-color: #FFFFFF;
     border: 1px solid #E7E5E4;
     border-radius: 6px;
-    z-index: 80;
+    z-index: 50;
     overflow: hidden;
     max-height: 240px;
     overflow-y: auto;
-    box-shadow: 0 12px 28px rgba(28, 25, 23, 0.12);
 }
 
 .krd-dropdown-option {
@@ -982,19 +976,6 @@ body {
     color: #FAFAF9 !important;
 }
 
-.dark .krd-topbar .tenant-help-button,
-.dark .krd-topbar .tenant-help-button * {
-    color: #7C3AED !important;
-    border-color: #C4B5FD !important;
-    background-color: #F5F3FF !important;
-}
-
-.dark .krd-topbar .tenant-help-button svg {
-    stroke: currentColor !important;
-    color: #7C3AED !important;
-    fill: none !important;
-}
-
 .dark .krd-heading-3 {
     color: #FAFAF9 !important;
 }
@@ -1089,62 +1070,6 @@ body {
    DARK MODE — INLINE COLOR OVERRIDES
    These fix hardcoded color:#1C1917 inline styles across views
    ============================================================ */
-
-.dark [style*="background:#fff"],
-.dark [style*="background: #fff"],
-.dark [style*="background:#ffffff"],
-.dark [style*="background: #ffffff"] {
-    background-color: #FFFFFF !important;
-}
-
-.dark [style*="background:#fff"] h3,
-.dark [style*="background:#fff"] h2,
-.dark [style*="background:#fff"] h1,
-.dark [style*="background:#fff"] p,
-.dark [style*="background:#fff"] div,
-.dark [style*="background:#fff"] a,
-.dark [style*="background:#fff"] span,
-.dark [style*="background: #fff"] h3,
-.dark [style*="background: #fff"] h2,
-.dark [style*="background: #fff"] h1,
-.dark [style*="background: #fff"] p,
-.dark [style*="background: #fff"] div,
-.dark [style*="background: #fff"] a,
-.dark [style*="background: #fff"] span {
-    color: #1C1917 !important;
-}
-
-.dark [style*="background:#fff"] .krd-btn,
-.dark [style*="background:#fff"] .krd-btn-secondary,
-.dark [style*="background:#fff"] .krd-btn-danger,
-.dark [style*="background:#fff"] .krd-btn-primary,
-.dark [style*="background: #fff"] .krd-btn,
-.dark [style*="background: #fff"] .krd-btn-secondary,
-.dark [style*="background: #fff"] .krd-btn-danger,
-.dark [style*="background: #fff"] .krd-btn-primary {
-    color: inherit !important;
-}
-
-.dark [style*="background:#fff"] .krd-btn-secondary,
-.dark [style*="background: #fff"] .krd-btn-secondary {
-    background-color: #1C1917 !important;
-    color: #FAFAF9 !important;
-    border-color: #292524 !important;
-}
-
-.dark [style*="background:#fff"] .krd-btn-danger,
-.dark [style*="background: #fff"] .krd-btn-danger {
-    background-color: #DC2626 !important;
-    color: #FFFFFF !important;
-    border-color: #DC2626 !important;
-}
-
-.dark [style*="background:#fff"] .krd-btn-primary,
-.dark [style*="background: #fff"] .krd-btn-primary {
-    background-color: #7C3AED !important;
-    color: #FFFFFF !important;
-    border-color: #7C3AED !important;
-}
 
 .dark [style*="color:#1C1917"],
 .dark [style*="color: #1C1917"] {

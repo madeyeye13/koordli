@@ -23,6 +23,13 @@ class LandingPage extends Component
             ->orderByDesc('is_featured')
             ->get();
 
+        $pricingMode = PlatformSetting::get('landing_pricing_mode', 'monthly');
+
+        if (!$plans->contains(fn (Plan $plan) => $plan->allowsMonthly())
+            && $plans->contains(fn (Plan $plan) => $plan->allowsAnnual())) {
+            $this->billingCycle = 'annual';
+        }
+
         // Detect visitor's likely currency the same way registration does
         $country  = request()->header('CF-IPCountry') ?? 'NG';
         $currency = \App\Helpers\CurrencyHelper::fromCountry($country);
@@ -65,6 +72,6 @@ class LandingPage extends Component
         $siteName    = PlatformSetting::get('site_name', 'Koordli');
         $siteTagline = PlatformSetting::get('site_tagline', 'Event Operations Simplified');
 
-        return view('livewire.public.landing-page', compact('plans', 'pricingData', 'siteName', 'siteTagline'));
+        return view('livewire.public.landing-page', compact('plans', 'pricingData', 'siteName', 'siteTagline', 'pricingMode'));
     }
 }

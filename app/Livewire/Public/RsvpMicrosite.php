@@ -382,7 +382,7 @@ class RsvpMicrosite extends Component
             $__tenant = Tenant::find($this->rsvpForm->tenant_id);
             SendRsvpConfirmationJob::dispatch(
                 $this->respondent_email, $this->respondent_name, $this->rsvpForm->title, $eventDate,
-                $event->venue ?? '', $this->status, $qrToken, $this->response->editUrl(),
+                $event->venue ?? '', $this->status, $qrToken, $this->response->editUrl(), $this->response->ticketUrl(),
                 $this->status === 'confirmed' ? count($this->companions) : 0,
                 $__tenant?->name ?? 'Koordli',
                 $__tenant ? app(FeatureGateService::class)->canAccess($__tenant, 'white_label') : false,
@@ -483,7 +483,7 @@ class RsvpMicrosite extends Component
             SendRsvpConfirmationJob::dispatch(
                 $response->respondent_email, $response->respondent_name, $this->rsvpForm->title,
                 $eventDate, $event->venue ?? '', $response->status, $response->qr_token,
-                $response->editUrl(), $response->plus_one_count, $tenant?->name ?? 'Koordli',
+                $response->editUrl(), $response->ticketUrl(), $response->plus_one_count, $tenant?->name ?? 'Koordli',
                 $tenant ? app(FeatureGateService::class)->canAccess($tenant, 'white_label') : false,
                 $response->companions()->get()->map(fn ($companion) => [
                     'name' => $companion->name, 'relation' => $companion->relation,

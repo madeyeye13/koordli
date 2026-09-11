@@ -21,6 +21,7 @@ class RsvpConfirmationMail extends Mailable
         public readonly string $status,
         public readonly string $qrToken,
         public readonly string $editUrl,
+        public readonly string $ticketUrl,
         public readonly int    $plusOneCount,
         public readonly string $companyName = 'Koordli',
         public readonly bool   $whiteLabel  = false,

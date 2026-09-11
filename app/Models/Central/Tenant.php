@@ -5,6 +5,7 @@ namespace App\Models\Central;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
@@ -126,5 +127,10 @@ class Tenant extends Model
     public function subscriptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(\App\Models\Central\Subscription::class);
+    }
+
+    public function latestSubscription(): HasOne
+    {
+        return $this->hasOne(\App\Models\Central\Subscription::class)->latestOfMany();
     }
 }

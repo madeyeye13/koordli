@@ -51,6 +51,7 @@
                         <th>Status</th>
                         <th class="krd-col-hide-mobile">Plan</th>
                         <th class="krd-col-hide-mobile">Currency</th>
+                        <th class="krd-col-hide-mobile">Subscription</th>
                         <th class="krd-col-hide-mobile">Created</th>
                         <th>Actions</th>
                     </tr>
@@ -78,6 +79,15 @@
                         </td>
                         <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
                             {{ $tenant->billing_currency }}
+                        </td>
+                        <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
+                            @if($tenant->latestSubscription)
+                                {{ $tenant->latestSubscription->current_period_start?->format('M d, Y') ?? '—' }}
+                                <span style="color:#A8A29E;">→</span>
+                                {{ $tenant->latestSubscription->expires_at?->format('M d, Y') ?? '—' }}
+                            @else
+                                —
+                            @endif
                         </td>
                         <td class="krd-col-hide-mobile" style="font-size:12px;color:#78716C;">
                             {{ $tenant->created_at->format('M d, Y') }}
@@ -116,7 +126,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="krd-empty-state">
                                 <div class="krd-empty-state-icon">🏢</div>
                                 <div class="krd-empty-state-title">No companies found</div>
@@ -160,6 +170,11 @@
             <div style="font-size:12px;color:#78716C;margin-bottom:12px;">
                 {{ $tenant->plan?->name ?? 'No plan' }} · {{ $tenant->billing_currency }} · {{ $tenant->created_at->format('M d, Y') }}
             </div>
+            @if($tenant->latestSubscription)
+            <div style="font-size:11px;color:#78716C;margin-bottom:12px;">
+                Subscription: {{ $tenant->latestSubscription->current_period_start?->format('M d, Y') ?? '—' }} → {{ $tenant->latestSubscription->expires_at?->format('M d, Y') ?? '—' }}
+            </div>
+            @endif
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <button wire:click="viewTenant({{ $tenant->id }})"
                     class="krd-btn krd-btn-secondary krd-btn-sm">View</button>
@@ -236,6 +251,9 @@
             ['label' => 'Country',        'value' => $viewingTenant->country ?? '—'],
             ['label' => 'Owner',          'value' => $owner?->name ?? '—'],
             ['label' => 'Owner Email',    'value' => $owner?->email ?? '—'],
+            ['label' => 'Subscription',   'value' => $viewingTenant->latestSubscription?->status ? ucfirst($viewingTenant->latestSubscription->status) . ' · ' . ucfirst($viewingTenant->latestSubscription->billing_cycle ?? '—') : '—'],
+            ['label' => 'Starts',          'value' => $viewingTenant->latestSubscription?->current_period_start?->format('M d, Y') ?? '—'],
+            ['label' => 'Expires',         'value' => $viewingTenant->latestSubscription?->expires_at?->format('M d, Y') ?? '—'],
             ['label' => 'Created',        'value' => $viewingTenant->created_at->format('M d, Y')],
         ] as $detail)
         <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E7E5E4;gap:12px;">

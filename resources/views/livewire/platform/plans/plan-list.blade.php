@@ -14,6 +14,22 @@
         </a>
     </div>
 
+    <div class="krd-card" style="padding:16px 20px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div>
+            <div style="font-size:13px;font-weight:600;color:#1C1917;">Landing page pricing display</div>
+            <div style="font-size:12px;color:#A8A29E;margin-top:3px;">Choose how pricing is presented for all plans. Each plan's billing options still control checkout.</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            @foreach(['monthly' => 'Monthly', 'annual' => 'Annual', 'both' => 'Both'] as $mode => $label)
+            <button type="button" wire:click="$set('landingPricingMode', '{{ $mode }}')"
+                class="krd-btn krd-btn-sm {{ $landingPricingMode === $mode ? 'krd-btn-primary' : 'krd-btn-secondary' }}">
+                {{ $label }}
+            </button>
+            @endforeach
+            <button type="button" wire:click="saveLandingPricingMode" class="krd-btn krd-btn-secondary krd-btn-sm">Save</button>
+        </div>
+    </div>
+
     @if($plans->isEmpty())
     <div class="krd-card">
         <div class="krd-empty-state">

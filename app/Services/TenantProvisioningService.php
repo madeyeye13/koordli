@@ -31,6 +31,7 @@ class TenantProvisioningService
             $tenant = $this->tenantService->create([
                 ...$data,
                 'industry_profile_id' => $profile?->id,
+                'skip_default_seeding' => true,
             ]);
 
             // 2. Seed default event types / vendor categories / task categories / statuses / labels

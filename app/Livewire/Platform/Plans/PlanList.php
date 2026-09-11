@@ -3,6 +3,7 @@
 namespace App\Livewire\Platform\Plans;
 
 use App\Models\Central\Plan;
+use App\Models\Central\PlatformSetting;
 use App\Traits\WithToast;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -15,6 +16,22 @@ class PlanList extends Component
     public bool $showDeleteModal = false;
     public ?int $deleteId        = null;
     public string $deleteName    = '';
+    public string $landingPricingMode = 'monthly';
+
+    public function mount(): void
+    {
+        $this->landingPricingMode = PlatformSetting::get('landing_pricing_mode', 'monthly');
+    }
+
+    public function saveLandingPricingMode(): void
+    {
+        $this->validate([
+            'landingPricingMode' => 'required|in:monthly,annual,both',
+        ]);
+
+        PlatformSetting::set('landing_pricing_mode', $this->landingPricingMode);
+        $this->toastSuccess('Landing page pricing display updated.');
+    }
 
     public function toggleActive(int $id): void
     {

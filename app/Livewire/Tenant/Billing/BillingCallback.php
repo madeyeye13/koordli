@@ -19,7 +19,6 @@ class BillingCallback extends Component
 
     public function mount(string $gateway): void
     {
-        $this->isNewRegistration = !auth()->check();
         $billing = app(BillingService::class);
 
         try {
@@ -40,13 +39,13 @@ class BillingCallback extends Component
             $cycle     = $meta['cycle'] ?? 'monthly';
             $reference = $result['reference'] ?? (request('reference') ?? request('transaction_id'));
 
-            // Resolve tenant two ways:
-            // - Logged in already → existing tenant upgrading/renewing (normal case).
-            // - Not logged in → brand-new tenant paying mid-registration; use metadata instead.
-            $isNewRegistration = $this->isNewRegistration;
-            $tenant = $isNewRegistration
-                ? Tenant::find($meta['tenant_id'] ?? null)
-                : auth()->user()->tenant;
+            // Payment metadata identifies the tenant whose checkout was verified.
+            // Prefer it even when another tenant is already logged in in this browser.
+            $metadataTenant = Tenant::find($meta['tenant_id'] ?? null);
+            $authenticatedTenant = auth()->user()?->tenant;
+            $this->isNewRegistration = $metadataTenant
+                && (!$authenticatedTenant || $authenticatedTenant->id !== $metadataTenant->id);
+            $tenant = $metadataTenant ?? $authenticatedTenant;
 
             if (!$tenant || !$plan) {
                 $this->status  = 'failed';
@@ -59,7 +58,7 @@ class BillingCallback extends Component
                 $reference, $result['amount'], $result['currency']
             );
 
-            if ($isNewRegistration) {
+            if ($this->isNewRegistration) {
                 $owner = User::withoutGlobalScope('tenant')
                     ->where('tenant_id', $tenant->id)
                     ->orderBy('id')

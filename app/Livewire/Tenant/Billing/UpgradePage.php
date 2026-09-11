@@ -49,17 +49,7 @@ class UpgradePage extends Component
         }
     }
 
-    public function setCycle(string $cycle): void
-    {
-        $this->selectedCycle = $cycle;
-    }
-
-    public function setGateway(string $gateway): void
-    {
-        $this->selectedGateway = $gateway;
-    }
-
-    public function checkout(int $planId): void
+    public function checkout(int $planId, string $cycle = 'monthly', string $gateway = 'paystack'): void
     {
         if (!app(\App\Services\PermissionService::class)->userCan(auth()->user(), 'billing.manage')) {
             $this->toastError('You do not have permission to change the subscription plan.');
@@ -78,11 +68,21 @@ class UpgradePage extends Component
             return;
         }
 
-        $pricing = $billing->getPriceForTenant($plan, $tenant, $this->selectedCycle);
+        if (!in_array($cycle, ['monthly', 'annual'], true)
+            || !in_array($cycle, $plan->allowed_cycles ?? ['monthly', 'annual'], true)) {
+            $this->toastError('That billing cycle is not available for this plan.');
+            $this->processing = false;
+            return;
+        }
 
-        $result = match($this->selectedGateway) {
-            'flutterwave' => $billing->initializeFlutterwavePayment($tenant, $plan, $this->selectedCycle, $pricing),
-            default       => $billing->initializePaystackPayment($tenant, $plan, $this->selectedCycle, $pricing),
+        $this->selectedCycle = $cycle;
+        $this->selectedGateway = $gateway;
+
+        $pricing = $billing->getPriceForTenant($plan, $tenant, $cycle);
+
+        $result = match($gateway) {
+            'flutterwave' => $billing->initializeFlutterwavePayment($tenant, $plan, $cycle, $pricing),
+            default       => $billing->initializePaystackPayment($tenant, $plan, $cycle, $pricing),
         };
 
         if ($result['success']) {

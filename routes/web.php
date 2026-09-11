@@ -340,7 +340,10 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
         Route::get('/reset-password/{token}', \App\Livewire\Tenant\Auth\ResetPassword::class)->name('tenant.password.reset');
     });
 
-    Route::middleware(['auth.tenant', 'tenant.resolve', 'onboarding.check', 'tenant.active'])->group(function () {
+    Route::middleware(['auth.tenant', 'tenant.resolve', 'onboarding.check'])->group(function () {
+        Route::get('/account-suspended', \App\Livewire\Tenant\SuspendedAccount::class)->name('tenant.suspended');
+
+        Route::middleware('tenant.active')->group(function () {
         Route::get('/dashboard', \App\Livewire\Tenant\Dashboard::class)->name('tenant.dashboard');
         Route::get('/onboarding', \App\Livewire\Tenant\Onboarding::class)->name('tenant.onboarding');
 
@@ -545,6 +548,7 @@ Route::middleware(['tenant.byDomain', 'tenant.resolve'])->group(function () {
                 'seen_by'    => $lastMine->seenBy()->values(),
             ])->header('Cache-Control', 'no-store');
         })->name('tenant.conversations.seen-status');
+        });
     });
 
     Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');

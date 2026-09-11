@@ -17,6 +17,25 @@ class EnsureTenantActive
         $tenant = $user->tenant;
         if (!$tenant) return $next($request);
 
+        if ($tenant->status === 'suspended') {
+            view()->share('tenantLocked', true);
+
+            if ($request->isMethod('GET') && in_array($request->route()?->getName(), [
+                'tenant.suspended', 'tenant.logout',
+            ], true)) {
+                return $next($request);
+            }
+
+            return redirect()->route('tenant.suspended');
+        }
+
+        // Platform-admin activation is an explicit access override, even if
+        // an old subscription row is expired or still marked as trial.
+        if ($tenant->status === 'active') {
+            view()->share('tenantLocked', false);
+            return $next($request);
+        }
+
         // Platform-manually-activated tenants with no subscription bypass billing
         if ($tenant->status === 'active' && !$tenant->subscriptions()->exists()) {
             return $next($request);

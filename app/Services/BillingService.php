@@ -343,8 +343,10 @@ class BillingService
 
     // ── Check & Update Expired Subscriptions ──────────────────────
 
-    public function processExpiredSubscriptions(): void
+    public function processExpiredSubscriptions(): array
     {
+        $expiredIds = [];
+
         // Update trial-expired tenants
         $expiredTrials = Subscription::where('status', 'trial')
             ->where('trial_ends_at', '<', now())
@@ -358,6 +360,7 @@ class BillingService
                 'grace_until' => $grace,
             ]);
             $sub->tenant->update(['status' => 'expired']);
+            $expiredIds[] = $sub->id;
         }
 
         // Update active subscriptions past their expiry
@@ -367,8 +370,14 @@ class BillingService
             ->get();
 
         foreach ($expiredActive as $sub) {
-            $sub->update(['status' => 'expired']);
+            $sub->update([
+                'status'      => 'expired',
+                'grace_until' => now()->addDays((int) BillingSetting::get('grace_period_days', 7)),
+            ]);
             $sub->tenant->update(['status' => 'expired']);
+            $expiredIds[] = $sub->id;
         }
+
+        return $expiredIds;
     }
 }

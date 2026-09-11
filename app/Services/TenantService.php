@@ -49,6 +49,7 @@ class TenantService
                 'plan_id'          => $data['plan_id'] ?? null,
                 'billing_currency' => $data['billing_currency'] ?? 'NGN',
                 'country'          => $data['country'] ?? null,
+                'industry_profile_id' => $data['industry_profile_id'] ?? null,
                 'domain_status'    => 'verified', // subdomains under koordli.com are auto-verified, no DNS needed
                 'branding'         => [
                     'primary_color' => '#7C3AED',
@@ -148,9 +149,12 @@ class TenantService
                 $user->assignRole($ownerRole);
             }
 
-            // 5. Seed default tenant data
-            $seeder = new DefaultTenantSeeder();
-            $seeder->run($tenant->id);
+            // 5. Seed default tenant data unless a higher-level provisioning
+            // flow will seed profile-specific defaults after this method.
+            if (!($data['skip_default_seeding'] ?? false)) {
+                $seeder = new DefaultTenantSeeder();
+                $seeder->run($tenant->id);
+            }
 
             // 6. Send welcome email if manually created
             if (!($data['is_self_registered'] ?? false)) {

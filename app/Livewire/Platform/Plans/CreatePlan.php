@@ -18,6 +18,7 @@ class CreatePlan extends Component
     public string $name          = '';
     public string $slug          = '';
     public string $billing_cycle = 'monthly';
+    public array  $allowed_cycles = ['monthly', 'annual'];
     public int    $trial_days    = 0;
     public bool   $is_active     = true;
     public bool   $is_contact_only = false;
@@ -46,6 +47,7 @@ class CreatePlan extends Component
             $this->name           = $plan->name;
             $this->slug           = $plan->slug;
             $this->billing_cycle  = $plan->billing_cycle;
+            $this->allowed_cycles = $plan->allowed_cycles ?? ['monthly', 'annual'];
             $this->trial_days     = $plan->trial_days;
             $this->is_active      = $plan->is_active;
             $this->is_contact_only = $plan->is_contact_only;
@@ -115,6 +117,8 @@ class CreatePlan extends Component
             'name'                     => 'required|string|max:100',
             'slug'                     => 'required|string|max:100',
             'billing_cycle'            => 'required|in:monthly,annual,lifetime,trial',
+            'allowed_cycles'           => 'array|min:1',
+            'allowed_cycles.*'         => 'in:monthly,annual',
             'trial_days'               => 'required|integer|min:0',
             'is_contact_only'          => 'boolean',
             'monthly_price'            => $this->is_contact_only ? 'nullable' : 'required|numeric|min:0',
@@ -135,6 +139,7 @@ class CreatePlan extends Component
             'name'                    => $this->name,
             'slug'                    => $this->slug,
             'billing_cycle'           => $this->billing_cycle,
+            'allowed_cycles'          => array_values(array_unique($this->allowed_cycles)),
             'trial_days'              => $this->trial_days,
             'is_active'               => $this->is_active,
             'is_contact_only'         => $this->is_contact_only,

@@ -106,7 +106,7 @@
                 </div>
 
                 <div style="text-align:center;margin-bottom:24px;">
-                    <a href="{{ url('/rsvp/ticket/' . $qrToken) }}" class="btn">Download Ticket</a>
+                    <a href="{{ $ticketUrl }}" class="btn">Download Ticket</a>
                 </div>
                 @endif
 

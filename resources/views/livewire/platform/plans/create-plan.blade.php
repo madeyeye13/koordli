@@ -61,6 +61,19 @@
                         <input wire:model="trial_days" type="number" min="0" class="krd-input" placeholder="0" />
                     </div>
                 </div>
+                <div class="krd-input-group" style="margin-top:16px;margin-bottom:0;">
+                    <label class="krd-label-text">Available billing options</label>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;">
+                        @foreach(['monthly' => 'Monthly', 'annual' => 'Annual'] as $cycle => $label)
+                        <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#57534E;cursor:pointer;">
+                            <input wire:model="allowed_cycles" type="checkbox" value="{{ $cycle }}" style="accent-color:#7C3AED;">
+                            {{ $label }}
+                        </label>
+                        @endforeach
+                    </div>
+                    @error('allowed_cycles') <span class="krd-input-error-msg">Select at least one billing option.</span> @enderror
+                    <span class="krd-input-hint">Choose one option or let customers choose between monthly and annual billing.</span>
+                </div>
             </div>
 
             {{-- Active toggle --}}

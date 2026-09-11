@@ -17,7 +17,7 @@ class ProcessSubscriptions extends Command
     public function handle(BillingService $billing): void
     {
         // 1. Process expired subscriptions
-        $billing->processExpiredSubscriptions();
+        $expiredIds = $billing->processExpiredSubscriptions();
         $this->info('Processed expired subscriptions.');
 
         // 2. Send 14-day reminders
@@ -25,8 +25,13 @@ class ProcessSubscriptions extends Command
         $remind14 = Subscription::whereIn('status', ['active', 'trial'])
             ->where('reminder_14_sent', false)
             ->where(function ($q) use ($days14) {
-                $q->whereDate('expires_at', now()->addDays($days14)->toDateString())
-                  ->orWhereDate('trial_ends_at', now()->addDays($days14)->toDateString());
+                $now = now();
+                $cutoff = $now->copy()->addDays($days14);
+                $q->where(function ($q) use ($now, $cutoff) {
+                    $q->whereNotNull('expires_at')->whereBetween('expires_at', [$now, $cutoff]);
+                })->orWhere(function ($q) use ($now, $cutoff) {
+                    $q->whereNotNull('trial_ends_at')->whereBetween('trial_ends_at', [$now, $cutoff]);
+                });
             })
             ->with(['tenant.users' => fn($q) => $q->withoutGlobalScope('tenant')->orderBy('id')])
             ->get();
@@ -35,13 +40,14 @@ class ProcessSubscriptions extends Command
             $owner   = $sub->tenant->users->first();
             $expiry  = $sub->expires_at ?? $sub->trial_ends_at;
             if (!$owner || !$expiry) continue;
+            $daysLeft = max(0, (int) now()->diffInDays($expiry, false));
 
             SendSubscriptionReminderJob::dispatch(
                 $owner->email,
                 $sub->tenant->name,
                 $sub->plan?->name ?? 'Your Plan',
                 $expiry->format('D, d M Y'),
-                $days14,
+                $daysLeft,
                 route('tenant.billing.upgrade'),
             );
 
@@ -54,8 +60,13 @@ class ProcessSubscriptions extends Command
         $remind3 = Subscription::whereIn('status', ['active', 'trial'])
             ->where('reminder_3_sent', false)
             ->where(function ($q) use ($days3) {
-                $q->whereDate('expires_at', now()->addDays($days3)->toDateString())
-                  ->orWhereDate('trial_ends_at', now()->addDays($days3)->toDateString());
+                $now = now();
+                $cutoff = $now->copy()->addDays($days3);
+                $q->where(function ($q) use ($now, $cutoff) {
+                    $q->whereNotNull('expires_at')->whereBetween('expires_at', [$now, $cutoff]);
+                })->orWhere(function ($q) use ($now, $cutoff) {
+                    $q->whereNotNull('trial_ends_at')->whereBetween('trial_ends_at', [$now, $cutoff]);
+                });
             })
             ->with(['tenant.users' => fn($q) => $q->withoutGlobalScope('tenant')->orderBy('id')])
             ->get();
@@ -64,13 +75,14 @@ class ProcessSubscriptions extends Command
             $owner  = $sub->tenant->users->first();
             $expiry = $sub->expires_at ?? $sub->trial_ends_at;
             if (!$owner || !$expiry) continue;
+            $daysLeft = max(0, (int) now()->diffInDays($expiry, false));
 
             SendSubscriptionReminderJob::dispatch(
                 $owner->email,
                 $sub->tenant->name,
                 $sub->plan?->name ?? 'Your Plan',
                 $expiry->format('D, d M Y'),
-                $days3,
+                $daysLeft,
                 route('tenant.billing.upgrade'),
             );
 
@@ -79,8 +91,7 @@ class ProcessSubscriptions extends Command
         $this->info("Sent {$remind3->count()} 3-day urgent reminders.");
 
         // 4. Send expired notifications
-        $justExpired = Subscription::where('status', 'expired')
-            ->whereDate('expires_at', today())
+        $justExpired = Subscription::whereIn('id', $expiredIds)
             ->with(['tenant.users' => fn($q) => $q->withoutGlobalScope('tenant')->orderBy('id')])
             ->get();
 

@@ -54,6 +54,19 @@ class TenantList extends Component
         $tenant = Tenant::find($this->suspendId);
         if ($tenant) {
             $tenant->update(['status' => 'suspended']);
+            $owner = TenantUser::withoutGlobalScope('tenant')
+                ->where('tenant_id', $tenant->id)
+                ->orderBy('id')
+                ->first();
+
+            if ($owner?->email) {
+                \App\Jobs\SendTenantSuspendedJob::dispatch(
+                    $owner->email,
+                    $tenant->name,
+                    route('tenant.billing.upgrade'),
+                );
+            }
+
             $this->toastWarning('Company suspended.');
         }
         $this->showSuspendModal = false;
@@ -64,7 +77,24 @@ class TenantList extends Component
     {
         $tenant = Tenant::find($id);
         if ($tenant) {
+            $wasSuspended = $tenant->status === 'suspended';
             $tenant->update(['status' => 'active']);
+
+            if ($wasSuspended) {
+                $owner = TenantUser::withoutGlobalScope('tenant')
+                    ->where('tenant_id', $tenant->id)
+                    ->orderBy('id')
+                    ->first();
+
+                if ($owner?->email) {
+                    \App\Jobs\SendTenantReactivatedJob::dispatch(
+                        $owner->email,
+                        $tenant->name,
+                        route('tenant.dashboard'),
+                    );
+                }
+            }
+
             $this->toastSuccess('Company activated.');
         }
     }
@@ -131,6 +161,7 @@ class TenantList extends Component
     public function render()
     {
         $query = Tenant::query()
+            ->with(['plan', 'latestSubscription'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', '%' . $this->search . '%')
                   ->orWhere('slug', 'like', '%' . $this->search . '%')
@@ -141,7 +172,7 @@ class TenantList extends Component
             ->latest();
 
         $viewingTenant = $this->viewing
-            ? Tenant::with('plan')->find($this->viewing)
+            ? Tenant::with(['plan', 'latestSubscription'])->find($this->viewing)
             : null;
 
         return view('livewire.platform.tenants.tenant-list', [

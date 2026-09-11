@@ -42,6 +42,7 @@ class Register extends Component
 
     // ── Step 3 ────────────────────────────────────────────────
     public ?int $selected_plan_id = null;
+    public string $selectedCycle = 'monthly';
 
     // ── Step 4 (skippable) ────────────────────────────────────
     public string $heard_from  = '';
@@ -124,6 +125,7 @@ class Register extends Component
             'resendCooldown'      => $this->resendCooldown,
             'tenant_id'           => $this->tenant_id,
             'selected_plan_id'    => $this->selected_plan_id,
+            'selectedCycle'       => $this->selectedCycle,
             'heard_from'          => $this->heard_from,
             'team_size'           => $this->team_size,
             'event_types'         => $this->event_types,
@@ -304,7 +306,7 @@ class Register extends Component
     }
 
             // ── Step 3 Select Plan ────────────────────────────────────
-    public function selectPlan(int $planId, string $intent = 'trial'): void
+    public function selectPlan(int $planId, string $intent = 'trial', string $cycle = 'monthly'): void
     {
         $plan = Plan::find($planId);
         if (!$plan || $plan->is_contact_only) return;
@@ -313,6 +315,11 @@ class Register extends Component
         if (!$tenant) return;
 
         $this->selected_plan_id = $planId;
+        if (!in_array($cycle, $plan->allowed_cycles ?? ['monthly', 'annual'], true)) {
+            $this->error = 'That billing option is not available for this plan.';
+            return;
+        }
+        $this->selectedCycle = $cycle;
         $this->error = '';
 
         if ($intent === 'trial') {
@@ -360,7 +367,9 @@ class Register extends Component
 
         if ($intent === 'subscribe') {
             $baseCurrency = \App\Models\Central\BillingSetting::get('base_currency', 'NGN');
-            if (!$plan->getPriceFor($baseCurrency, 'monthly')) {
+            // Annual pricing is calculated from the active monthly base row;
+            // annual price rows are intentionally not stored separately.
+            if (!$plan->getPriceFor($baseCurrency, 'monthly') && (float) $plan->price <= 0) {
                 $this->error = 'This plan is not available for direct subscription yet. Please contact us.';
                 return;
             }
@@ -368,7 +377,7 @@ class Register extends Component
             $tenant->update(['plan_id' => $planId]);
 
             $billing = app(\App\Services\BillingService::class);
-            $pricing = $billing->getPriceForTenant($plan, $tenant, 'monthly');
+            $pricing = $billing->getPriceForTenant($plan, $tenant, $cycle);
 
             // Uses the person's own choice from the Step 3 selector,
             // rather than always deferring to whatever getPriceForTenant()
@@ -377,8 +386,8 @@ class Register extends Component
             $gateway = $this->selectedGateway;
 
             $result = $gateway === 'paystack'
-                ? $billing->initializePaystackPayment($tenant, $plan, 'monthly', $pricing)
-                : $billing->initializeFlutterwavePayment($tenant, $plan, 'monthly', $pricing);
+                ? $billing->initializePaystackPayment($tenant, $plan, $cycle, $pricing)
+                : $billing->initializeFlutterwavePayment($tenant, $plan, $cycle, $pricing);
 
             if (!$result['success']) {
                 $this->error = $result['message'] ?? 'Could not start payment. Please try again.';
@@ -422,6 +431,11 @@ class Register extends Component
             $this->selected_plan_id = $plans->first()->id;
         }
 
+        $selectedPlan = $plans->firstWhere('id', $this->selected_plan_id);
+        if ($selectedPlan && !in_array($this->selectedCycle, $selectedPlan->allowed_cycles ?? ['monthly', 'annual'], true)) {
+            $this->selectedCycle = $selectedPlan->allowed_cycles[0] ?? 'monthly';
+        }
+
         $pricingData = [];
 
         if ($this->step === 3) {
@@ -432,14 +446,10 @@ class Register extends Component
             foreach ($plans as $plan) {
                 if ($plan->is_contact_only) continue;
 
-                $monthlyPrice = $plan->getPriceFor($baseCurrency, 'monthly');
-                if (!$monthlyPrice) continue;
-
-                $amount = $currency !== $baseCurrency
-                    ? $billing->convertAmount((float) $monthlyPrice->amount, $baseCurrency, $currency)
-                    : (float) $monthlyPrice->amount;
-
-                $pricingData[$plan->id] = ['amount' => $amount, 'currency' => $currency];
+                foreach (['monthly', 'annual'] as $cycle) {
+                    if (!in_array($cycle, $plan->allowed_cycles ?? ['monthly', 'annual'], true)) continue;
+                    $pricingData[$plan->id][$cycle] = $billing->getPriceForTenant($plan, $this->tenant_id ? Tenant::find($this->tenant_id) : new Tenant(['billing_currency' => $currency]), $cycle);
+                }
             }
         }
 

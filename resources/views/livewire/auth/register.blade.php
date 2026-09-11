@@ -141,6 +141,9 @@
             @if($step === 1)
 
             <div style="margin-bottom: 28px;">
+                <a href="{{ route('landing') }}" wire:navigate style="display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;color:#78716C;text-decoration:none;font-size:13px;font-weight:500;">
+                    <span aria-hidden="true">←</span> Back
+                </a>
                 <h2 style="font-size: 22px; font-weight: 600; color: #1C1917; letter-spacing: -0.01em; margin-bottom: 6px;">Create your account</h2>
                 <p style="font-size: 13px; color: #78716C;">Get started with a 30-day free trial.</p>
             </div>
@@ -483,7 +486,13 @@
 
             <div style="display:flex;flex-direction:column;gap:12px;">
                 @foreach($plans as $plan)
+                @php
+                    $monthlyPricing = $pricingData[$plan->id]['monthly'] ?? null;
+                    $annualPricing = $pricingData[$plan->id]['annual'] ?? null;
+                    $initialCycle = $monthlyPricing ? 'monthly' : 'annual';
+                @endphp
                 <div
+                    x-data="{ cycle: '{{ $initialCycle }}' }"
                     style="
                         border: 2px solid {{ $selected_plan_id === $plan->id ? '#7C3AED' : ($plan->is_featured ? '#DDD6FE' : '#E7E5E4') }};
                         border-radius: 8px;
@@ -506,12 +515,26 @@
                         <div style="font-size:13px;font-weight:600;color:#7C3AED;">Contact us</div>
                         @elseif(isset($pricingData[$plan->id]))
                         <div style="font-size:13px;font-weight:600;color:#1C1917;">
-                            {{ \App\Helpers\CurrencyHelper::symbol($pricingData[$plan->id]['currency']) }}{{ number_format($pricingData[$plan->id]['amount'], 2) }}/mo
+                            @if($monthlyPricing)
+                            <span x-show="cycle === 'monthly'">{{ \App\Helpers\CurrencyHelper::symbol($monthlyPricing['currency']) }}{{ number_format($monthlyPricing['amount'], 2) }}/mo</span>
+                            @endif
+                            @if($annualPricing)
+                            <span x-show="cycle === 'annual'">{{ \App\Helpers\CurrencyHelper::symbol($annualPricing['currency']) }}{{ number_format($annualPricing['amount'], 2) }}/yr</span>
+                            @endif
                         </div>
                         @endif
                     </div>
 
                     @if(!$plan->is_contact_only)
+                    @if(count($plan->allowed_cycles ?? ['monthly', 'annual']) > 1)
+                    <div style="display:flex;gap:6px;margin-bottom:10px;" x-on:click.stop>
+                        @foreach(['monthly' => 'Monthly', 'annual' => 'Annual'] as $cycle => $label)
+                        @if(in_array($cycle, $plan->allowed_cycles ?? ['monthly', 'annual'], true))
+                        <button type="button" x-on:click="cycle = '{{ $cycle }}'" class="krd-btn krd-btn-sm" :class="cycle === '{{ $cycle }}' ? 'krd-btn-primary' : 'krd-btn-secondary'">{{ $label }}</button>
+                        @endif
+                        @endforeach
+                    </div>
+                    @endif
                     <div style="display:flex;gap:8px;flex-wrap:wrap;" x-on:click.stop>
                         @if($plan->trial_days > 0)
                         <button
@@ -529,13 +552,12 @@
                         @if(isset($pricingData[$plan->id]))
                         <button
                             type="button"
-                            wire:click="selectPlan({{ $plan->id }}, 'subscribe')"
+                            x-on:click="$wire.selectPlan({{ $plan->id }}, 'subscribe', cycle)"
                             wire:loading.attr="disabled"
-                            wire:target="selectPlan({{ $plan->id }}, 'subscribe')"
                             class="krd-btn krd-btn-sm krd-btn-primary"
                         >
-                            <span wire:loading.remove wire:target="selectPlan({{ $plan->id }}, 'subscribe')">Subscribe now</span>
-                            <span wire:loading wire:target="selectPlan({{ $plan->id }}, 'subscribe')">Redirecting...</span>
+                            <span wire:loading.remove>Subscribe now</span>
+                            <span wire:loading>Redirecting...</span>
                         </button>
                         @endif
                     </div>

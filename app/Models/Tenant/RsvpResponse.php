@@ -79,6 +79,14 @@ class RsvpResponse extends Model
         return rtrim($base, '/') . '/rsvp/' . $this->rsvpForm->slug . '/edit/' . $this->edit_token;
     }
 
+        public function ticketUrl(): string
+    {
+        $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
+        $base = $tenant ? $tenant->resolvePublicBaseUrl() : config('app.url');
+
+        return rtrim($base, '/') . '/rsvp/ticket/' . $this->qr_token;
+    }
+
     public function generateQrToken(): string
     {
         return 'RSVP-' . strtoupper(Str::random(10));

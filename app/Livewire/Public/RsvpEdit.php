@@ -192,6 +192,7 @@ class RsvpEdit extends Component
                 $newStatus,
                 $qrToken ?? '',
                 $this->response->editUrl(),
+                $this->response->ticketUrl(),
                 $newStatus === 'confirmed' ? count($this->companions) : 0,
                 $__tenant?->name ?? 'Koordli',
                 $__tenant ? app(\App\Services\FeatureGateService::class)->canAccess($__tenant, 'white_label') : false,

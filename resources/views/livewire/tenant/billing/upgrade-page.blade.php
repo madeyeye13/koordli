@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ cycle: '{{ $selectedCycle }}', gateway: '{{ $selectedGateway }}' }">
     {{-- Header --}}
     <div style="margin-bottom:28px;">
         <div class="krd-label" style="margin-bottom:4px;">Billing</div>
@@ -27,24 +27,17 @@
     @endif
 
     {{-- Billing cycle toggle — Alpine owned, instant --}}
-    <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:28px;"
-        x-data="{
-            cycle: '{{ $selectedCycle }}',
-            setCycle(val) {
-                this.cycle = val;
-                $wire.set('selectedCycle', val);
-            }
-        }">
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:28px;">
         <div style="display:flex;background:#F5F5F4;border-radius:8px;padding:4px;gap:4px;">
             <button type="button"
-                x-on:click="setCycle('monthly')"
+                x-on:click="cycle = 'monthly'"
                 :style="cycle === 'monthly'
                     ? 'padding:8px 20px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#7C3AED;color:#fff;'
                     : 'padding:8px 20px;border-radius:6px;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:#78716C;'">
                 Monthly
             </button>
             <button type="button"
-                x-on:click="setCycle('annual')"
+                x-on:click="cycle = 'annual'"
                 :style="cycle === 'annual'
                     ? 'padding:8px 20px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#7C3AED;color:#fff;'
                     : 'padding:8px 20px;border-radius:6px;border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;background:transparent;color:#78716C;'">
@@ -59,18 +52,11 @@
 
     {{-- Gateway selector --}}
     @if(count($enabled) > 1)
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px;"
-        x-data="{
-            gateway: '{{ $selectedGateway }}',
-            setGateway(val) {
-                this.gateway = val;
-                $wire.set('selectedGateway', val);
-            }
-        }">
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px;">
         <span style="font-size:12px;color:#A8A29E;">Pay with:</span>
         @foreach($enabled as $gw)
         <button type="button"
-            x-on:click="setGateway('{{ $gw }}')"
+            x-on:click="gateway = '{{ $gw }}'"
             :style="gateway === '{{ $gw }}'
                 ? 'padding:6px 14px;border-radius:6px;border:1.5px solid #7C3AED;background:#7C3AED;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;'
                 : 'padding:6px 14px;border-radius:6px;border:1.5px solid #E7E5E4;background:transparent;color:#78716C;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;'">
@@ -84,10 +70,9 @@
     <div class="krd-grid-3" style="gap:16px;">
         @foreach($plans as $plan)
         @php
-            $pricing = $pricingData[$plan->id][$selectedCycle] ?? null;
-            $canSelect = $selectedCycle === 'monthly' ? $plan->allowsMonthly() : $plan->allowsAnnual();
+            $monthlyPricing = $pricingData[$plan->id]['monthly'] ?? null;
+            $annualPricing = $pricingData[$plan->id]['annual'] ?? null;
         @endphp
-        @if(!$canSelect) @continue @endif
 
         <div class="krd-card" style="padding:24px;position:relative;{{ $plan->is_featured ? 'border:2px solid #7C3AED;' : '' }}">
             @if($plan->is_featured)
@@ -99,56 +84,60 @@
             <div style="margin-top:{{ $plan->is_featured ? '16px' : '0' }};">
                 <div style="font-size:18px;font-weight:700;color:#1C1917;margin-bottom:4px;">{{ $plan->name }}</div>
 
-                @if($pricing)
+                @if($monthlyPricing || $annualPricing)
                 <div style="margin-bottom:16px;">
-                    <div style="font-size:28px;font-weight:700;color:#7C3AED;line-height:1;">
-                        {{ \App\Helpers\CurrencyHelper::symbol($pricing['currency']) }}{{ number_format($pricing['amount_with_charges'], 0) }}
-                    </div>
-                    <div style="font-size:11px;color:#A8A29E;margin-top:3px;">
-                        per {{ $selectedCycle === 'annual' ? 'year' : 'month' }} · {{ $pricing['currency'] }}
-                        @if($pricing['fee_absorbed'] > 0)
-                        · <span style="color:#10B981;">gateway fees included</span>
+                    @foreach(['monthly' => $monthlyPricing, 'annual' => $annualPricing] as $cycleName => $cyclePricing)
+                    @if($cyclePricing)
+                    <div x-show="cycle === '{{ $cycleName }}'" @if($cycleName === 'annual') x-cloak @endif>
+                        <div style="font-size:28px;font-weight:700;color:#7C3AED;line-height:1;">
+                            {{ \App\Helpers\CurrencyHelper::symbol($cyclePricing['currency']) }}{{ number_format($cyclePricing['amount_with_charges'], 0) }}
+                        </div>
+                        <div style="font-size:11px;color:#A8A29E;margin-top:3px;">
+                            per {{ $cycleName === 'annual' ? 'year' : 'month' }} · {{ $cyclePricing['currency'] }}
+                            @if($cyclePricing['fee_absorbed'] > 0) · <span style="color:#10B981;">gateway fees included</span>@endif
+                        </div>
+                        @if($cycleName === 'annual' && $plan->annual_discount_percent > 0)
+                        <div style="font-size:11px;color:#10B981;margin-top:3px;font-weight:500;">
+                            Save {{ $plan->annual_discount_percent }}% vs monthly
+                        </div>
                         @endif
                     </div>
-                    @if($selectedCycle === 'annual' && $plan->annual_discount_percent > 0)
-                    <div style="font-size:11px;color:#10B981;margin-top:3px;font-weight:500;">
-                        Save {{ $plan->annual_discount_percent }}% vs monthly
-                    </div>
                     @endif
-                    @if($pricing['currency'] !== 'NGN')
-                    <div style="font-size:10px;color:#A8A29E;margin-top:2px;">
-                        ≈ {{ \App\Helpers\CurrencyHelper::symbol('NGN') }}{{ number_format($pricing['base_amount'], 0) }} NGN
-                        (rate: 1 NGN = {{ number_format($pricing['exchange_rate'], 4) }} {{ $pricing['currency'] }})
-                    </div>
-                    @endif
+                    @endforeach
                 </div>
                 @endif
 
                 <div class="krd-divider" style="margin:14px 0;"></div>
 
-                @if(!empty($plan->limits))
+                @if(!empty($plan->limits) || !empty($plan->features))
                 <div style="margin-bottom:14px;">
-                    @foreach($plan->limits as $key => $val)
+                    @foreach(array_merge($plan->limits ?? [], $plan->features ?? []) as $key => $val)
+                    @if($val === 'false' || $val === false || $val === null || $val === 0) @continue @endif
                     <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid #F5F5F4;">
                         <span style="color:#78716C;">{{ str_replace('_', ' ', ucwords($key, '_')) }}</span>
-                        <span style="font-weight:600;color:#1C1917;">{{ $val == -1 ? '∞' : $val }}</span>
+                        <span style="font-weight:600;color:#1C1917;">{{ $val === 'true' || $val === true ? 'Included' : ($val === 'unlimited' || $val == -1 ? '∞' : $val) }}</span>
                     </div>
                     @endforeach
                 </div>
                 @endif
 
-                @if($pricing)
-                <button wire:click="checkout({{ $plan->id }})" wire:loading.attr="disabled"
+                @if($monthlyPricing || $annualPricing)
+                <button x-show="cycle === 'monthly' ? {{ $monthlyPricing ? 'true' : 'false' }} : {{ $annualPricing ? 'true' : 'false' }}"
+                    x-on:click="$wire.checkout({{ $plan->id }}, cycle, gateway)" wire:loading.attr="disabled"
                     class="krd-btn krd-btn-primary"
                     style="width:100%;padding:12px;font-size:14px;font-weight:600;">
-                    <span wire:loading.remove wire:target="checkout({{ $plan->id }})">
+                    <span wire:loading.remove>
                         Get {{ $plan->name }} →
                     </span>
-                    <span wire:loading wire:target="checkout({{ $plan->id }})">Processing...</span>
+                    <span wire:loading>Processing...</span>
                 </button>
+                <div x-show="cycle === 'monthly' ? {{ $monthlyPricing ? 'false' : 'true' }} : {{ $annualPricing ? 'false' : 'true' }}"
+                    x-cloak style="font-size:12px;color:#A8A29E;text-align:center;padding:10px 0;">
+                    Not available for the selected billing cycle
+                </div>
                 @else
                 <div style="font-size:12px;color:#A8A29E;text-align:center;padding:10px 0;">
-                    Not available for {{ $selectedCycle }} billing
+                    Not available for the selected billing cycle
                 </div>
                 @endif
             </div>

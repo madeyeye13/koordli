@@ -69,6 +69,22 @@
                 </div>
                 @endif
 
+                @if($isEdit)
+                <div class="krd-card" style="padding:16px 20px;margin-bottom:16px;background:#FAFAF9;">
+                    <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:10px;">Current Subscription</div>
+                    @if($subscription)
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;font-size:12px;">
+                        <div><span style="color:#78716C;display:block;">Status</span><strong>{{ ucfirst($subscription->status) }}</strong></div>
+                        <div><span style="color:#78716C;display:block;">Billing cycle</span><strong>{{ ucfirst($subscription->billing_cycle ?? '—') }}</strong></div>
+                        <div><span style="color:#78716C;display:block;">Starts</span><strong>{{ $subscription->current_period_start?->format('M d, Y') ?? '—' }}</strong></div>
+                        <div><span style="color:#78716C;display:block;">Expires</span><strong>{{ $subscription->expires_at?->format('M d, Y') ?? '—' }}</strong></div>
+                    </div>
+                    @else
+                    <div style="font-size:12px;color:#78716C;">No subscription record.</div>
+                    @endif
+                </div>
+                @endif
+
                 <div class="krd-divider"></div>
 
                 {{-- Status (edit only) --}}
@@ -76,8 +92,9 @@
                 <div class="krd-input-group"
                     x-data="{
                         open: false,
-                        label: '{{ ucfirst($status) }}',
-                        pick(val, label) { this.label = label; this.open = false; $wire.set('status', val); }
+                        selected: @entangle('status'),
+                        labels: @js(['trial' => 'Trial', 'active' => 'Active', 'suspended' => 'Suspended', 'cancelled' => 'Cancelled']),
+                        pick(val) { this.selected = val; this.open = false; $wire.set('status', val); }
                     }"
                     x-on:click.outside="open = false"
                     style="position:relative;">
@@ -86,13 +103,13 @@
                         x-on:click="open = !open"
                         x-bind:class="open ? 'krd-dropdown-trigger open' : 'krd-dropdown-trigger'"
                         style="width:100%;">
-                        <span x-text="label"></span>
+                        <span x-text="labels[selected] ?? 'Select status'"></span>
                         <svg class="krd-dropdown-chevron" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </button>
                     <div x-show="open" x-cloak class="krd-dropdown-menu">
                         @foreach(['trial' => 'Trial', 'active' => 'Active', 'suspended' => 'Suspended', 'cancelled' => 'Cancelled'] as $val => $label)
                         <div class="krd-dropdown-option {{ $status === $val ? 'selected' : '' }}"
-                            x-on:click="pick('{{ $val }}', '{{ $label }}')">
+                            x-on:click="pick('{{ $val }}')">
                             {{ $label }}
                         </div>
                         @endforeach
