@@ -30,8 +30,21 @@ class LandingPage extends Component
             $this->billingCycle = 'annual';
         }
 
-        // Detect visitor's likely currency the same way registration does
-        $country  = request()->header('CF-IPCountry') ?? 'NG';
+        // Detect visitor's likely currency — same real IP-geolocation
+        // method Register.php already uses. The Cloudflare-header
+        // approach this used to rely on doesn't work: our DNS is
+        // deliberately "DNS only" (not proxied), required for Traefik's
+        // ACME wildcard certificate issuance, so CF-IPCountry is never
+        // actually sent.
+        $country = 'NG';
+        try {
+            $location = \Stevebauman\Location\Facades\Location::get(request()->ip());
+            if ($location && $location->countryCode) {
+                $country = strtoupper($location->countryCode);
+            }
+        } catch (\Exception $e) {
+            // Fail silently — falls back to NG, matching Register.php's own pattern
+        }
         $currency = \App\Helpers\CurrencyHelper::fromCountry($country);
 
         $billing = app(BillingService::class);
