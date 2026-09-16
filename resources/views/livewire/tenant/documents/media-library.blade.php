@@ -10,7 +10,7 @@
     </div>
 
     {{-- Event Logo slot --}}
-    <div class="krd-card" style="padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;">
+    <div class="krd-card media-event-logo-card" style="padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;">
         <div style="width:64px;height:64px;border-radius:8px;background:#F5F5F4;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
             @if($logo)
                 <img src="{{ \Illuminate\Support\Facades\Storage::disk($logo->disk)->url($logo->path) }}" style="width:100%;height:100%;object-fit:cover;">
@@ -18,12 +18,12 @@
                 <span style="font-size:11px;color:#A8A29E;">No logo</span>
             @endif
         </div>
-        <div style="flex:1;">
+        <div class="media-event-logo-copy" style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:#1C1917;">Event Logo</div>
             <div style="font-size:11px;color:#78716C;">Optional — one designated image for this event, separate from the file gallery below.</div>
         </div>
         @if($canUpload)
-        <div style="display:flex;gap:8px;">
+        <div class="media-event-logo-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" onclick="document.getElementById('krd-logo-input').click()" class="krd-btn krd-btn-secondary krd-btn-sm">
                 {{ $logo ? 'Replace' : 'Upload' }}
             </button>
@@ -44,7 +44,7 @@
     @endif
 
     {{-- Toolbar --}}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+    <div class="media-toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
         @if($currentFolder)
         <button wire:click="openFolder(null)" class="krd-btn krd-btn-ghost krd-btn-sm">← All Files</button>
         <span style="font-size:13px;font-weight:600;color:#1C1917;">{{ $currentFolder->name }}</span>
@@ -70,7 +70,7 @@
         <template x-if="!selectMode">
         <div>
         @if($canUpload)
-        <div style="margin-left:auto;display:flex;gap:8px;">
+            <div class="media-toolbar-actions" style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
             <button type="button" onclick="document.getElementById('krd-file-input').click()" class="krd-btn krd-btn-primary krd-btn-sm">Upload Files</button>
             <input type="file" id="krd-file-input" multiple style="display:none;"
                 onchange="window.KoordliUploader.enqueue(this.files, {{ $event->id }}, {{ $currentFolderId ?? 'null' }}, 'file')">
@@ -85,7 +85,7 @@
 
     {{-- Folders (root level only) --}}
     @if($folders->isNotEmpty())
-    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;margin-bottom:20px;">
+    <div class="media-folder-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:12px;margin-bottom:20px;">
         @foreach($folders as $folder)
         <div class="krd-card" style="padding:14px;cursor:pointer;text-align:center;" wire:click="openFolder({{ $folder->id }})">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#7C3AED" stroke-width="1.5" style="margin-bottom:6px;">
@@ -112,7 +112,7 @@
             <div style="font-size:13px;">No files here yet. Upload something, or paste an external link to save it as a reference.</div>
         </div>
     @else
-    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));gap:12px;">
+    <div class="media-file-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));gap:12px;">
         @php $mediaIndex = 0; @endphp
         @foreach($documents as $doc)
         <div class="krd-card" style="padding:12px;position:relative;"
@@ -417,3 +417,42 @@
         };
     }
 </script>
+
+<style>
+@media (max-width: 640px) {
+    .media-event-logo-card {
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 12px !important;
+        padding: 16px !important;
+    }
+
+    .media-event-logo-copy {
+        flex-basis: calc(100% - 80px);
+    }
+
+    .media-event-logo-actions {
+        width: 100%;
+        padding-left: 76px;
+    }
+
+    .media-toolbar {
+        align-items: stretch !important;
+    }
+
+    .media-toolbar-actions {
+        width: 100%;
+        margin-left: 0 !important;
+    }
+
+    .media-toolbar-actions .krd-btn {
+        flex: 1 1 auto;
+    }
+
+    .media-folder-grid,
+    .media-file-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+}
+</style>

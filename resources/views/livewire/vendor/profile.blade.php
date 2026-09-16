@@ -4,7 +4,7 @@
         <p style="font-size: 13px; color: #78716C; margin-top: 4px;">Update your contact and business information.</p>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
+    <div class="vendor-profile-layout" style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
 
         {{-- Left — Form --}}
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -70,7 +70,7 @@
         </div>
 
         {{-- Right — Quick Access + Tips --}}
-        <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
+        <div class="vendor-profile-tips" style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
             @if($showQuickAccess)
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:4px;">Quick Access Link</div>

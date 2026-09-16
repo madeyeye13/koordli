@@ -41,6 +41,11 @@ class RsvpForm extends Model
         return $this->belongsTo(Event::class);
     }
 
+    public function publicDomain(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Central\PublicDomain::class);
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -94,9 +99,6 @@ class RsvpForm extends Model
      */
     public function publicUrl(): string
     {
-        $tenant = \App\Models\Central\Tenant::find($this->tenant_id);
-        $base = $tenant ? $tenant->resolvePublicBaseUrl() : config('app.url');
-
-        return rtrim($base, '/') . '/rsvp/' . $this->slug;
+        return app(\App\Services\PublicDomainService::class)->publicUrl($this);
     }
 }

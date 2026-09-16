@@ -1,16 +1,17 @@
 <div x-data="{ showDeleteModal: false, deleteId: null, showDeactivateModal: false, deactivateUserId: null, deactivateIsActive: false, showRoleModal: false, roleUserId: null, roleLabel: '', showInviteForm: false }">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div class="platform-staff-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
         <div>
             <div class="krd-label" style="margin-bottom:4px;">Platform</div>
             <h2 class="krd-heading-3">Staff & Roles</h2>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <a href="{{ route('platform.staff.roles') }}" wire:navigate class="krd-btn krd-btn-secondary">Manage Roles</a>
             <button type="button" x-on:click="showInviteForm = true" class="krd-btn krd-btn-primary">+ Invite Staff</button>
         </div>
     </div>
 
-    <div class="krd-card" style="padding:0;overflow:hidden;">
+    <div class="krd-card platform-staff-table-card" style="padding:0;overflow:hidden;">
+        <div class="platform-staff-desktop-list">
         <table class="krd-table">
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
@@ -46,6 +47,40 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
+
+        <div class="platform-staff-mobile-list">
+            @foreach($staff as $user)
+            <div style="padding:14px 16px;border-bottom:1px solid #E7E5E4;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div style="min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:#1C1917;line-height:1.4;">{{ $user->name }}</div>
+                        <div style="font-size:12px;color:#78716C;overflow-wrap:anywhere;margin-top:2px;">{{ $user->email }}</div>
+                    </div>
+                    @if(!$user->invite_accepted_at && $user->invited_at)
+                    <span class="krd-badge krd-badge-amber" style="flex-shrink:0;">Invited</span>
+                    @elseif($user->is_active)
+                    <span class="krd-badge krd-badge-green" style="flex-shrink:0;">Active</span>
+                    @else
+                    <span class="krd-badge krd-badge-red" style="flex-shrink:0;">Deactivated</span>
+                    @endif
+                </div>
+                <div style="margin-bottom:10px;">
+                    <span class="krd-badge krd-badge-stone">{{ str_replace('platform_', '', $user->roles->first()?->name ?? '—') }}</span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button type="button" x-on:click="showRoleModal = true; roleUserId = {{ $user->id }}; roleLabel = '{{ str_replace("'", "\\'", $user->roles->first()?->name ?? 'platform_support_agent') }}'; $wire.set('editingUserId', {{ $user->id }}); $wire.set('editingRole', '{{ str_replace("'", "\\'", $user->roles->first()?->name ?? 'platform_support_agent') }}')" class="krd-btn krd-btn-secondary krd-btn-sm">Change Role</button>
+                    <button type="button" wire:click="openEmailEdit({{ $user->id }})" class="krd-btn krd-btn-secondary krd-btn-sm">Edit Email</button>
+                    <button type="button" x-on:click="showDeactivateModal = true; deactivateUserId = {{ $user->id }}; deactivateIsActive = {{ $user->is_active ? 'true' : 'false' }}" class="krd-btn krd-btn-sm" style="background:{{ $user->is_active ? '#FEE2E2' : '#D1FAE5' }};color:{{ $user->is_active ? '#DC2626' : '#059669' }};">
+                        {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                    </button>
+                    <button type="button" x-on:click="showDeleteModal = true; deleteId = {{ $user->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;" title="Delete staff member" aria-label="Delete staff member">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            @endforeach
+        </div>
     </div>
 
     <div x-show="showInviteForm" x-cloak

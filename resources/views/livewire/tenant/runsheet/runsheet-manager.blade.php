@@ -1,4 +1,4 @@
-<div x-data="{ activeTab: '{{ $activeTab }}' }" wire:poll.60s>
+    <div x-data="{ activeTab: '{{ $activeTab }}', showItemForm: @entangle('showItemForm').live, showDeleteModal: @entangle('showDeleteModal').live }" wire:poll.60s>
 
 
     @if($runsheet && $runsheet->date && $runsheet->date->isToday() && $runsheet->status === 'active')
@@ -40,7 +40,13 @@
             @if($runsheet)
             <div style="display:flex;gap:8px;">
                 @if($runsheet->items->isNotEmpty())
-                <button wire:click="downloadCallSheet" class="krd-btn krd-btn-secondary">⬇ Call Sheet</button>
+                <button wire:click="downloadCallSheet"
+                    wire:loading.attr="disabled"
+                    wire:target="downloadCallSheet"
+                    class="krd-btn krd-btn-secondary">
+                    <span wire:loading.remove wire:target="downloadCallSheet">⬇ Call Sheet</span>
+                    <span wire:loading wire:target="downloadCallSheet">Generating...</span>
+                </button>
                 @endif
                 <button wire:click="showAddItem" class="krd-btn krd-btn-primary">
                     + Add Item
@@ -117,8 +123,7 @@
                 @else
 
                 {{-- Item Form — always shown when open, regardless of item count --}}
-                @if($showItemForm)
-                <div class="krd-card" style="padding:20px;margin-bottom:16px;border:2px solid #7C3AED;">
+                <div x-show="showItemForm" x-cloak class="krd-card" style="padding:20px;margin-bottom:16px;border:2px solid #7C3AED;">
                     <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:16px;">
                         {{ $editItemId ? 'Edit Item' : 'New Item' }}
                     </div>
@@ -269,10 +274,9 @@
                             <span wire:loading.remove wire:target="saveItem">{{ $editItemId ? 'Update' : 'Add Item' }}</span>
                             <span wire:loading wire:target="saveItem">Saving...</span>
                         </button>
-                        <button wire:click="$set('showItemForm', false)" type="button" class="krd-btn krd-btn-ghost">Cancel</button>
+                        <button x-on:click="showItemForm = false; $wire.set('showItemForm', false)" type="button" class="krd-btn krd-btn-ghost">Cancel</button>
                     </div>
                 </div>
-                @endif
 
                 {{-- Empty state --}}
                 @if($runsheet->items->isEmpty() && !$showItemForm)
@@ -297,9 +301,9 @@
                             default                                    => '#D6D3D1',
                         };
                     @endphp
-                    <div style="display:flex;gap:0;position:relative;">
+                    <div class="runsheet-timeline-row" style="display:flex;gap:0;position:relative;">
                         {{-- Time column --}}
-                        <div style="width:72px;flex-shrink:0;text-align:right;padding-right:16px;padding-top:14px;">
+                        <div class="runsheet-time-column" style="width:72px;flex-shrink:0;text-align:right;padding-right:16px;padding-top:14px;">
                             @if($item->start_time)
                             <div style="font-size:12px;font-weight:600;color:#57534E;">
                                 {{ $item->start_time->format('g:i') }}
@@ -313,7 +317,7 @@
                         </div>
 
                         {{-- Timeline line + dot --}}
-                        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:20px;">
+                        <div class="runsheet-timeline-rail" style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:20px;">
                             <div style="width:12px;height:12px;border-radius:50%;background:{{ $itemStatusColor }};border:2px solid #fff;box-shadow:0 0 0 2px {{ $itemStatusColor }};flex-shrink:0;margin-top:18px;z-index:1;"></div>
                             @if(!$loop->last)
                             <div style="width:2px;flex:1;background:#E7E5E4;min-height:20px;margin-top:4px;"></div>
@@ -321,8 +325,8 @@
                         </div>
 
                         {{-- Item card --}}
-                        <div style="flex:1;padding:10px 0 20px 16px;">
-                            <div class="krd-card" style="padding:14px;">
+                        <div class="runsheet-item-wrapper" style="flex:1;padding:10px 0 20px 16px;">
+                            <div class="krd-card runsheet-item-card" style="padding:14px;">
                                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                                     <div style="flex:1;min-width:0;">
                                         <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:4px;">
@@ -354,7 +358,7 @@
                                         </div>
                                     </div>
 
-                                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+                                    <div class="runsheet-item-actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
                                         {{-- Status quick-change --}}
                                         <div x-data="{ open: false }" style="position:relative;">
                                             <button type="button"
@@ -382,8 +386,10 @@
                                         <button wire:click="moveDown({{ $item->id }})"
                                             class="krd-btn krd-btn-ghost krd-btn-sm" style="padding:4px 6px;font-size:10px;">↓</button>
                                         <button wire:click="editItem({{ $item->id }})"
+                                            x-on:click="showItemForm = true"
                                             class="krd-btn krd-btn-secondary krd-btn-sm">Edit</button>
                                         <button wire:click="confirmDelete({{ $item->id }})"
+                                            x-on:click="showDeleteModal = true"
                                             class="krd-btn krd-btn-sm"
                                             style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -605,26 +611,63 @@
     @endif
 
     {{-- Delete Modal --}}
-    @if($showDeleteModal)
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:8px;padding:24px;max-width:400px;width:100%;">
+    <template x-teleport="body">
+    <div x-show="showDeleteModal" x-cloak style="position:fixed;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:60;padding:20px;">
+        <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:8px;padding:24px;max-width:400px;width:calc(100% - 32px);box-shadow:0 20px 50px rgba(28,25,23,0.2);">
             <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Remove Item?</h3>
             <p style="font-size:13px;color:#78716C;margin-bottom:24px;line-height:1.6;">
                 This will permanently remove this runsheet item.
             </p>
             <div style="display:flex;gap:10px;">
                 <button wire:click="deleteItem" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
-                <button wire:click="$set('showDeleteModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button type="button" x-on:click="showDeleteModal = false; $wire.set('showDeleteModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>
-    @endif
-
+    </template>
 </div>
 
 <style>
 @media (max-width: 768px) {
     #runsheet-main-grid  { grid-template-columns: 1fr !important; }
     #runsheet-help-panel { position: static !important; }
+
+    .runsheet-timeline-row {
+        align-items: stretch;
+    }
+
+    .runsheet-time-column {
+        width: 48px !important;
+        padding-right: 8px !important;
+        padding-top: 12px !important;
+    }
+
+    .runsheet-time-column div:first-child {
+        font-size: 11px !important;
+    }
+
+    .runsheet-timeline-rail {
+        width: 16px !important;
+    }
+
+    .runsheet-item-wrapper {
+        min-width: 0;
+        padding: 6px 0 14px 10px !important;
+    }
+
+    .runsheet-item-card {
+        padding: 12px !important;
+    }
+
+    .runsheet-item-actions {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: 4px;
+    }
+
+    .runsheet-item-actions .krd-btn,
+    .runsheet-item-actions .krd-badge {
+        min-height: 30px;
+    }
 }
 </style>

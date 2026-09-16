@@ -23,7 +23,8 @@
         </div>
     </div>
 
-    <div class="krd-card" style="padding:0;overflow:hidden;">
+    <div class="krd-card platform-blog-table-card" style="padding:0;overflow:hidden;">
+        <div class="platform-blog-table-wrap platform-blog-desktop-list">
         <table class="krd-table">
             <thead><tr><th>Title</th><th>Categories</th><th>Status</th><th>Published</th><th>Actions</th></tr></thead>
             <tbody>
@@ -50,6 +51,36 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
+
+        <div class="platform-blog-mobile-list">
+            @forelse($posts as $post)
+            <div style="padding:14px 16px;border-bottom:1px solid #E7E5E4;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:600;color:#1C1917;line-height:1.4;min-width:0;">{{ $post->title }}</div>
+                    <span class="krd-badge {{ $post->status === 'published' ? 'krd-badge-green' : 'krd-badge-stone' }}" style="flex-shrink:0;">
+                        {{ ucfirst($post->status) }}
+                    </span>
+                </div>
+                <div style="font-size:12px;color:#78716C;line-height:1.5;margin-bottom:10px;">
+                    {{ $post->categories->pluck('name')->join(', ') ?: 'Uncategorized' }}
+                    <span style="color:#A8A29E;"> · {{ $post->published_at?->format('M d, Y') ?? 'Not published' }}</span>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <a href="{{ route('platform.blog.edit', $post->id) }}" wire:navigate class="krd-btn krd-btn-secondary krd-btn-sm">Edit</a>
+                    <button wire:click="togglePublish({{ $post->id }})" class="krd-btn krd-btn-sm" style="background:{{ $post->status === 'published' ? '#FEE2E2' : '#D1FAE5' }};color:{{ $post->status === 'published' ? '#DC2626' : '#059669' }};">
+                        {{ $post->status === 'published' ? 'Unpublish' : 'Publish' }}
+                    </button>
+                    <button type="button" x-on:click="showDeleteModal = true; deleteId = {{ $post->id }}" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            @empty
+            <div class="krd-empty-state"><div class="krd-empty-state-icon">✍️</div><div class="krd-empty-state-title">No posts yet</div></div>
+            @endforelse
+        </div>
+
         @if($posts->hasPages())<div style="padding:12px 16px;border-top:1px solid #E7E5E4;">{{ $posts->links() }}</div>@endif
     </div>
 

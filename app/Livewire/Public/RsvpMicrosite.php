@@ -178,8 +178,11 @@ class RsvpMicrosite extends Component
             cookie()->queue(cookie($this->wishReactorCookieName(), $token, 60 * 24 * 365));
         }
     }
-    public function mount(string $slug, ?string $token = null): void
+    public function mount(?string $slug = null, ?string $token = null): void
     {
+        $slug ??= app()->bound('publicRsvpForm') ? app('publicRsvpForm')->slug : null;
+        abort_unless($slug, 404);
+
         $this->rsvpForm = RsvpForm::with([
             'event',
             'customQuestions' => fn($q) => $q->orderBy('sort_order'),

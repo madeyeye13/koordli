@@ -51,13 +51,20 @@
         window.__vapidPublicKey = @js(config('services.vapid.public_key'));
     </script>
 </head>
-<body class="krd-body h-full" x-cloak>
+<body class="krd-body h-full">
 
     <div id="krd-toast-container"
          class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
     </div>
 
-    <div id="krd-client-shell" class="krd-shell">
+    <div id="krd-client-shell" class="krd-shell"
+         x-data="{ sidebarOpen: window.innerWidth >= 768 }"
+         x-init="window.addEventListener('resize', () => { sidebarOpen = window.innerWidth >= 768; })">
+
+        <div class="krd-sidebar-overlay"
+             x-bind:class="{ 'active': sidebarOpen && window.innerWidth < 768 }"
+             x-on:click="sidebarOpen = false">
+        </div>
 
         {{-- Sidebar --}}
         <aside class="krd-sidebar"

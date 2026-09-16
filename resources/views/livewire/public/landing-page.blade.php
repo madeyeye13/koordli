@@ -59,7 +59,7 @@
     .lp-btn-sm-mobile { padding: 9px 14px; font-size: 12px; }
 
     /* Hero */
-    /* Full-bleed violet gradient hero — deep violet through violet-blue,
+    /* Full-bleed violet gradient hero: deep violet through violet-blue,
        always this palette regardless of the site's own light/dark toggle,
        since a gradient hero reads as a deliberate design choice, not a
        theme-dependent one. */
@@ -95,7 +95,7 @@
     .lp-trusted { padding: 44px 0; text-align: center; }
     .lp-trusted-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--lp-text-faint); margin-bottom: 22px; }
 
-    /* Seamless infinite marquee — the track holds the logo list TWICE
+    /* Seamless infinite marquee: the track holds the logo list TWICE
        back-to-back; animating it exactly -50% loops perfectly with no
        visible jump, since the second copy lines up exactly where the
        first one started. */
@@ -211,7 +211,7 @@
     .lp-blog-card { display: block; border: 1px solid var(--lp-border); border-radius: 14px; overflow: hidden; text-decoration: none; background: var(--lp-card-bg); transition: transform 220ms ease, box-shadow 220ms ease; }
     .lp-blog-card:hover { transform: translateY(-5px); box-shadow: 0 18px 32px -24px rgba(28,25,23,.5); }
 
-    /* Final CTA — FULL BLEED */
+    /* Final CTA: FULL BLEED */
     .lp-final-cta-outer { background: linear-gradient(160deg, #4C1D95 0%, #6D28D9 35%, #7C3AED 60%, #4338CA 100%); width: 100%; padding: 96px 24px; }
     .lp-final-cta-inner { max-width: 700px; margin: 0 auto; text-align: center; }
     .lp-final-cta-title { font-size: clamp(24px, 5vw, 40px); font-weight: 700; color: #fff; letter-spacing: -0.02em; margin-bottom: 14px; line-height: 1.2; }
@@ -292,12 +292,12 @@
     @media (max-width: 400px) {
         .lp-hero-badge { font-size: 10.5px; padding: 6px 10px; gap: 5px; }
 
-        /* CTA buttons — never wrap their text, tighten padding slightly
+        /* CTA buttons: never wrap their text, tighten padding slightly
            so "Start Free Trial →" and "See How It Works" both sit
            comfortably on one line each when stacked. */
         .lp-hero-ctas .lp-btn { white-space: nowrap; padding: 13px 20px; font-size: 13.5px; }
 
-        /* Dashboard mockup — tighter padding/type throughout so the
+        /* Dashboard mockup: tighter padding/type throughout so the
            3-column stat cards and list rows don't feel squeezed at
            this width. Nothing structural changes, just scale. */
         .lp-mockup-frame [style*="padding:18px"] { padding: 13px !important; }
@@ -351,7 +351,7 @@
     }"
 >
 
-    {{-- Nav — single source of truth: resources/views/partials/public-nav.blade.php --}}
+    {{-- Nav: single source of truth: resources/views/partials/public-nav.blade.php --}}
     @include('partials.public-nav')
 
     {{-- Hero --}}
@@ -377,7 +377,7 @@
             <span class="accent lp-hero-rotate" :class="visible && 'lp-hero-rotate-visible'" x-text="words[index]"></span>
         </h1>
         <p class="lp-hero-sub lp-animate">
-            Koordli brings your clients, vendors, contracts, tasks, and event-day execution into one platform — replacing scattered WhatsApp threads, spreadsheets, and paper runsheets.
+            Koordli brings your clients, vendors, contracts, tasks, and event-day execution into one platform, replacing scattered WhatsApp threads, spreadsheets, and paper runsheets.
         </p>
         <div class="lp-hero-ctas lp-animate">
             <a href="{{ route('register') }}" class="lp-btn lp-btn-primary lp-btn-lg" wire:navigate>Start Free Trial →</a>
@@ -432,7 +432,7 @@
                             </div>
                             <div style="border:1px solid #E7E5E4;border-radius:8px;padding:12px;">
                                 <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:#1C1917;">Upcoming Events</div>
-                                @foreach(['Adaeze & Chuka Wedding — Aug 15','CenBa Awards Night — Sep 2','Corporate Retreat — Sep 20'] as $e)
+                                @foreach(['Adaeze & Chuka Wedding: Aug 15','CenBa Awards Night: Sep 2','Corporate Retreat: Sep 20'] as $e)
                                 <div style="font-size:10.5px;color:#57534E;padding:6px 0;border-bottom:1px solid #F5F5F4;">{{ $e }}</div>
                                 @endforeach
                             </div>
@@ -453,7 +453,7 @@
 
                         {{-- Screen 3: Tasks --}}
                         <div x-show="screens[screen] === 'tasks'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" style="padding:18px;position:absolute;inset:0;">
-                            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Tasks — This Week</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1C1917;">Tasks: This Week</div>
                             <div style="font-size:11px;color:#A8A29E;margin-bottom:16px;">5 due, 2 overdue</div>
                             @foreach([['Confirm catering headcount','Urgent','#EF4444'],['Send RSVP reminder','Normal','#3B82F6'],['Finalize seating chart','High','#F59E0B'],['Brief photographer','Normal','#3B82F6']] as [$task, $priority, $color])
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #F5F5F4;">
@@ -539,7 +539,7 @@
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">Event Management</span>
                     <h3 class="lp-feature-title">Manage every event from planning to execution</h3>
-                    <p class="lp-feature-text-desc">Track event details, status, timeline, and team all in one place — no more digging through old messages to find what was agreed.</p>
+                    <p class="lp-feature-text-desc">Track event details, status, timeline, and team all in one place, with no more digging through old messages to find what was agreed.</p>
                     <ul class="lp-feature-list">
                         <li>Custom event statuses and types</li>
                         <li>Slug-based event pages, easy to share</li>
@@ -578,7 +578,7 @@
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">Client Portal</span>
                     <h3 class="lp-feature-title">Collaborate with clients in one secure workspace</h3>
-                    <p class="lp-feature-text-desc">Clients get their own portal to track their event, view payment history, and rate vendors — no account confusion, no shared spreadsheets.</p>
+                    <p class="lp-feature-text-desc">Clients get their own portal to track their event, view payment history, and rate vendors, with no account confusion or shared spreadsheets.</p>
                     <ul class="lp-feature-list">
                         <li>Real-time payment progress tracking</li>
                         <li>Read-only RSVP stats view</li>
@@ -588,7 +588,7 @@
                 <div class="lp-feature-visual lp-animate-right">
                     <div class="lp-mockup-mini">
                         <div class="lp-mockup-mini-header">
-                            <span class="lp-mockup-mini-title">Client Portal — Adaeze O.</span>
+                            <span class="lp-mockup-mini-title">Client Portal: Adaeze O.</span>
                         </div>
                         <div class="lp-mockup-mini-body" style="background:#fff;">
                             <div style="font-size:11px;color:#78716C;margin-bottom:8px;">Payment Progress</div>
@@ -610,7 +610,7 @@
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">Bookings & Consultations</span>
                     <h3 class="lp-feature-title">Capture new leads with custom forms</h3>
-                    <p class="lp-feature-text-desc">Build branded booking and consultation forms with your own fields. Embed them anywhere or share a direct link — leads land straight in your dashboard.</p>
+                    <p class="lp-feature-text-desc">Build branded booking and consultation forms with your own fields. Embed them anywhere or share a direct link, and leads land straight in your dashboard.</p>
                     <ul class="lp-feature-list">
                         <li>Drag-free custom field builder</li>
                         <li>Live availability calendar for consultations</li>
@@ -642,7 +642,7 @@
             <div class="lp-feature-block reverse">
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">Vendor Management</span>
-                    <h3 class="lp-feature-title">Your vendor directory, contracts, and payments — unified</h3>
+                    <h3 class="lp-feature-title">Your vendor directory, contracts, and payments, unified</h3>
                     <p class="lp-feature-text-desc">Build a private directory of trusted vendors, track their availability, generate branded contracts with e-signatures, and record every payment.</p>
                     <ul class="lp-feature-list">
                         <li>Vendor availability conflict warnings</li>
@@ -688,7 +688,7 @@
                 <div class="lp-feature-visual lp-animate-right">
                     <div class="lp-mockup-mini">
                         <div class="lp-mockup-mini-header">
-                            <span class="lp-mockup-mini-title">Tasks — This Week</span>
+                            <span class="lp-mockup-mini-title">Tasks: This Week</span>
                         </div>
                         <div class="lp-mockup-mini-body" style="background:#fff;">
                             @foreach([['Confirm catering headcount','Urgent','#EF4444'],['Send RSVP reminder','Normal','#3B82F6'],['Finalize seating chart','High','#F59E0B']] as [$task, $priority, $color])
@@ -738,7 +738,7 @@
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">RSVP & QR Check-In</span>
                     <h3 class="lp-feature-title">Branded RSVP pages, QR check-in, real numbers</h3>
-                    <p class="lp-feature-text-desc">Give guests a beautiful, on-brand RSVP experience — then check them in at the door with a scannable QR ticket.</p>
+                    <p class="lp-feature-text-desc">Give guests a beautiful, on-brand RSVP experience, then check them in at the door with a scannable QR ticket.</p>
                     <ul class="lp-feature-list">
                         <li>Custom cover image and colors per event</li>
                         <li>Custom questions beyond just attendance</li>
@@ -748,7 +748,7 @@
                 <div class="lp-feature-visual lp-animate-right">
                     <div class="lp-mockup-mini">
                         <div class="lp-mockup-mini-header">
-                            <span class="lp-mockup-mini-title">RSVP — Will you attend?</span>
+                            <span class="lp-mockup-mini-title">RSVP: Will you attend?</span>
                         </div>
                         <div class="lp-mockup-mini-body" style="text-align:center;background:#fff;">
                             <div style="width:64px;height:64px;background:#1C1917;border-radius:8px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;">QR CODE</div>
@@ -762,7 +762,7 @@
             <div class="lp-feature-block reverse">
                 <div class="lp-feature-text lp-animate-left">
                     <span class="lp-feature-tag">Budgets & Payments</span>
-                    <h3 class="lp-feature-title">Know what's agreed, paid, and outstanding — always</h3>
+                    <h3 class="lp-feature-title">Know what's agreed, paid, and outstanding, always</h3>
                     <p class="lp-feature-text-desc">Track client payments and vendor invoices side by side. Vendor invoices automatically sync into the event budget, so nothing is entered twice.</p>
                     <ul class="lp-feature-list">
                         <li>Multi-payment tracking per invoice</li>
@@ -940,11 +940,11 @@
             <h2 class="lp-section-title lp-serif lp-animate">Frequently Asked Questions</h2>
             <div class="lp-faq lp-animate" x-data="{ openFaq: null }">
                 @foreach([
-                    'Is Koordli only for weddings?' => 'Not at all. Koordli is built for any kind of event business — corporate events, conferences, churches, award ceremonies, birthdays, exhibitions, and more.',
+                    'Is Koordli only for weddings?' => 'Not at all. Koordli is built for any kind of event business: corporate events, conferences, churches, award ceremonies, birthdays, exhibitions, and more.',
                     'Can I use my own domain?' => 'Custom domain support is on our roadmap. For now, every company gets a secure workspace on Koordli.',
                     'Can clients access the platform?' => 'Yes. Each client gets their own portal to track their event, view payment progress, and rate vendors after the event.',
                     'Can vendors log in?' => 'Yes. Vendors get a dedicated portal to view assigned events, update runsheet status, manage their availability, and sign contracts.',
-                    'Does RSVP require extra payment?' => 'RSVP is included as part of your plan — no separate add-on required.',
+                    'Does RSVP require extra payment?' => 'RSVP is included as part of your plan, with no separate add-on required.',
                     'Can I customize booking forms?' => 'Yes. Build custom fields for booking and consultation forms, and embed them anywhere or share a direct link.',
                 ] as $q => $a)
                 @php $idx = $loop->index; @endphp
@@ -995,7 +995,7 @@
     </section>
     @endif
 
-    {{-- Final CTA — full bleed --}}
+    {{-- Final CTA: full bleed --}}
     <div class="lp-final-cta-outer">
         <div class="lp-final-cta-inner lp-animate">
             <h2 class="lp-final-cta-title lp-serif">Ready To Run Your Events Without The Chaos?</h2>

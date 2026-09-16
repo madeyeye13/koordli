@@ -5,7 +5,7 @@
 
         {{-- Top --}}
         <div>
-            <x-ui.logo color="light" />
+            <x-ui.auth-brand />
         </div>
 
         {{-- Middle --}}
@@ -49,7 +49,7 @@
             {{-- Mobile logo (visible only on mobile) --}}
             {{-- Mobile logo --}}
             <div class="krd-mobile-only" style="margin-bottom: 28px;">
-                <x-ui.logo color="dark" />
+                <x-ui.auth-brand />
             </div>
 
             {{-- Header --}}

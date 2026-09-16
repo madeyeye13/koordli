@@ -98,7 +98,7 @@
         @if($locations->isNotEmpty())
         <div class="section-title">Locations</div>
         <div class="locations-grid">
-            @@foreach($locations as $loc)
+            @foreach($locations as $loc)
             <div class="location-box">
                 <div class="location-name">{{ $loc->name }}</div>
                 @if($loc->date)<div class="location-date">{{ $loc->date->format('D, M j') }}</div>@endif

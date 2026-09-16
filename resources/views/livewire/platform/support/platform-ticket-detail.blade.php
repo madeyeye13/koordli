@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;" id="platform-ticket-grid">
+    <div class="platform-ticket-detail-grid" style="display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;" id="platform-ticket-grid">
         <div>
             {{-- Conversation --}}
             <div class="krd-card" id="platform-chat-scroll" wire:key="platform-chat-scroll-{{ $ticket->id }}-{{ $ticket->assigned_agent_id ?? 'unassigned' }}" style="padding:24px;margin-bottom:16px;max-height:480px;overflow-y:auto;background:#fff !important;"
@@ -34,7 +34,7 @@
                     @continue
                     @endif
                     <div style="display:flex;{{ $msg->sender_type === 'agent' ? 'justify-content:flex-end;' : '' }}margin-bottom:16px;">
-                        <div style="max-width:75%;">
+                        <div class="platform-ticket-message-bubble" style="max-width:75%;">
                             <div style="font-size:11px;color:#A8A29E !important;margin-bottom:4px;{{ $msg->sender_type === 'agent' ? 'text-align:right;' : '' }}">
                                 {{ $msg->senderName() }} · {{ $msg->created_at->format('d M, g:i A') }}
                             </div>
@@ -87,7 +87,7 @@
             @endif
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;" id="platform-ticket-actions">
+        <div class="platform-ticket-actions" style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;" id="platform-ticket-actions">
             <div class="krd-card" style="padding:20px;">
                 <div class="krd-label" style="margin-bottom:12px;">Assignment</div>
                 @if($ticket->assignedAgent)

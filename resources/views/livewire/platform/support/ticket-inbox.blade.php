@@ -15,7 +15,7 @@
         <h2 class="krd-heading-3" style="color:#1C1917;">Ticket Inbox</h2>
     </div>
 
-    <div wire:ignore x-data="{ view: '{{ $viewFilter }}' }" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <div class="platform-ticket-view-filters" wire:ignore x-data="{ view: '{{ $viewFilter }}' }" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
         <button x-on:click="view = 'mine'; $wire.set('viewFilter', 'mine')"
             :style="`font-size:12px;font-weight:600;padding:7px 16px;border-radius:8px;cursor:pointer;border:1px solid ${view === 'mine' ? '#7C3AED' : '#E7E5E4'};background:${view === 'mine' ? '#7C3AED' : '#fff'};color:${view === 'mine' ? '#fff' : '#57534E'};`">
             My Tickets ({{ $counts['mine'] }})
@@ -30,7 +30,7 @@
         </button>
     </div>
 
-    <div wire:ignore x-data="{ status: '{{ $statusFilter }}' }" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+    <div class="platform-ticket-status-filters" wire:ignore x-data="{ status: '{{ $statusFilter }}' }" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
         @foreach(['' => 'Any Status', 'open' => 'Open', 'in_progress' => 'In Progress', 'resolved' => 'Resolved', 'closed' => 'Closed'] as $val => $label)
         <button
             x-on:click="status = '{{ $val }}'; $wire.set('statusFilter', '{{ $val }}')"
@@ -49,8 +49,8 @@
         </div>
     </div>
     @else
-    <div class="krd-card" style="padding:0;overflow:hidden;">
-        <div class="krd-table-wrap">
+    <div class="krd-card platform-ticket-table-card" style="padding:0;overflow:hidden;">
+        <div class="krd-table-wrap platform-ticket-desktop-list">
             <table class="krd-table">
                 <thead>
                     <tr><th>Subject</th><th>Company</th><th>Priority</th><th>Status</th><th>Agent</th><th>Updated</th></tr>
@@ -71,6 +71,23 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        <div class="platform-ticket-mobile-list">
+            @foreach($tickets as $ticket)
+            <a href="{{ route('platform.support.tickets.show', $ticket->uuid) }}" wire:navigate style="display:block;padding:14px 16px;border-bottom:1px solid #E7E5E4;text-decoration:none;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:600;color:#1C1917;line-height:1.4;min-width:0;">{{ $ticket->subject }}</div>
+                    <span class="krd-badge" style="background:{{ $ticket->priorityColor() }}1a;color:{{ $ticket->priorityColor() }};flex-shrink:0;">{{ ucfirst($ticket->priority) }}</span>
+                </div>
+                <div style="font-size:11px;color:#A8A29E;margin-bottom:8px;">#{{ strtoupper(substr($ticket->uuid, 0, 8)) }} · {{ $ticket->updated_at->diffForHumans() }}</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:12px;color:#57534E;overflow-wrap:anywhere;">{{ $ticket->tenant->name }}</span>
+                    <span class="krd-badge" style="background:{{ $ticket->statusColor() }}1a;color:{{ $ticket->statusColor() }};">{{ $ticket->statusLabel() }}</span>
+                </div>
+                <div style="font-size:11px;color:#78716C;margin-top:7px;">{{ $ticket->assignedAgent?->platformUser?->name ?? '— Unassigned —' }}</div>
+            </a>
+            @endforeach
         </div>
     </div>
     @endif

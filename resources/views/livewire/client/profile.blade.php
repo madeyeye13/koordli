@@ -3,7 +3,7 @@
         <h2 class="krd-heading-3" style="color:#1C1917;">My Profile</h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="client-profile-layout" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
 
         <div class="krd-card">
             <div style="font-size:14px;font-weight:600;color:#1C1917;margin-bottom:16px;">Profile Information</div>

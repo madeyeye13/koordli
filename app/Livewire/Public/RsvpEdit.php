@@ -52,8 +52,11 @@ class RsvpEdit extends Component
     public bool   $saved  = false;
     public string $error  = '';
 
-    public function mount(string $slug, string $token): void
+    public function mount(?string $slug, string $token): void
     {
+        $slug ??= app()->bound('publicRsvpForm') ? app('publicRsvpForm')->slug : null;
+        abort_unless($slug, 404);
+
         $this->slug  = $slug;
         $this->token = $token;
 

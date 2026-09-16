@@ -46,6 +46,7 @@ class SendRsvpConfirmationJob implements ShouldQueue
                 $this->editUrl,
                 $this->ticketUrl,
                 $this->plusOneCount,
+                
                 $this->companyName,
                 $this->whiteLabel,
                 $this->companions,

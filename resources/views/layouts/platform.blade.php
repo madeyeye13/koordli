@@ -34,24 +34,24 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="krd-body h-full" x-cloak>
+<body class="krd-body h-full">
 
     {{-- Toast Container --}}
     <div id="krd-toast-container"
          class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
     </div>
 
-    {{-- Mobile Sidebar Overlay --}}
-    <div id="krd-overlay"
-         class="krd-sidebar-overlay"
-         onclick="
-             document.getElementById('krd-sidebar').classList.remove('open');
-             document.getElementById('krd-overlay').classList.remove('active');
-         ">
-    </div>
-
     {{-- App Shell --}}
     <div class="krd-shell">
+
+        {{-- Mobile Sidebar Overlay --}}
+        <div id="krd-overlay"
+             class="krd-sidebar-overlay"
+             onclick="
+                 document.getElementById('krd-sidebar').classList.remove('open');
+                 document.getElementById('krd-overlay').classList.remove('active');
+             ">
+        </div>
 
         {{-- Sidebar --}}
         <aside class="krd-sidebar" id="krd-sidebar">

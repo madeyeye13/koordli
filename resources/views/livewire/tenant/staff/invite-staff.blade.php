@@ -179,6 +179,21 @@
     </script>
     @endif
 
+@if($showStaffLimitModal)
+<div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:8px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.2);">
+        <h3 style="font-size:16px;font-weight:600;color:#1C1917;margin-bottom:8px;">Staff limit reached</h3>
+        <p style="font-size:13px;color:#78716C;line-height:1.6;margin-bottom:20px;">
+            Your current plan allows up to <strong>{{ $staffLimit }} staff {{ $staffLimit === 1 ? 'member' : 'members' }}</strong>. You already have {{ $currentStaffCount }}. Upgrade your plan to add more staff.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="{{ route('tenant.billing.upgrade') }}" wire:navigate class="krd-btn krd-btn-primary" style="flex:1;min-width:140px;text-align:center;">Upgrade Now</a>
+            <button type="button" wire:click="$set('showStaffLimitModal', false)" class="krd-btn krd-btn-secondary" style="flex:1;min-width:100px;">Close</button>
+        </div>
+    </div>
+</div>
+@endif
+
 </div>
 
 <style>

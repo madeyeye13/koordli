@@ -27,6 +27,7 @@
 
     {{-- Choice Modal (only shown when there's no active chat already) --}}
     @if($showChoiceModal)
+    <template x-teleport="body">
     <div style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;" wire:click.self="$set('showChoiceModal', false)">
         <div style="background:#fff;border-radius:12px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -76,6 +77,7 @@
             </div>
         </div>
     </div>
+    </template>
     @endif
 </div>
 

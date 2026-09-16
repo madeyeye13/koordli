@@ -46,7 +46,7 @@
         <h2 class="krd-heading-3" style="margin-top:6px;">{{ $post ? 'Edit Post' : 'New Post' }}</h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start;">
+    <div class="platform-blog-editor-layout" style="display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start;">
         <div style="display:flex;flex-direction:column;gap:16px;">
 
             <div class="krd-card" style="padding:24px;">
@@ -139,7 +139,7 @@
         </div>
 
         {{-- Sidebar --}}
-        <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:80px;">
+        <div class="platform-blog-editor-sidebar" style="display:flex;flex-direction:column;gap:16px;position:sticky;top:80px;">
             <div class="krd-card" style="padding:20px;">
                 <button wire:click="save('publish')" wire:loading.attr="disabled" class="krd-btn krd-btn-primary" style="width:100%;margin-bottom:8px;">
                     <span wire:loading.remove wire:target="save">{{ $status === 'published' ? 'Update & Publish' : 'Publish' }}</span>

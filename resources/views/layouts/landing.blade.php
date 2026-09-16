@@ -5,21 +5,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{{ $siteName ?? 'Koordli' }} — Event Operations Platform for Modern Event Businesses</title>
-    <meta name="description" content="Koordli is the operating system for event companies. Manage clients, vendors, contracts, runsheets, RSVP, and payments — all in one place.">
+    <title>{{ $siteName ?? 'Koordli' }} | Event Operations Platform for Modern Event Businesses</title>
+    <meta name="description" content="Koordli is the operating system for event companies. Manage clients, vendors, contracts, runsheets, RSVP, and payments, all in one place.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ url('/') }}">
 
     {{-- Open Graph --}}
-    <meta property="og:title" content="{{ $siteName ?? 'Koordli' }} — Event Operations Platform">
-    <meta property="og:description" content="The operating system for event companies. Manage clients, vendors, contracts, runsheets, RSVP, and payments — all in one place.">
+    <meta property="og:title" content="{{ $siteName ?? 'Koordli' }} | Event Operations Platform">
+    <meta property="og:description" content="The operating system for event companies. Manage clients, vendors, contracts, runsheets, RSVP, and payments, all in one place.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/') }}">
     <meta property="og:image" content="{{ asset('images/logoonwhite.png') }}">
 
     {{-- Twitter --}}
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $siteName ?? 'Koordli' }} — Event Operations Platform">
+    <meta name="twitter:title" content="{{ $siteName ?? 'Koordli' }} | Event Operations Platform">
     <meta name="twitter:description" content="The operating system for event companies.">
     <meta name="twitter:image" content="{{ asset('images/logoonwhite.png') }}">
 
@@ -27,7 +27,7 @@
         @font-face { font-family: 'Satoshi'; src: url('/fonts/Satoshi-Variable.woff2') format('woff2'); font-weight: 300 900; font-display: swap; }
         @font-face { font-family: 'Satoshi'; src: url('/fonts/Satoshi-VariableItalic.woff2') format('woff2'); font-weight: 300 900; font-display: swap; font-style: italic; }
 
-        /* Shared design tokens + nav styles — required by BOTH the real
+        /* Shared design tokens + nav styles: required by BOTH the real
            landing page (which also defines its own copy internally) AND
            every page using this layout directly (blog index/show), since
            those pages have no other source for these variables/classes. */

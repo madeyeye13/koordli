@@ -23,6 +23,10 @@
     {{-- Navigation --}}
     <nav style="flex: 1; padding: 8px 0; overflow-y: auto;">
 
+        <div class="platform-status-mobile" style="padding: 12px 16px 4px;">
+            <livewire:platform.support.agent-status />
+        </div>
+
         <div class="krd-nav-section">
             <div class="krd-nav-label">Overview</div>
             <a href="{{ route('platform.dashboard') }}"

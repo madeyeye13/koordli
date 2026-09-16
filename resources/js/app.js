@@ -864,10 +864,10 @@ if ('serviceWorker' in navigator) {
     function showPushPrompt(registration, existing) {
         const banner = document.createElement('div');
         banner.id = 'krd-push-prompt';
-        banner.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+        banner.style.cssText = 'position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;flex-direction:column;align-items:stretch;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
         banner.innerHTML = `
-            <span style="flex:1;line-height:1.5;">Enable notifications to get instant updates for tasks, messages, and reminders.</span>
-            <div style="display:flex;gap:6px;flex-shrink:0;">
+            <span style="line-height:1.5;">Enable notifications to get instant updates for tasks, messages, and reminders.</span>
+            <div style="display:flex;justify-content:flex-end;gap:6px;">
                 <button id="krd-push-enable" style="background:#7C3AED;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Enable</button>
                 <button id="krd-push-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Not now</button>
             </div>
@@ -954,17 +954,19 @@ if ('serviceWorker' in navigator) {
         bannerShown = true;
         const banner = document.createElement('div');
         banner.id = 'krd-pwa-install-prompt';
-        banner.style.cssText = 'position:fixed;bottom:96px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:14px 16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+        banner.style.cssText = 'position:fixed;bottom:96px;left:16px;right:16px;max-width:420px;margin:0 auto;background:#1C1917;color:#fff;padding:16px;border-radius:8px;font-size:13px;z-index:9999;display:flex;flex-direction:column;align-items:stretch;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
 
         if (isIOSInstructions) {
             banner.innerHTML = `
-                <span style="flex:1;line-height:1.5;">Install Koordli on your home screen: tap <strong>Share</strong> ⬆️, then <strong>Add to Home Screen</strong>.</span>
-                <button id="krd-pwa-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;flex-shrink:0;">Got it</button>
+                <span style="line-height:1.5;">Install Koordli on your home screen: tap <strong>Share</strong> ⬆️, then <strong>Add to Home Screen</strong>.</span>
+                <div style="display:flex;justify-content:flex-end;gap:6px;">
+                    <button id="krd-pwa-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Got it</button>
+                </div>
             `;
         } else {
             banner.innerHTML = `
-                <span style="flex:1;line-height:1.5;">Install Koordli as an app for quicker access and a full-screen experience.</span>
-                <div style="display:flex;gap:6px;flex-shrink:0;">
+                <span style="line-height:1.5;">Install Koordli as an app for quicker access and a full-screen experience.</span>
+                <div style="display:flex;justify-content:flex-end;gap:6px;">
                     <button id="krd-pwa-install" style="background:#7C3AED;border:none;color:#fff;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Install</button>
                     <button id="krd-pwa-dismiss" style="background:transparent;border:1px solid #57534E;color:#A8A29E;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;">Not now</button>
                 </div>

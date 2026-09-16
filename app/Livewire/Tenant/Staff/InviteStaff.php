@@ -35,6 +35,10 @@ class InviteStaff extends Component
     public ?int  $editId   = null;
     public ?User $editUser = null;
 
+    public bool $showStaffLimitModal = false;
+    public int $staffLimit = 0;
+    public int $currentStaffCount = 0;
+
     private function tenantId(): int
     {
         return auth()->user()->tenant_id;
@@ -77,6 +81,14 @@ class InviteStaff extends Component
         }
 
         $tenantId = $this->tenantId();
+        $tenant = auth()->user()->tenant;
+        $this->staffLimit = app(\App\Services\FeatureGateService::class)->getLimit($tenant, 'max_staff');
+        $this->currentStaffCount = User::where('tenant_id', $tenantId)->where('type', 'staff')->count();
+
+        if ($this->staffLimit > 0 && $this->currentStaffCount >= $this->staffLimit) {
+            $this->showStaffLimitModal = true;
+            return;
+        }
 
         $this->validate([
             'name'           => 'required|string|min:2|max:100',

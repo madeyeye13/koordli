@@ -13,7 +13,7 @@
         </h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;">
+    <div class="platform-plan-form-layout" style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start;">
 
         {{-- Left — Form --}}
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -35,7 +35,7 @@
                     <span class="krd-input-hint">Auto-generated from name. Used in URLs and API.</span>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="platform-plan-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Billing Cycle</label>
                         <div x-data="{
@@ -100,7 +100,7 @@
                 </div>
 
                 @if(!$is_contact_only)
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="platform-plan-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Monthly Price ({{ \App\Models\Central\BillingSetting::get('base_currency', 'NGN') }})</label>
                         <input wire:model="monthly_price" type="number" min="0" step="0.01" class="krd-input @error('monthly_price') krd-input-error @enderror" placeholder="e.g. 15000" />
@@ -123,7 +123,7 @@
             {{-- Limits --}}
             <div class="krd-card" style="padding:24px;">
                 <div class="krd-label" style="margin-bottom:16px;">Usage Limits</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="platform-plan-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Max Events</label>
                         <input wire:model="max_events" type="number" min="0" class="krd-input" placeholder="Unlimited" />
@@ -213,7 +213,7 @@
         </div>
 
         {{-- Right — Instructions --}}
-        <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
+        <div class="platform-plan-instructions" style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
 
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;display:flex;align-items:center;gap:8px;">

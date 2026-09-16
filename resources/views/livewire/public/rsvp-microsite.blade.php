@@ -163,6 +163,7 @@
         'status' => ['label' => 'Will You Be Attending?', 'enabled' => true, 'required' => true],
         'plus_one_count' => ['label' => 'Additional Guests', 'enabled' => true, 'required' => false],
     ], $rsvpForm->system_questions ?? []);
+    $__rsvpPageUrl = $rsvpForm->publicUrl();
 @endphp
 
 <div class="ms-wrap">
@@ -174,20 +175,20 @@
             </svg>
         </button>
         <div id="public-rsvp-nav-links" class="ms-nav-links" :class="mobileMenuOpen && 'is-open'">
-            <a href="{{ request()->url() }}?section=home" class="ms-nav-item" :class="section === 'home' && 'active'">Home</a>
+            <a href="{{ $__rsvpPageUrl }}?section=home" class="ms-nav-item" :class="section === 'home' && 'active'">Home</a>
             @if($settings?->story_enabled && $chapters->isNotEmpty())
-            <a href="{{ request()->url() }}?section=story" class="ms-nav-item" :class="section === 'story' && 'active'">Our Story</a>
+            <a href="{{ $__rsvpPageUrl }}?section=story" class="ms-nav-item" :class="section === 'story' && 'active'">Our Story</a>
             @endif
-            <a href="{{ request()->url() }}?section=rsvp" class="ms-nav-item" :class="section === 'rsvp' && 'active'">RSVP</a>
+            <a href="{{ $__rsvpPageUrl }}?section=rsvp" class="ms-nav-item" :class="section === 'rsvp' && 'active'">RSVP</a>
             @if($settings?->wishes_enabled)
-            <a href="{{ request()->url() }}?section=wishes" class="ms-nav-item" :class="section === 'wishes' && 'active'">Wishes</a>
+            <a href="{{ $__rsvpPageUrl }}?section=wishes" class="ms-nav-item" :class="section === 'wishes' && 'active'">Wishes</a>
             @endif
             @if($settings?->gallery_enabled && $images->isNotEmpty())
-            <a href="{{ request()->url() }}?section=gallery" class="ms-nav-item" :class="section === 'gallery' && 'active'">Gallery</a>
+            <a href="{{ $__rsvpPageUrl }}?section=gallery" class="ms-nav-item" :class="section === 'gallery' && 'active'">Gallery</a>
             @endif
 
             @if($settings?->gifts_enabled && $giftInfo)
-            <a href="{{ request()->url() }}?section=gifts" class="ms-nav-item" :class="section === 'gifts' && 'active'">Gift Us</a>
+            <a href="{{ $__rsvpPageUrl }}?section=gifts" class="ms-nav-item" :class="section === 'gifts' && 'active'">Gift Us</a>
             @endif
         </div>
     </nav>
@@ -413,7 +414,7 @@
                 </div>
             </div>
             <div style="text-align:center;">
-                <a href="{{ url('/rsvp/ticket/' . $response->qr_token) }}" class="btn-outline-gold">↓ Download Ticket</a>
+                <a href="{{ $response->ticketUrl() }}" class="btn-outline-gold">↓ Download Ticket</a>
             </div>
             @endif
             @else

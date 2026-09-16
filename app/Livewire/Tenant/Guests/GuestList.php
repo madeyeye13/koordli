@@ -72,6 +72,22 @@ class GuestList extends Component
         }
     }
 
+    public function openAddForm(): void
+    {
+        if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.create')) {
+            $this->toastError('You do not have permission to add guests.');
+            return;
+        }
+
+        $this->showAddForm = true;
+    }
+
+    public function closeAddForm(): void
+    {
+        $this->showAddForm = false;
+        $this->reset(['name', 'email', 'phone', 'category', 'notes']);
+    }
+
     public function addGuest(): void
     {
         if (!app(PermissionService::class)->userCan(auth()->user(), 'guests.create')) {

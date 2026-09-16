@@ -1165,6 +1165,25 @@ body {
     display: none !important;
 }
 
+.krd-register-mobile-header {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.krd-register-mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #78716C;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.krd-register-desktop-back {
+    display: inline-flex !important;
+}
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -1174,6 +1193,14 @@ body {
 @media (max-width: 768px) {
     .krd-mobile-only {
         display: block !important;
+    }
+
+    .krd-register-mobile-header {
+        display: flex !important;
+    }
+
+    .krd-register-desktop-back {
+        display: none !important;
     }
 }
 
@@ -1298,6 +1325,55 @@ body {
     cursor: pointer;
     padding: 4px;
     color: #57534E;
+}
+
+.tenant-help-mobile {
+    display: none;
+}
+
+.platform-status-mobile {
+    display: none;
+}
+
+.platform-admin-badge {
+    display: inline-flex;
+}
+
+.platform-staff-mobile-list {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .tenant-help-desktop {
+        display: none;
+    }
+
+    .tenant-help-mobile {
+        display: block;
+    }
+
+    .platform-status-desktop,
+    .platform-admin-badge {
+        display: none;
+    }
+
+    .platform-status-mobile {
+        display: block;
+    }
+
+    .platform-staff-header {
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .platform-staff-desktop-list {
+        display: none;
+    }
+
+    .platform-staff-mobile-list {
+        display: block;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1529,8 +1605,129 @@ body {
 }
 
 @media (max-width: 768px) {
+    .tenant-task-form-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tenant-task-field-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tenant-task-tips {
+        position: static !important;
+    }
+
+    .tenant-event-form-layout,
+    .client-profile-layout,
+    .vendor-profile-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tenant-event-field-grid,
+    .tenant-event-date-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .tenant-event-tips,
+    .vendor-profile-tips {
+        position: static !important;
+    }
+
+    .vendor-dashboard-summary-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .platform-plan-form-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .platform-plan-field-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .platform-plan-instructions {
+        position: static !important;
+    }
+
+    .platform-blog-editor-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .platform-blog-editor-sidebar {
+        position: static !important;
+    }
+
+    .platform-blog-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .platform-blog-table-wrap .krd-table {
+        min-width: 680px;
+    }
+
+    .platform-blog-desktop-list {
+        display: none !important;
+    }
+
+    .platform-blog-mobile-list {
+        display: block !important;
+    }
+}
+
+.platform-blog-mobile-list {
+    display: none;
+}
+
+.platform-ticket-mobile-list {
+    display: none;
+}
+
+@media (max-width: 768px) {
     .krd-form-grid {
         grid-template-columns: 1fr;
+    }
+
+    .platform-ticket-desktop-list {
+        display: none;
+    }
+
+    .platform-ticket-mobile-list {
+        display: block;
+    }
+
+    .platform-ticket-detail-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .platform-ticket-actions {
+        position: static !important;
+    }
+
+    .platform-ticket-message-bubble {
+        max-width: 88% !important;
+    }
+
+    .platform-ticket-table-card {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .platform-ticket-mobile-list a {
+        box-sizing: border-box;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .platform-ticket-view-filters,
+    .platform-ticket-status-filters {
+        width: 100%;
+    }
+
+    .platform-ticket-view-filters button,
+    .platform-ticket-status-filters button {
+        max-width: 100%;
+        white-space: normal;
     }
 }
 

@@ -6,6 +6,9 @@ use App\Models\Tenant\Event;
 use App\Models\Tenant\RsvpForm;
 use App\Models\Tenant\RsvpQuestion;
 use App\Models\Tenant\RsvpResponse;
+use App\Models\Central\PublicDomain;
+use App\Services\PublicDomainService;
+use App\Services\PublicDomainVerificationService;
 use App\Services\PermissionService;
 use App\Traits\WithToast;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +18,7 @@ use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 #[Layout('layouts.tenant')]
 class RsvpManager extends Component
@@ -31,6 +35,10 @@ class RsvpManager extends Component
     public string  $deadline    = '';
     public ?int    $guest_limit = null;
     public bool    $is_active   = true;
+
+    // Optional event-specific public domain
+    public string $public_domain      = '';
+    public string $public_domain_type = 'subdomain';
 
     // Branding
     public string $accent_color = '#C9943A';
@@ -83,6 +91,10 @@ class RsvpManager extends Component
             $this->deadline    = $this->form->deadline?->format('Y-m-d\TH:i') ?? '';
             $this->guest_limit = $this->form->guest_limit;
             $this->is_active   = $this->form->is_active;
+
+            $publicDomain = PublicDomain::where('rsvp_form_id', $this->form->id)->first();
+            $this->public_domain      = $publicDomain?->domain ?? '';
+            $this->public_domain_type = $publicDomain?->domain_type ?? 'subdomain';
 
             $branding = $this->form->branding ?? [];
             $this->accent_color    = $branding['accent_color'] ?? '#C9943A';
@@ -149,6 +161,63 @@ class RsvpManager extends Component
 
         $this->form = RsvpForm::with('customQuestions')->find($this->form->id);
         $this->toastSuccess('RSVP form saved.');
+    }
+
+    public function savePublicDomain(): void
+    {
+        if (!$this->requireManage()) return;
+
+        if (!$this->form) {
+            $this->toastError('Save the RSVP form settings first.');
+            return;
+        }
+
+        $this->validate([
+            'public_domain' => 'required|string|max:255',
+            'public_domain_type' => 'required|in:subdomain,apex',
+        ]);
+
+        try {
+            $domain = app(PublicDomainService::class)->createForForm(
+                $this->form,
+                $this->public_domain,
+                $this->public_domain_type,
+            );
+            $this->public_domain = $domain->domain;
+            $this->toastSuccess('Custom RSVP domain saved. Add the DNS records below, then verify it.');
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $field => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError($field, $message);
+                }
+            }
+        }
+    }
+
+    public function verifyPublicDomain(): void
+    {
+        if (!$this->requireManage() || !$this->form) return;
+
+        $domain = PublicDomain::where('rsvp_form_id', $this->form->id)->first();
+        if (!$domain) {
+            $this->toastError('Save a custom RSVP domain first.');
+            return;
+        }
+
+        $result = app(PublicDomainVerificationService::class)->verify($domain);
+        $result['success']
+            ? $this->toastSuccess($result['message'])
+            : $this->toastError($result['message']);
+    }
+
+    public function removePublicDomain(): void
+    {
+        if (!$this->requireManage() || !$this->form) return;
+
+        app(PublicDomainService::class)->removeFromForm($this->form);
+        $this->public_domain = '';
+        $this->public_domain_type = 'subdomain';
+        $this->toastSuccess('Custom RSVP domain removed. Your normal RSVP link is still active.');
     }
 
     public function saveBranding(): void
@@ -419,6 +488,10 @@ class RsvpManager extends Component
             $this->form->load('customQuestions');
         }
 
+        $publicDomain = $this->form
+            ? PublicDomain::where('rsvp_form_id', $this->form->id)->first()
+            : null;
+
         $responses = $this->form
             ? RsvpResponse::where('rsvp_form_id', $this->form->id)
                 ->with('answers.question')
@@ -446,6 +519,12 @@ class RsvpManager extends Component
             'attendees'  => (int) ($summary->attendees ?? 0),
         ];
 
-        return view('livewire.tenant.rsvp.rsvp-manager', compact('responses', 'stats'));
+        return view('livewire.tenant.rsvp.rsvp-manager', [
+            'responses' => $responses,
+            'stats' => $stats,
+            'publicDomain' => $publicDomain,
+            'cnameTarget' => config('public_domains.cname_target'),
+            'apexIp' => config('public_domains.apex_ip'),
+        ]);
     }
 }

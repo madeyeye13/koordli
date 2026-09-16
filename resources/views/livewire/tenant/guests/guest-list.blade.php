@@ -1,4 +1,4 @@
-<div>
+<div x-data="{ showDeleteModal: false, deleteId: null, editingCount: @js($editingCount), showAddForm: @entangle('showAddForm').live }">
     {{-- Header --}}
     <div style="margin-bottom:24px;">
         <div style="margin-bottom:8px;">
@@ -12,8 +12,10 @@
                 <div class="krd-label" style="margin-bottom:4px;">Guest Management</div>
                 <h2 class="krd-heading-3" style="color:#1C1917;">{{ $event->name }}</h2>
             </div>
-            <button wire:click="toggleAddForm" class="krd-btn krd-btn-primary">
-                {{ $showAddForm ? '✕ Cancel' : '+ Add Guest' }}
+            <button type="button"
+                x-on:click="if (showAddForm) { showAddForm = false; $wire.closeAddForm(); } else { showAddForm = true; $wire.openAddForm(); if (window.innerWidth < 768) { $nextTick(() => document.getElementById('guest-add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } }"
+                class="krd-btn krd-btn-primary">
+                <span x-text="showAddForm ? '✕ Cancel' : '+ Add Guest'"></span>
             </button>
         </div>
     </div>
@@ -43,22 +45,17 @@
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
             <div>
                 <div class="krd-label" style="margin-bottom:4px;">Expected Guest Count</div>
-                @if(!$editingCount)
-                <div style="font-size:22px;font-weight:700;color:#1C1917;">
+                <div x-show="!editingCount" x-cloak style="font-size:22px;font-weight:700;color:#1C1917;">
                     {{ $event->max_guests ? number_format($event->max_guests) : '—' }}
                     <span style="font-size:13px;font-weight:400;color:#A8A29E;">expected</span>
                 </div>
-                @endif
             </div>
-            @if(!$editingCount)
-            <button wire:click="$set('editingCount', true)" class="krd-btn krd-btn-secondary krd-btn-sm">
+            <button type="button" x-show="!editingCount" x-cloak x-on:click="editingCount = true" class="krd-btn krd-btn-secondary krd-btn-sm">
                 {{ $event->max_guests ? 'Update Count' : 'Set Expected Count' }}
             </button>
-            @endif
         </div>
 
-        @if($editingCount)
-        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <div x-show="editingCount" x-cloak style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;">
             <input wire:model="expectedGuests" type="number" min="0"
                 class="krd-input" placeholder="e.g. 200"
                 style="max-width:160px;" />
@@ -67,9 +64,8 @@
                 <span wire:loading.remove wire:target="saveGuestCount">Save</span>
                 <span wire:loading wire:target="saveGuestCount">Saving...</span>
             </button>
-            <button wire:click="$set('editingCount', false)" class="krd-btn krd-btn-ghost krd-btn-sm">Cancel</button>
+            <button type="button" x-on:click="editingCount = false; $wire.set('editingCount', false)" class="krd-btn krd-btn-ghost krd-btn-sm">Cancel</button>
         </div>
-        @endif
 
         @if($event->max_guests && $stats['total'] > 0)
         <div style="margin-top:14px;">
@@ -86,8 +82,7 @@
     </div>
 
     {{-- Add Guest Form --}}
-    @if($showAddForm)
-    <div class="krd-card" style="padding:20px;margin-bottom:16px;border:2px solid #7C3AED;">
+    <div id="guest-add-form" x-show="showAddForm" x-cloak class="krd-card" style="padding:20px;margin-bottom:16px;border:2px solid #7C3AED;scroll-margin-top:20px;">
         <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:16px;">Add Guest</div>
         <div class="krd-grid-2" style="gap:12px;">
             <div class="krd-input-group">
@@ -123,10 +118,9 @@
                 <span wire:loading.remove wire:target="addGuest">Add Guest</span>
                 <span wire:loading wire:target="addGuest">Adding...</span>
             </button>
-            <button wire:click="toggleAddForm" type="button" class="krd-btn krd-btn-ghost">Cancel</button>
+            <button type="button" x-on:click="showAddForm = false; $wire.closeAddForm()" class="krd-btn krd-btn-ghost">Cancel</button>
         </div>
     </div>
-    @endif
 
     {{-- Filters --}}
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-start;">
@@ -371,8 +365,8 @@
                 This will permanently remove this guest from the event. This cannot be undone.
             </p>
             <div style="display:flex;gap:10px;">
-                <button x-on:click="showDeleteModal = false; deleteId = null; $wire.deleteGuest(deleteId)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
-                <button x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
+                <button x-on:click="const id = deleteId; showDeleteModal = false; deleteId = null; $wire.deleteGuest(id)" class="krd-btn krd-btn-danger" style="flex:1;">Yes, Remove</button>
+                <button type="button" x-on:click="showDeleteModal = false; deleteId = null" class="krd-btn krd-btn-secondary" style="flex:1;">Cancel</button>
             </div>
         </div>
     </div>

@@ -69,7 +69,7 @@
             {{-- Tabs --}}
             <div style="display:flex;gap:4px;border-bottom:1px solid #E7E5E4;margin-bottom:20px;">
                 @foreach(['setup' => 'Setup', 'questions' => 'Questions', 'branding' => 'Branding', 'responses' => 'Responses'] as $tab => $label)
-                <button type="button"
+                <button type="button" class="rsvp-manager-tab"
                     x-on:click="activeTab = '{{ $tab }}'; $wire.setTab('{{ $tab }}')"
                     :style="activeTab === '{{ $tab }}'
                         ? 'padding:10px 16px;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;border-bottom:2px solid #7C3AED;color:#7C3AED;margin-bottom:-1px;'
@@ -77,7 +77,7 @@
                 >
                     {{ $label }}
                     @if($tab === 'responses' && ($stats['total'] ?? 0) > 0)
-                    <span style="font-size:10px;background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px;">{{ $stats['total'] }}</span>
+                    <span class="rsvp-response-count" style="font-size:10px;background:#EDE9FE;color:#7C3AED;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px;">{{ $stats['total'] }}</span>
                     @endif
                 </button>
                 @endforeach
@@ -158,6 +158,107 @@
                         </button>
                     </div>
                     @endif
+
+                    <div style="margin-top:20px;padding:20px;background:#fff;border:1px solid #E7E5E4;border-radius:8px;">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+                            <div>
+                                <div class="krd-label" style="margin-bottom:4px;">Custom RSVP Domain</div>
+                                <div style="font-size:12px;color:#78716C;line-height:1.6;">Optional: give this event its own address, such as chukwuemekaadaeze.com.</div>
+                            </div>
+                            @if($publicDomain)
+                            @php
+                                $domainStatusColor = match($publicDomain->status) {
+                                    'verified' => '#10B981',
+                                    'failed' => '#EF4444',
+                                    default => '#F59E0B',
+                                };
+                            @endphp
+                            <span class="krd-badge" style="background:{{ $domainStatusColor }}1a;color:{{ $domainStatusColor }};">{{ ucfirst($publicDomain->status) }}</span>
+                            @endif
+                        </div>
+
+                        <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:6px;padding:10px 12px;margin:14px 0;font-size:12px;color:#57534E;line-height:1.6;">
+                            This is completely optional. Your normal RSVP link keeps working while you set this up, and it remains available if verification is incomplete or fails.
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end;">
+                            <div class="krd-input-group" style="margin-bottom:0;">
+                                <label class="krd-label-text">Domain</label>
+                                <input wire:model="public_domain" type="text" class="krd-input @error('public_domain') krd-input-error @enderror" placeholder="rsvp.yourdomain.com or yourdomain.com" />
+                                @error('public_domain') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+                            </div>
+                            <div class="krd-input-group" style="margin-bottom:0;">
+                                <label class="krd-label-text">Domain type</label>
+                                <select wire:model="public_domain_type" class="krd-input">
+                                    <option value="subdomain">Subdomain</option>
+                                    <option value="apex">Root / apex</option>
+                                </select>
+                            </div>
+                        </div>
+                        @error('domain_type') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                            <button wire:click="savePublicDomain" wire:loading.attr="disabled" class="krd-btn krd-btn-primary krd-btn-sm">
+                                <span wire:loading.remove wire:target="savePublicDomain">{{ $publicDomain ? 'Update Domain' : 'Add Domain' }}</span>
+                                <span wire:loading wire:target="savePublicDomain">Saving...</span>
+                            </button>
+                            @if($publicDomain)
+                            <button wire:click="verifyPublicDomain" wire:loading.attr="disabled" class="krd-btn krd-btn-secondary krd-btn-sm">
+                                <span wire:loading.remove wire:target="verifyPublicDomain">Verify Domain</span>
+                                <span wire:loading wire:target="verifyPublicDomain">Checking...</span>
+                            </button>
+                            <button wire:click="removePublicDomain" class="krd-btn krd-btn-sm" style="background:#FEE2E2;color:#DC2626;border-color:#FECACA;">Remove</button>
+                            @endif
+                        </div>
+
+                        @if($publicDomain)
+                        <div style="margin-top:18px;padding:14px;background:#F5F5F4;border-radius:6px;">
+                            <div style="font-size:12px;font-weight:600;color:#1C1917;margin-bottom:10px;">DNS records for {{ $publicDomain->domain }}</div>
+                            @if($publicDomain->domain_type === 'subdomain')
+                            <div style="font-size:11px;color:#57534E;line-height:1.6;margin-bottom:12px;">Use this option for an address such as <strong>rsvp.yourdomain.com</strong>.</div>
+                            <div style="display:grid;grid-template-columns:70px 1fr;gap:5px;font-size:11px;font-family:monospace;background:#fff;border:1px solid #E7E5E4;border-radius:6px;padding:10px 12px;">
+                                <span style="color:#A8A29E;">Type:</span><span>CNAME</span>
+                                <span style="color:#A8A29E;">Name:</span><span>{{ Str::before($publicDomain->domain, '.') }}</span>
+                                <span style="color:#A8A29E;">Value:</span><span>{{ $cnameTarget }}</span>
+                            </div>
+                            @else
+                            <div style="font-size:11px;color:#57534E;line-height:1.6;margin-bottom:12px;">Use this option for the root address <strong>{{ $publicDomain->domain }}</strong>, without <strong>www</strong>.</div>
+                            <div style="display:grid;grid-template-columns:70px 1fr;gap:5px;font-size:11px;font-family:monospace;background:#fff;border:1px solid #E7E5E4;border-radius:6px;padding:10px 12px;">
+                                <span style="color:#A8A29E;">Type:</span><span>A</span>
+                                <span style="color:#A8A29E;">Name:</span><span>@</span>
+                                <span style="color:#A8A29E;">Value:</span><span>{{ $apexIp }}</span>
+                            </div>
+                            @endif
+                            <div style="display:grid;grid-template-columns:70px 1fr;gap:5px;font-size:11px;font-family:monospace;background:#fff;border:1px solid #E7E5E4;border-radius:6px;padding:10px 12px;margin-top:8px;">
+                                <span style="color:#A8A29E;">Type:</span><span>TXT</span>
+                                <span style="color:#A8A29E;">Name:</span><span>_koordli-verify.{{ $publicDomain->domain }}</span>
+                                <span style="color:#A8A29E;">Value:</span><span style="word-break:break-all;">{{ $publicDomain->verification_token }}</span>
+                            </div>
+                            @if($publicDomain->last_checked_at)
+                            <div style="font-size:11px;color:#A8A29E;margin-top:10px;">Last checked {{ $publicDomain->last_checked_at->diffForHumans() }}.</div>
+                            @endif
+                            @if($publicDomain->failure_message)
+                            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:10px 12px;margin-top:10px;font-size:11px;color:#991B1B;line-height:1.6;">
+                                {{ $publicDomain->failure_message }}
+                                @if($publicDomain->domain_type === 'apex' && $publicDomain->observed_dns_value)
+                                Detected: {{ $publicDomain->observed_dns_value }}. Expected: {{ $publicDomain->expected_dns_value }}.
+                                @endif
+                            </div>
+                            @endif
+                        </div>
+
+                        <div style="margin-top:16px;font-size:12px;color:#57534E;line-height:1.7;">
+                            <strong style="color:#1C1917;">How to set it up</strong>
+                            <ol style="margin:8px 0 0 18px;padding:0;">
+                                <li>If you do not own a domain yet, purchase one from a registrar such as Namecheap, GoDaddy, or Hostinger.</li>
+                                <li>Open your registrar's DNS Management, DNS Settings, DNS Zone Editor, or Manage DNS page.</li>
+                                <li>Add the {{ $publicDomain->domain_type === 'apex' ? 'A' : 'CNAME' }} record and the TXT record shown above. Do not add <strong>www</strong> unless it is part of the address you chose.</li>
+                                <li>Save the records, wait a few minutes to a few hours, then select <strong>Verify Domain</strong> here.</li>
+                            </ol>
+                            <p style="margin:10px 0 0;">Pending means DNS is still being found. Verified means the address is ready. Failed means a record is missing or incorrect; check the exact type, name, value, and TXT token, wait longer, and try again. Your normal RSVP link remains active throughout.</p>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -649,11 +750,31 @@
 </div>
 
 <style>
+.rsvp-manager-tab {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
 @media (max-width: 768px) {
     #rsvp-main-grid { grid-template-columns: 1fr !important; }
     #rsvp-help-panel { position: static !important; }
     #rsvp-responses-desktop { display: none !important; }
     #rsvp-responses-mobile  { display: flex !important; }
+}
+@media (max-width: 640px) {
+    .rsvp-manager-tab {
+        flex: 1 1 0;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        font-size: 12px !important;
+    }
+
+    .rsvp-response-count {
+        margin-left: 0 !important;
+    }
 }
 @media (min-width: 769px) {
     #rsvp-responses-desktop { display: block !important; }

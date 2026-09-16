@@ -20,6 +20,10 @@
     <nav id="tenant-sidebar-nav" style="flex: 1; padding: 8px 0; overflow-y: auto;"
      x-on:click="if (window.innerWidth < 768) sidebarOpen = false">
 
+        <div class="tenant-help-mobile" style="padding: 12px 16px 4px;">
+            <livewire:tenant.support.help-widget />
+        </div>
+
         <div class="krd-nav-section">
             <div class="krd-nav-label">Overview</div>
             <a href="{{ route('tenant.dashboard') }}"

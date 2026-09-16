@@ -294,6 +294,32 @@ Route::get('/vendors/{slug}/register', \App\Livewire\Public\VendorRegister::clas
     ->name('vendor.public.register');
 
 // RSVP
+$publicDomainAppHost = parse_url(config('app.url'), PHP_URL_HOST) ?? 'koordli.site';
+$publicDomainHostPattern = '^(?!.*' . preg_quote($publicDomainAppHost, '/') . '$).+$';
+
+Route::domain('{publicDomainHost}')
+    ->where(['publicDomainHost' => $publicDomainHostPattern])
+    ->middleware('public.rsvp.domain')
+    ->group(function () {
+        Route::get('/', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.public-domain.form');
+        Route::get('/edit/{token}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.public-domain.edit');
+        Route::get('/ticket/{token}', function (string $token) {
+            $form = app('publicRsvpForm');
+            $response = \App\Models\Tenant\RsvpResponse::with(['rsvpForm.event'])
+                ->where('rsvp_form_id', $form->id)
+                ->where('qr_token', $token)
+                ->where('status', 'confirmed')
+                ->firstOrFail();
+
+            $event = $response->rsvpForm->event;
+            $qrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')
+                ->size(200)
+                ->generate($token);
+
+            return view('public.rsvp-ticket-pdf', compact('response', 'event', 'qrSvg'));
+        })->name('rsvp.public-domain.ticket');
+    });
+
 Route::get('/rsvp/{slug}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.form');
 Route::get('/rsvp/{slug}/edit/{token}', \App\Livewire\Public\RsvpMicrosite::class)->name('rsvp.edit');
 Route::get('/rsvp/ticket/{token}', function (string $token) {

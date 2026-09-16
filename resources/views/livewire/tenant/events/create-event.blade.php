@@ -12,7 +12,7 @@
         </h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
+    <div class="tenant-event-form-layout" style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
 
         {{-- Left — Form --}}
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -27,7 +27,7 @@
                     @error('name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="tenant-event-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Event Type</label>
                         <x-ui.dropdown
@@ -65,7 +65,7 @@
                 </div>
 
                 {{-- Date + Time --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+                <div class="tenant-event-date-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Start Date</label>
                         <input wire:model="date" type="date" class="krd-input @error('date') krd-input-error @enderror" />
@@ -89,7 +89,7 @@
                 </div>
 
                 {{-- Venue + Location --}}
-                <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                <div class="tenant-event-field-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Venue</label>
                         <input wire:model="venue" type="text" class="krd-input @error('venue') krd-input-error @enderror" placeholder="e.g. The Grand Ballroom" />
@@ -103,7 +103,7 @@
                 </div>
 
                 {{-- Max Guests + Budget --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="tenant-event-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Expected Guests</label>
                         <input wire:model="max_guests" type="number" min="1" class="krd-input @error('max_guests') krd-input-error @enderror" placeholder="e.g. 200" />
@@ -134,7 +134,7 @@
                     @error('client_name') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="tenant-event-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Client Phone</label>
                         <input wire:model="client_phone" type="tel" class="krd-input @error('client_phone') krd-input-error @enderror" placeholder="e.g. +234 801 234 5678" />
@@ -247,7 +247,7 @@
         </div>
 
         {{-- Right — Tips --}}
-        <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
+        <div class="tenant-event-tips" style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;">💡 Quick tips</div>
                 <div style="display:flex;flex-direction:column;gap:10px;">

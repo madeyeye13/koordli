@@ -109,7 +109,7 @@
                     {{ ucfirst($assignment->status) }}
                 </span>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div class="vendor-dashboard-summary-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
                 <div style="background:#F5F5F4;border-radius:6px;padding:10px;">
                     <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#A8A29E;margin-bottom:2px;">Agreed</div>
                     <div style="font-size:13px;font-weight:700;color:#7C3AED;">{{ number_format($assignment->amount_agreed, 2) }}</div>

@@ -5,7 +5,7 @@
 
         {{-- Top --}}
         <div>
-            <x-ui.logo color="light" />
+            <x-ui.auth-brand color="light" />
         </div>
 
         {{-- Middle --}}
@@ -88,8 +88,13 @@
         <div style="width: 100%; max-width: 420px; padding: 48px 0;">
 
             {{-- Mobile logo --}}
-            <div class="krd-mobile-only" style="margin-bottom: 20px;">
-                <x-ui.logo color="dark" />
+            <div class="krd-mobile-only krd-register-mobile-header" style="margin-bottom: 20px;">
+                <x-ui.auth-brand />
+                @if($step === 1)
+                <a href="{{ route('landing') }}" wire:navigate class="krd-register-mobile-back">
+                    <span aria-hidden="true">←</span> Back
+                </a>
+                @endif
             </div>
 
             {{-- Mobile step indicator --}}
@@ -141,7 +146,7 @@
             @if($step === 1)
 
             <div style="margin-bottom: 28px;">
-                <a href="{{ route('landing') }}" wire:navigate style="display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;color:#78716C;text-decoration:none;font-size:13px;font-weight:500;">
+                <a href="{{ route('landing') }}" wire:navigate class="krd-register-desktop-back" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;color:#78716C;text-decoration:none;font-size:13px;font-weight:500;">
                     <span aria-hidden="true">←</span> Back
                 </a>
                 <h2 style="font-size: 22px; font-weight: 600; color: #1C1917; letter-spacing: -0.01em; margin-bottom: 6px;">Create your account</h2>
@@ -456,7 +461,7 @@
 
             <div style="margin-bottom: 24px;">
                 <h2 style="font-size: 22px; font-weight: 600; color: #1C1917; letter-spacing: -0.01em; margin-bottom: 6px;">Choose a plan</h2>
-                <p style="font-size: 13px; color: #78716C;">Start free. Upgrade when you're ready.</p>
+                <p style="font-size: 13px; color: #78716C;line-height:1.6;">Choose how you want to begin. Start a free trial if available, or continue to secure payment for immediate plan access.</p>
             </div>
 
             @if(count($enabledGateways) > 1)
@@ -556,7 +561,7 @@
                             wire:loading.attr="disabled"
                             class="krd-btn krd-btn-sm krd-btn-primary"
                         >
-                            <span wire:loading.remove>Subscribe now</span>
+                            <span wire:loading.remove>Continue to payment</span>
                             <span wire:loading>Redirecting...</span>
                         </button>
                         @endif

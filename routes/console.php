@@ -10,6 +10,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('koordli:process-subscriptions')->dailyAt('06:00');
 Schedule::command('koordli:recheck-domains')->dailyAt('07:00');
+Schedule::command('koordli:recheck-public-domains')->dailyAt('07:15');
 Schedule::command('koordli:close-inactive-chats')->everyFiveMinutes();
 Schedule::command('koordli:process-reminders')->everyFifteenMinutes();
 Schedule::command('koordli:send-digests')->hourly();

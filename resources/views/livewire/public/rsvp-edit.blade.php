@@ -42,7 +42,7 @@
                 <div style="font-size:11px;color:#A8A29E;font-family:monospace;">{{ $response->qr_token }}</div>
             </div>
 
-            <a href="{{ url('/rsvp/ticket/' . $response->qr_token) }}"
+            <a href="{{ $response->ticketUrl() }}"
                 style="display:inline-block;background:#1C1917;color:#FAFAF9;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;font-family:'Spline Sans',sans-serif;">
                 Download Updated Ticket
             </a>

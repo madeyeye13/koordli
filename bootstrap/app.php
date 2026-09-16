@@ -46,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'client.password.check'  => EnsureClientPasswordChanged::class,
             'tenant.active' => \App\Http\Middleware\EnsureTenantActive::class,
             'tenant.byDomain' => \App\Http\Middleware\ResolveTenantByDomain::class,
+            'public.rsvp.domain' => \App\Http\Middleware\ResolvePublicRsvpDomain::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

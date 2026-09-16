@@ -12,7 +12,7 @@
         </h2>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
+    <div class="tenant-task-form-layout" style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;">
 
         {{-- Left — Form --}}
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -37,7 +37,7 @@
                 </div>
 
                 {{-- Priority + Status --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="tenant-task-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group">
                         <label class="krd-label-text">Priority</label>
                         <x-ui.dropdown
@@ -111,7 +111,7 @@
                 @endif
 
                 {{-- Category + Assigned To --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="tenant-task-field-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="krd-input-group" style="margin-bottom:0;">
                         <label class="krd-label-text">Category</label>
                         <x-ui.dropdown
@@ -170,7 +170,7 @@
         </div>
 
         {{-- Right — Tips --}}
-        <div style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
+        <div class="tenant-task-tips" style="display:flex;flex-direction:column;gap:12px;position:sticky;top:80px;">
             <div class="krd-card" style="padding:20px;">
                 <div style="font-size:13px;font-weight:600;color:#1C1917;margin-bottom:12px;">💡 Task types</div>
                 <div style="display:flex;flex-direction:column;gap:12px;">
