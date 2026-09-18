@@ -31,6 +31,29 @@
                 @error('favicon') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
             </div>
 
+            <div class="krd-input-group" style="margin-top:24px;">
+                <label class="krd-label-text">Tenant Quick Tour Video</label>
+
+                @if($tenant_tour_video_path)
+                    <div style="margin-bottom:10px;">
+                        <video controls preload="metadata" src="{{ Storage::url($tenant_tour_video_path) }}" style="width:100%;max-width:480px;border-radius:10px;border:1px solid #E7E5E4;background:#0C0A09;display:block;"></video>
+                    </div>
+                    <button type="button" wire:click="removeTourVideo" class="krd-btn krd-btn-secondary krd-btn-sm" style="margin-bottom:8px;">Remove video</button>
+                @endif
+
+                <input wire:model="tenant_tour_video" type="file" accept="video/*" class="krd-input" style="padding:8px;" />
+                <span class="krd-input-hint">Upload a short overview video. It shows only when the toggle below is enabled.</span>
+                @error('tenant_tour_video') <span class="krd-input-error-msg">{{ $message }}</span> @enderror
+            </div>
+
+            <div class="krd-input-group" style="margin-top:12px;">
+                <label class="krd-label-text">Enable tenant quick tour</label>
+                <label style="display:flex;align-items:center;gap:10px;font-size:14px;color:#1C1917;cursor:pointer;">
+                    <input type="checkbox" wire:model="tenant_tour_enabled" />
+                    <span>Show the quick tour video for tenants</span>
+                </label>
+            </div>
+
             <div id="legal-pages" style="border-top:1px solid #E7E5E4;margin-top:24px;padding-top:24px;">
                 <div class="krd-label" style="margin-bottom:6px;">Legal Pages</div>
                 <p style="font-size:12px;color:#78716C;line-height:1.6;margin-bottom:16px;">These pages are linked from registration and are visible publicly. You can edit or expand the text at any time.</p>

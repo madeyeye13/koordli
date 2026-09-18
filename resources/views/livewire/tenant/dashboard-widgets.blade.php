@@ -1,4 +1,4 @@
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;" id="dash-widgets-grid">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;width:100%;min-width:0;" id="dash-widgets-grid">
 
     {{-- Today's Tasks --}}
     <div class="krd-card" style="padding:18px;">

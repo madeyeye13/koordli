@@ -20,7 +20,7 @@
             <div class="krd-label" style="margin-bottom:8px;">Total Tasks</div>
             <div class="krd-stat-number" style="font-size:36px;font-weight:700;color:#3B82F6;line-height:1;">{{ $totalTasks }}</div>
             @if($overdueTasks > 0)
-            <div style="font-size:11px;color:#EF4444;margin-top:4px;">{{ $overdueTasks }} overdue</div>
+            <div style="font-size:12px;color:#EF4444;margin-top:4px;">{{ $overdueTasks }} overdue</div>
             @endif
         </div>
         <div class="krd-card" style="text-align:center;">
@@ -57,17 +57,17 @@
                     <div style="width:8px;height:8px;border-radius:50%;background:{{ $event->eventType->color ?? '#7C3AED' }};flex-shrink:0;"></div>
                     <div style="flex:1;min-width:0;">
                         <a href="{{ route('tenant.events.show', $event->slug) }}" wire:navigate style="text-decoration:none;">
-                            <div style="font-size:13px;font-weight:500;color:#1C1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <div style="font-size:14px;font-weight:500;color:#1C1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                 {{ $event->name }}
                             </div>
                         </a>
-                        <div style="font-size:11px;color:#A8A29E;margin-top:2px;">
+                        <div style="font-size:12px;color:#A8A29E;margin-top:2px;">
                             {{ $event->date ? $event->date->format('M d, Y') : 'Date TBC' }}
                             @if($event->eventType) · {{ $event->eventType->name }} @endif
                         </div>
                     </div>
                     @if($event->status)
-                    <span class="krd-badge" style="background:{{ $event->status->color }}22;color:{{ $event->status->color }};font-size:10px;">
+                    <span class="krd-badge" style="background:{{ $event->status->color }}22;color:{{ $event->status->color }};font-size:11px;">
                         {{ $event->status->name }}
                     </span>
                     @endif
@@ -103,10 +103,10 @@
                 <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #E7E5E4;">
                     <div style="width:16px;height:16px;border:1.5px solid #D6D3D1;border-radius:4px;flex-shrink:0;margin-top:1px;"></div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:13px;color:#1C1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        <div style="font-size:14px;color:#1C1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                             {{ $task->title }}
                         </div>
-                        <div style="font-size:11px;color:#A8A29E;margin-top:2px;">
+                        <div style="font-size:12px;color:#A8A29E;margin-top:2px;">
                             @if($task->due_date)
                                 @if($task->due_date->isPast())
                                     <span style="color:#EF4444;">Overdue · {{ $task->due_date->format('M d') }}</span>

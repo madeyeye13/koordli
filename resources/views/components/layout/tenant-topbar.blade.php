@@ -15,13 +15,16 @@
         </button>
 
         {{-- Tenant company name --}}
-        <div style="font-size: 13px; font-weight: 500; color: #1C1917;">
+        <div style="font-size: 14px; font-weight: 500; color: #1C1917;">
             {{ auth()->user()?->tenant?->name ?? 'Dashboard' }}
         </div>
     </div>
 
     <div style="display: flex; align-items: center; gap: 12px;">
 
+        <div class="tenant-tour-desktop">
+            <livewire:tenant.video-tour-modal />
+        </div>
         <div class="tenant-help-desktop">
             <livewire:tenant.support.help-widget />
         </div>

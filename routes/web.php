@@ -19,6 +19,10 @@ Route::post('/push/subscribe', [\App\Http\Controllers\PushSubscriptionController
 Route::post('/push/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
 Route::post('/media/upload/chunk', [\App\Http\Controllers\MediaUploadController::class, 'chunk'])->name('media.upload.chunk');
 Route::post('/media/upload/finalize', [\App\Http\Controllers\MediaUploadController::class, 'finalize'])->name('media.upload.finalize');
+
+Route::get('/feedback', \App\Livewire\Public\FeedbackForm::class)->name('feedback');
+Route::get('/feedback/thanks', \App\Livewire\Public\FeedbackThanks::class)->name('feedback.thanks');
+
 /*
 |--------------------------------------------------------------------------
 | Platform Routes
@@ -34,6 +38,7 @@ Route::prefix('platform')->name('platform.')->group(function () {
 
     Route::middleware('auth.platform')->group(function () {
         Route::get('/dashboard', \App\Livewire\Platform\Dashboard::class)->name('dashboard');
+        Route::get('/feedback', \App\Livewire\Platform\FeedbackSubmissionList::class)->name('feedback');
         Route::get('/tenants', \App\Livewire\Platform\Tenants\TenantList::class)->name('tenants');
         Route::get('/tenants/create', \App\Livewire\Platform\Tenants\CreateTenant::class)->name('tenants.create');
         Route::get('/tenants/{tenant}/edit', \App\Livewire\Platform\Tenants\CreateTenant::class)->name('tenants.edit');

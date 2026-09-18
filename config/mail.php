@@ -115,4 +115,6 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    'feedback_recipient' => env('FEEDBACK_RECIPIENT_EMAIL'),
+
 ];

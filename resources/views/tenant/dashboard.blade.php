@@ -6,7 +6,7 @@
     <h1 style="font-size: 22px; font-weight: 600; color: #1C1917; letter-spacing: -0.01em;">
         Dashboard
     </h1>
-    <p style="font-size: 13px; color: #78716C; margin-top: 4px;">
+    <p style="font-size: 14px; color: #78716C; margin-top: 4px;">
         Welcome back. Here's what's happening.
     </p>
 </div>

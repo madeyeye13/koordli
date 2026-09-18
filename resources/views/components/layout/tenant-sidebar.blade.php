@@ -20,8 +20,11 @@
     <nav id="tenant-sidebar-nav" style="flex: 1; padding: 8px 0; overflow-y: auto;"
      x-on:click="if (window.innerWidth < 768) sidebarOpen = false">
 
-        <div class="tenant-help-mobile" style="padding: 12px 16px 4px;">
+        <div class="tenant-help-mobile" style="padding: 12px 16px 4px;display:flex;align-items:center;gap:8px;">
             <livewire:tenant.support.help-widget />
+            <div class="tenant-tour-mobile">
+                <livewire:tenant.video-tour-modal />
+            </div>
         </div>
 
         <div class="krd-nav-section">

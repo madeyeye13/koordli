@@ -37,6 +37,14 @@
                 </svg>
                 Dashboard
             </a>
+            <a href="{{ route('platform.feedback') }}"
+                class="krd-nav-item {{ request()->routeIs('platform.feedback') ? 'active' : '' }}"
+                wire:navigate>
+                <svg class="krd-nav-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M4 5h16v12H7l-3 3V5z"/><path d="M8 9h8M8 13h5"/>
+                </svg>
+                Tester Feedback
+            </a>
         </div>
 
         <div class="krd-nav-section">
