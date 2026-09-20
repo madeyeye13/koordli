@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
 # your earlier deployment notes flagged as needing confirmation.
 RUN ffmpeg -version && ffprobe -version
 
+COPY php.ini /usr/local/etc/php/conf.d/99-koordli-overrides.ini
+
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
