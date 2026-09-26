@@ -117,4 +117,6 @@ return [
 
     'feedback_recipient' => env('FEEDBACK_RECIPIENT_EMAIL'),
 
+    'admin_address' => env('MAIL_ADMIN_ADDRESS'),
+
 ];
